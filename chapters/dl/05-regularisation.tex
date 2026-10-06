@@ -1,4 +1,500 @@
 \chapter{Initialisation, normalisation and regularisation}
 \label{ch:reg}
-\section{Initialisation, normalisation and regularisation}
-\stub{Initialisation, normalisation and regularisation}
+
+Three families of tricks keep deep networks trainable and keep them from memorising:
+the scale of the initial weights, layers that renormalise activations, and penalties or
+noise that restrict what the network can fit. The OA questions here are short but have
+popular wrong answers (``BatchNorm behaves the same at inference'', ``dropout increases
+capacity'', ``what does $\lambda$ do in $E+\lambda\sum w^2$''), and the interview
+questions are derivations: the Xavier and He variances and the BatchNorm backward pass.
+
+\section{Initialisation}
+\prototype{A 50-layer ReLU network: with weight standard deviation $\sqrt{1/n}$ the
+activations shrink to $\gv{c05_init_norm/std50_xav_relu_sci}$ of their input scale; with
+$\sqrt{2/n}$ they stay at $\gv{c05_init_norm/std50_he_relu}$.}
+
+\subsection{Why not zeros, why not tiny}
+All-equal weights make every unit in a layer compute the same function and receive the
+same gradient forever (Problem 3D): \vocab{symmetry} must be broken by random
+initialisation. But the scale of the randomness matters. Each layer multiplies the
+activation scale by some gain; over $L$ layers the gains multiply, and anything other than
+a gain of about one either vanishes or explodes, in the forward pass and (\cref{ch:backprop})
+in the backward pass.
+
+\subsection{Deriving Xavier and He}
+Take $z_j=\sum_{i=1}^{n}W_{ji}h_i$ with independent zero-mean weights of variance
+$\sigma_w^2$, independent of the inputs. Then
+\[ \Var(z_j)=\sum_{i=1}^n\Var(W_{ji}h_i) = n\,\sigma_w^2\,\E[h_i^2]. \]
+\begin{itemize}
+	\ii For $\tanh$ near the origin $\tanh z\approx z$, so $\E h^2\approx\Var(z_\text{prev})$ and
+	the variance is preserved when $n\sigma_w^2=1$. The backward pass multiplies by $\W\T$, whose
+	sum runs over $n_\text{out}$ terms, and preserves gradient variance when
+	$n_\text{out}\sigma_w^2=1$. \vocab{Xavier} (Glorot) initialisation \cite{glorot} compromises:
+	\[ \sigma_w^2=\frac{2}{n_\text{in}+n_\text{out}},\qquad
+	\text{or } W\sim U\Bigl[-\sqrt{\tfrac{6}{n_\text{in}+n_\text{out}}},\sqrt{\tfrac{6}{n_\text{in}+n_\text{out}}}\Bigr] \]
+	(a uniform on $[-a,a]$ has variance $a^2/3$).
+	\ii For ReLU, if $z$ is symmetric about zero then $\E[\relu(z)^2]=\frac12\Var(z)$ (half the
+	mass is zeroed; the script checks this by simulation). To keep $\Var z$ constant we need
+	$n\sigma_w^2\cdot\frac12=1$: \vocab{He} (Kaiming) initialisation \cite{hekaiming},
+	\[ \sigma_w^2=\frac{2}{n_\text{in}}. \]
+\end{itemize}
+
+\begin{example}[Numbers for a $256\to128$ layer]
+	Xavier uniform bound $\sqrt{6/384}=\gv{c05_init_norm/xav_u}$, Xavier normal std
+	$\gv{c05_init_norm/xav_n}$, He normal std $\sqrt{2/256}=\gv{c05_init_norm/he_n}$, He uniform
+	bound $\gv{c05_init_norm/he_u}$. Each is checked against \pt{torch.nn.init}. PyTorch's
+	\emph{default} for \pt{nn.Linear} is uniform with bound $1/\sqrt{n_\text{in}}=
+	\gv{c05_init_norm/default_bound}$ (std $\gv{c05_init_norm/default_std}$), which is smaller than
+	He: fine for shallow nets, a reason to initialise deep plain ReLU nets explicitly.
+\end{example}
+
+\begin{example}[Activation scale through 50 layers]
+	Width $256$, Gaussian inputs, no biases, no normalisation; standard deviation of the
+	activations at layer 50:
+	\begin{center}
+		\small
+		\begin{tabular}{llc}
+			\toprule
+			activation & weight std & std at layer 50 \\
+			\midrule
+			$\tanh$ & $0.01$ & $\approx0$ (already $\gv{c05_init_norm/std10_small_tanh_sci}$ at layer 10) \\
+			$\tanh$ & $\sqrt{1/n}$ (Xavier) & $\gv{c05_init_norm/std50_xav_tanh}$ \\
+			ReLU & $\sqrt{1/n}$ & $\gv{c05_init_norm/std50_xav_relu_sci}$ \\
+			ReLU & $\sqrt{2/n}$ (He) & $\gv{c05_init_norm/std50_he_relu}$ \\
+			ReLU & $\sqrt{3/n}$ & $\gv{c05_init_norm/std50_big_relu_sci}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.62\linewidth, height=0.4\linewidth,
+		xlabel={layer}, ylabel={$\log_{10}$ std of activations}, legend pos=outer north east,
+		legend style={font=\scriptsize}, ymin=-12, ymax=6]
+		\addplot table[x=layer,y=small_tanh] {gen/dl/data/c05_init_norm-actstd.dat}; \addlegendentry{tanh, $0.01$}
+		\addplot table[x=layer,y=xav_tanh] {gen/dl/data/c05_init_norm-actstd.dat}; \addlegendentry{tanh, Xavier}
+		\addplot table[x=layer,y=xav_relu] {gen/dl/data/c05_init_norm-actstd.dat}; \addlegendentry{ReLU, $\sqrt{1/n}$}
+		\addplot table[x=layer,y=he_relu] {gen/dl/data/c05_init_norm-actstd.dat}; \addlegendentry{ReLU, He}
+		\addplot table[x=layer,y=big_relu] {gen/dl/data/c05_init_norm-actstd.dat}; \addlegendentry{ReLU, $\sqrt{3/n}$}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	The $\sqrt{1/n}$ ReLU curve loses a factor $1/\sqrt2$ per layer, exactly as the derivation
+	predicts; $\sqrt{3/n}$ gains $\sqrt{3/2}$ per layer. Xavier-$\tanh$ decays slowly because
+	$\tanh$ is contractive away from zero.
+\end{example}
+
+\begin{remark}
+	\trap ``Use Xavier for ReLU networks.'' Xavier assumes a roughly linear activation; ReLU
+	discards half the signal, so it needs the factor $2$ of He. The reverse mistake (He for
+	$\tanh$) saturates the units. Biases are usually initialised to zero; that is fine, because
+	the random weights already break symmetry.
+\end{remark}
+
+\section{Batch normalisation}
+\prototype{One feature takes values $1,2,3,6$ in a batch: BatchNorm maps them to
+$\gv{c05_init_norm/bn_y0}$, $\gv{c05_init_norm/bn_y1}$, $\gv{c05_init_norm/bn_y2}$,
+$\gv{c05_init_norm/bn_y3}$ during training, but at inference the same input $3$ need not map
+to $0$.}
+
+\subsection{Forward pass}
+For a minibatch $\{x_1,\dots,x_B\}$ of one feature (one channel, for convolutions pooled over
+the spatial positions too), BatchNorm \cite{batchnorm} computes
+\[
+	\mu_\mathcal B=\frac1B\sum_i x_i,\quad
+	\sigma^2_\mathcal B=\frac1B\sum_i(x_i-\mu_\mathcal B)^2,\quad
+	\hat x_i=\frac{x_i-\mu_\mathcal B}{\sqrt{\sigma_\mathcal B^2+\eps}},\quad
+	y_i=\gamma\hat x_i+\beta,
+\]
+with learnable scale $\gamma$ and shift $\beta$ per feature. Without $\gamma,\beta$ every layer
+would be forced to zero mean and unit variance; with them the network can undo the
+normalisation if that is better, so BN does not reduce what the layer can represent.
+
+\begin{example}[BatchNorm by hand]
+	Batch of four, two features: $(1,10),(2,20),(3,30),(6,60)$, $\gamma=(1,2)$, $\beta=(0,1)$.
+	Feature 1: $\mu=\gv{c05_init_norm/bn_mu}$, $\sigma^2=\gv{c05_init_norm/bn_var}$ (divide by
+	$B$), $\sqrt{\sigma^2+\eps}=\gv{c05_init_norm/bn_sd}$, outputs
+	$(\gv{c05_init_norm/bn_y0},\gv{c05_init_norm/bn_y1},\gv{c05_init_norm/bn_y2},\gv{c05_init_norm/bn_y3})$.
+	Feature 2 is feature 1 times ten, so $\hat x$ is identical and
+	$y=2\hat x+1=(\gv{c05_init_norm/bn_y20},\gv{c05_init_norm/bn_y21},\gv{c05_init_norm/bn_y22},\gv{c05_init_norm/bn_y23})$:
+	BN is invariant to the scale of its input. Both match \pt{nn.BatchNorm1d} in training mode.
+\end{example}
+
+\subsection{Train versus inference}
+At inference there may be a single example, and predictions must not depend on what else is
+in the batch. So during training BN keeps \vocab{running estimates}
+$\mu_\text{run}\gets(1-m)\mu_\text{run}+m\,\mu_\mathcal B$ and likewise for the variance, and in
+evaluation mode it uses them instead of batch statistics. In PyTorch $m=0.1$ (the argument is
+confusingly called \pt{momentum}), the running mean starts at $0$, the running variance at $1$,
+and the running variance is updated with the \emph{unbiased} batch variance (divide by $B-1$).
+
+\begin{example}[Running statistics after one step]
+	After the batch above, feature 1 has $\mu_\text{run}=0.9\cdot0+0.1\cdot3=\gv{c05_init_norm/bn_rm0}$
+	and $\sigma^2_\text{run}=0.9\cdot1+0.1\cdot\gv{c05_init_norm/bn_uvar}=\gv{c05_init_norm/bn_rv0}$
+	(unbiased variance $\gv{c05_init_norm/bn_uvar}$, not $\gv{c05_init_norm/bn_var}$). In
+	\pt{eval()} mode the input $3$, which was normalised to $0$ inside the batch, now maps to
+	$(3-\gv{c05_init_norm/bn_rm0})/\sqrt{\gv{c05_init_norm/bn_rv0}}=\gv{c05_init_norm/bn_eval0}$.
+	The script asserts all three numbers against PyTorch.
+\end{example}
+
+\begin{remark}
+	\trap ``BatchNorm behaves the same at training and inference time.'' It does not: training
+	uses the current batch's statistics (and updates the running averages), inference uses the
+	frozen running averages. Forgetting \pt{model.eval()} before evaluation therefore changes
+	predictions (and keeps modifying the running statistics); it is the most common BN bug. In
+	training mode a batch of one cannot be normalised at all: PyTorch raises a
+	\pt{\gv{c05_init_norm/bn_b1_error}} for \pt{BatchNorm1d} on a single example.
+\end{remark}
+
+\subsection{Backward pass}
+BN's backward pass is a favourite derivation because $\mu_\mathcal B$ and $\sigma_\mathcal B$ depend
+on every $x_i$, so each output depends on the whole batch.
+
+\begin{proposition}[BatchNorm gradient]
+	With $\hat x_i$ as above and upstream gradients $g_i=\partial\Loss/\partial y_i$,
+	\[
+		\pd\Loss\gamma=\sum_i g_i\hat x_i,\qquad \pd\Loss\beta=\sum_i g_i,\qquad
+		\pd\Loss{x_i}=\frac{\gamma}{B\sqrt{\sigma_\mathcal B^2+\eps}}
+		\Bigl(Bg_i-\sum_j g_j-\hat x_i\sum_j g_j\hat x_j\Bigr).
+	\]
+\end{proposition}
+\begin{proof}
+	Write $s=\sqrt{\sigma^2_\mathcal B+\eps}$ and $\bar g_i=\gamma g_i=\partial\Loss/\partial\hat x_i$.
+	Since $\hat x_i=(x_i-\mu)/s$,
+	$\partial\hat x_j/\partial x_i=\frac1s(\delta_{ij}-\frac1B)-\frac{x_j-\mu}{s^2}\pd{s}{x_i}$, and
+	$\partial s/\partial x_i=\frac{1}{2s}\cdot\frac2B(x_i-\mu)=\hat x_i/B$ (the term from
+	$\partial\mu/\partial x_i$ sums to zero). Hence
+	$\partial\hat x_j/\partial x_i=\frac1s\bigl(\delta_{ij}-\frac1B-\frac{\hat x_j\hat x_i}{B}\bigr)$ and
+	$\pd\Loss{x_i}=\sum_j\bar g_j\pd{\hat x_j}{x_i}=\frac1{Bs}\bigl(B\bar g_i-\sum_j\bar g_j-\hat x_i\sum_j\bar g_j\hat x_j\bigr)$.
+\end{proof}
+
+\codefile[\script{c05_init_norm}]{gen/dl/snip/c05_init_norm-bn.py}
+
+The gradient with respect to $x$ has zero sum and is orthogonal to $\hat x$: BN's output cannot
+change by shifting or scaling its input, so neither direction can carry gradient. The script
+asserts $\partial\Loss/\partial x$, $\partial\Loss/\partial\gamma$ and $\partial\Loss/\partial\beta$
+against autograd.
+
+\subsection{Why BatchNorm helps}
+The original motivation was ``reducing internal covariate shift'' (layers chasing a moving input
+distribution). Later analysis suggests the main benefit is a smoother, better-conditioned loss
+landscape that tolerates much larger learning rates; the honest interview answer mentions both
+and says the second has more empirical support. Side effects: BN makes the layer invariant to the
+scale of its incoming weights, and the batch noise acts as a mild regulariser.
+
+\begin{example}[A 10-layer sigmoid MLP with and without BN]
+	Same data, initialisation recipe and SGD with momentum; full-data loss after 300 steps:
+	$\gv{c05_init_norm/bnc_nobn}$ without BN at $\eta=0.05$ (stuck near $\ln2$),
+	$\gv{c05_init_norm/bnc_bn}$ with BN at $\eta=0.05$, $\gv{c05_init_norm/bnc_bnhi}$ with BN at a ten
+	times larger $\eta=0.5$.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth, xlabel={step},
+		ylabel={training loss}, legend pos=south west]
+		\addplot table[x=step,y=nobn] {gen/dl/data/c05_init_norm-bncurve.dat}; \addlegendentry{no BN, $\eta=0.05$}
+		\addplot table[x=step,y=bn] {gen/dl/data/c05_init_norm-bncurve.dat}; \addlegendentry{BN, $\eta=0.05$}
+		\addplot table[x=step,y=bnhi] {gen/dl/data/c05_init_norm-bncurve.dat}; \addlegendentry{BN, $\eta=0.5$}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+\end{example}
+
+\begin{ques}
+	A BatchNorm layer follows a linear layer with a bias. Why is the bias redundant?
+\end{ques}
+
+\section{LayerNorm, GroupNorm, RMSNorm}
+\prototype{LayerNorm normalises one example's features, so the vector $(1,2,3,6)$ becomes
+$(\gv{c05_init_norm/ln0},\gv{c05_init_norm/ln1},\gv{c05_init_norm/ln2},\gv{c05_init_norm/ln3})$ whatever
+else is in the batch.}
+
+The normalisation layers differ only in which axes the mean and variance are taken over.
+For a convolutional activation of shape $\shp{N,C,H,W}$:
+\begin{center}
+\begin{tikzpicture}[x=0.36cm,y=0.36cm]
+	\fill[blue!25] (1,0) rectangle (2,4);
+	\fill[blue!25] (9,2) rectangle (15,3);
+	\fill[blue!25] (19,2) rectangle (20,3);
+	\fill[blue!25] (27,2) rectangle (29,3);
+	\foreach \name/\ox in {BatchNorm/0,LayerNorm/9,InstanceNorm/18,GroupNorm/27} {
+		\begin{scope}[shift={(\ox,0)}]
+			\draw[step=1, gray] (0,0) grid (6,4);
+			\node[font=\scriptsize] at (3,-0.9) {\name};
+			\node[font=\scriptsize] at (-0.6,2) {$N$};
+			\node[font=\scriptsize] at (3,4.6) {$C$};
+		\end{scope}
+	}
+\end{tikzpicture}
+\end{center}
+Each cell stands for all $H\times W$ positions of one channel of one example; the shaded cells
+are normalised together.
+\begin{itemize}
+	\ii \vocab{BatchNorm}: per channel, over $(N,H,W)$. Depends on the batch; needs running
+	statistics; weak with small batches.
+	\ii \vocab{LayerNorm} \cite{layernorm}: per example, over all features $(C,H,W)$ (in a
+	Transformer: over the $d_\text{model}$ features of each token). No batch dependence, identical at
+	training and inference; the standard in Transformers and RNNs.
+	\ii \vocab{InstanceNorm}: per example and channel, over $(H,W)$; style transfer.
+	\ii \vocab{GroupNorm}: per example, over groups of channels; $G=1$ is LayerNorm and $G=C$ is
+	InstanceNorm (both identities asserted in the script). Used for detection and segmentation where
+	batches are tiny.
+	\ii \vocab{RMSNorm}: LayerNorm without centring and without $\beta$,
+	$y=\gamma\,x/\sqrt{\frac1d\sum x_i^2+\eps}$; cheaper, and used in many recent LLMs. For
+	$(1,2,3,6)$ the RMS is $\gv{c05_init_norm/rms_val}$ and the output is
+	$(\gv{c05_init_norm/rms0},\gv{c05_init_norm/rms1},\gv{c05_init_norm/rms2},\gv{c05_init_norm/rms3})$.
+\end{itemize}
+
+\codefile[\script{c05_init_norm}]{gen/dl/snip/c05_init_norm-ln.py}
+
+Parameter count: each of these has $2C$ (or $2d$) learnable parameters, $\gamma$ and $\beta$
+(RMSNorm: $d$). \pt{BatchNorm2d(64)} has $\gv{c05_init_norm/bn_params}$ learnable parameters plus
+$\gv{c05_init_norm/bn_buffers}$ non-learnable buffers (running mean and variance); the buffers are
+in the \pt{state\_dict} but not in \pt{parameters()}.
+
+\begin{remark}
+	\trap BN versus LN in one line: BN normalises each feature across the batch, LN normalises each
+	example across its features. Hence LN works with batch size $1$ and variable-length sequences,
+	and behaves identically in training and inference.
+\end{remark}
+
+\section{Dropout}
+\prototype{With $p=0.5$ and mask $(1,0,1,0)$, activations $(2,4,6,8)$ become
+$\gv{c05_regularise/drop_demo}$ during training and stay $(2,4,6,8)$ at test time.}
+
+\vocab{Dropout} \cite{dropout} zeroes each unit independently with probability $p$ during training.
+\vocab{Inverted dropout}, used by every framework, divides the survivors by $1-p$ so that the
+expected activation is unchanged and inference needs no rescaling:
+\[ \E\Bigl[\frac{m_i h_i}{1-p}\Bigr] = h_i,\qquad m_i\sim\Ber(1-p). \]
+
+\codefile[\script{c05_regularise}]{gen/dl/snip/c05_regularise-dropout.py}
+
+The script checks the mean over $200{,}000$ draws, the identity at inference, and that
+\pt{nn.Dropout(0.5)} scales kept entries by exactly $2$. The variance is not preserved: for
+$h=2$, $p=\frac12$ it is $h^2p/(1-p)=\gv{c05_regularise/drop_var}$, which is why dropout placed just
+before BatchNorm causes a train/test mismatch in the statistics.
+
+Why it regularises: no unit can rely on a specific other unit being present, which discourages
+co-adapted feature detectors; and training samples one of $2^n$ thinned sub-networks per step,
+all sharing weights, so the test-time network approximates the average of an exponential
+ensemble.
+
+\begin{remark}
+	\trap ``Dropout is applied at test time too'' and ``at test time multiply the weights by $p$''.
+	With inverted dropout nothing happens at test time; the original (non-inverted) formulation
+	scaled activations by the keep probability $1-p$ at test time instead. Keeping dropout on at
+	test time on purpose (\vocab{MC dropout}) is a different technique, used to estimate
+	uncertainty from the spread of several stochastic predictions.
+\end{remark}
+
+\section{Weight decay and the $\lambda$ in $E+\lambda\sum w^2$}
+\prototype{A degree-9 polynomial fitted to 12 noisy points: test MSE $\gv{c05_regularise/ridge_small_te}$
+with $\lambda=10^{-8}$, $\gv{c05_regularise/ridge_best_te}$ at $\lambda=\gv{c05_regularise/ridge_best_lam}$,
+$\gv{c05_regularise/ridge_big_te}$ with $\lambda=10$.}
+
+Adding $\lambda\norm{\w}^2$ to the training error $E$ (\vocab{L2 regularisation}) penalises large
+weights. Its gradient $2\lambda\w$ adds a pull toward zero, so one SGD step multiplies the weights by
+$1-2\eta\lambda$ before the data gradient acts (with $\eta=0.1$, $\lambda=0.01$: by
+$\gv{c05_regularise/wd_factor}$), hence the name \vocab{weight decay}. Small weights mean a smoother
+function: a large $\lambda$ trades higher bias for lower variance. The ridge-regression chapter of
+\otherbook{Classical Machine Learning} has the closed form; here we watch it work on a model with
+far too many parameters.
+
+\begin{example}[Effect of $\lambda$]
+	\label{ex:lambda}
+	Degree-9 polynomial features, $12$ training points from $\sin\pi x$ plus noise, closed-form fit
+	(asserted equal to \pt{sklearn}'s \pt{Ridge} for all $21$ values of $\lambda$):
+	\begin{center}
+		\small
+		\begin{tabular}{lccc}
+			\toprule
+			$\lambda$ & train MSE & test MSE & $\norm\w$ \\
+			\midrule
+			$10^{-8}$ & $\gv{c05_regularise/ridge_small_tr}$ & $\gv{c05_regularise/ridge_small_te}$ & $\gv{c05_regularise/ridge_small_norm}$ \\
+			$\gv{c05_regularise/ridge_best_lam}$ (best) & $\gv{c05_regularise/ridge_best_tr}$ & $\gv{c05_regularise/ridge_best_te}$ & $\gv{c05_regularise/ridge_best_norm}$ \\
+			$10$ & $\gv{c05_regularise/ridge_big_tr}$ & $\gv{c05_regularise/ridge_big_te}$ & $\gv{c05_regularise/ridge_big_norm}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.47\linewidth, height=0.4\linewidth, xmode=log, ymode=log,
+		xlabel=$\lambda$, ylabel={MSE}, legend pos=north west, legend style={font=\scriptsize}]
+		\addplot table[x=lam,y=train] {gen/dl/data/c05_regularise-ridge.dat}; \addlegendentry{train}
+		\addplot table[x=lam,y=test] {gen/dl/data/c05_regularise-ridge.dat}; \addlegendentry{test}
+	\end{axis}
+	\end{tikzpicture}\hfill
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.47\linewidth, height=0.4\linewidth, xlabel=$x$,
+		ymin=-2, ymax=2, legend pos=south east, legend style={font=\scriptsize}]
+		\addplot[only marks, mark=*, mark size=1.2pt, black] table[x=x,y=y] {gen/dl/data/c05_regularise-pts.dat};
+		\addlegendentry{data}
+		\addplot[red!80!black, thick, dashed] table[x=x,y=y] {gen/dl/data/c05_regularise-fit_small.dat};
+		\addlegendentry{$\lambda=10^{-8}$}
+		\addplot[blue!80!black, thick] table[x=x,y=y] {gen/dl/data/c05_regularise-fit_best.dat};
+		\addlegendentry{best $\lambda$}
+		\addplot[orange!90!black, thick, dashdotted] table[x=x,y=y] {gen/dl/data/c05_regularise-fit_big.dat};
+		\addlegendentry{$\lambda=10$}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	Training error rises monotonically with $\lambda$; test error is U-shaped. Too little: the curve
+	threads every point with enormous coefficients (overfitting). Too much: it flattens toward the
+	mean (underfitting).
+\end{example}
+
+\begin{remark}
+	\trap ``Increasing $\lambda$ increases model complexity'' or ``decreases training error'': both
+	backwards. Larger $\lambda$ means smaller weights, a simpler effective model, higher training error,
+	and (up to a point) lower test error. $\lambda=0$ removes the regulariser; $\lambda\to\infty$ drives
+	all penalised weights to zero. Biases are normally not penalised.
+\end{remark}
+
+\subsection{L2 is not weight decay under Adam}
+As \cref{ch:optim} showed, under Adam the L2 gradient is divided by $\sqrt{\hat v}$. A clean
+demonstration: two parameters start at $1$; parameter A receives noisy loss gradients of size about
+$1$, parameter B receives none. After $2000$ steps with $\eta=10^{-3}$:
+\begin{center}
+	\small
+	\begin{tabular}{lcccc}
+		\toprule
+		& \multicolumn{2}{c}{$\lambda=0.01$} & \multicolumn{2}{c}{$\lambda=0.1$} \\
+		& A & B & A & B \\
+		\midrule
+		Adam + L2 & $\gv{c05_regularise/adam_001_p0}$ & $\gv{c05_regularise/adam_001_p1}$ & $\gv{c05_regularise/adam_01_p0}$ & $\gv{c05_regularise/adam_01_p1}$ \\
+		AdamW & $\gv{c05_regularise/adamw_001_p0}$ & $\gv{c05_regularise/adamw_001_p1}$ & $\gv{c05_regularise/adamw_01_p0}$ & $\gv{c05_regularise/adamw_01_p1}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+Under Adam + L2 the parameter with no data gradient collapses toward zero \emph{at the same rate for
+both values of $\lambda$}: its only gradient is $\lambda w$, which Adam normalises to a step of about
+$\eta$ per iteration whatever $\lambda$ is. Under AdamW it decays by exactly $(1-\eta\lambda)^t$, i.e.\
+$\gv{c05_regularise/adamw_pred_001}$ and $\gv{c05_regularise/adamw_pred_01}$, so $\lambda$ means what it
+says. That decoupling is why AdamW is the default for Transformers.
+
+\section{Other regularisers, and reading the curves}
+\prototype{A 3-layer, width-128 network on 24 noisy points: training MSE falls to
+$\gv{c05_regularise/final_tr}$ while validation MSE, best at epoch $\gv{c05_regularise/es_epoch}$, climbs
+back to $\gv{c05_regularise/final_val}$.}
+
+\subsection{Augmentation, early stopping and friends}
+\begin{itemize}
+	\ii \vocab{Data augmentation}: label-preserving transformations (crops, flips, colour jitter,
+	noise; for text, back-translation or token masking) enlarge the effective training set and
+	encode invariances. Often the strongest regulariser for vision.
+	\ii \vocab{Early stopping}: monitor validation loss, keep the best checkpoint, stop after
+	\vocab{patience} epochs without improvement. With patience $\gv{c05_regularise/es_pat}$ the run
+	below stops at epoch $\gv{c05_regularise/es_stop}$ and restores epoch $\gv{c05_regularise/es_epoch}$.
+	For a quadratic loss and gradient descent, early stopping behaves much like L2 regularisation:
+	both limit how far the weights travel from their (small) initial values.
+	\ii \vocab{Label smoothing} (\cref{ch:activations}), \vocab{mixup} (train on convex combinations
+	$\lambda\x_i+(1-\lambda)\x_j$ with the same mix of labels), stochastic depth (randomly skipping
+	residual blocks), and ensembling.
+	\ii Architectural restrictions: weight sharing (CNNs, RNNs), bottlenecks, smaller models.
+\end{itemize}
+
+\subsection{Over- and underfitting from training curves}
+The \vocab{generalisation gap} is validation (or test) loss minus training loss. Three runs on the
+same 24 points:
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.7\linewidth, height=0.42\linewidth, xlabel={epoch},
+	ylabel={MSE}, ymode=log, legend pos=outer north east, legend style={font=\scriptsize}]
+	\addplot[blue!80!black, thick] table[x=ep,y=tr] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{big net, train}
+	\addplot[blue!80!black, thick, dashed] table[x=ep,y=va] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{big net, val}
+	\addplot[orange!90!black, thick] table[x=ep,y=tru] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{2 units, train}
+	\addplot[orange!90!black, thick, dashed] table[x=ep,y=vau] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{2 units, val}
+	\addplot[ForestGreen, thick] table[x=ep,y=trr] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{dropout $0.2$, train}
+	\addplot[ForestGreen, thick, dashed] table[x=ep,y=var] {gen/dl/data/c05_regularise-over.dat}; \addlegendentry{dropout $0.2$, val}
+	\addplot[gray, thin] coordinates {(\gv{c05_regularise/es_epoch},0.005) (\gv{c05_regularise/es_epoch},1)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\begin{itemize}
+	\ii \textbf{Overfitting} (big net): training loss keeps falling
+	(final $\gv{c05_regularise/final_tr}$), validation loss bottoms out at epoch
+	$\gv{c05_regularise/es_epoch}$ (grey line) and rises; the final gap is $\gv{c05_regularise/gap_final}$.
+	Remedies: more data or augmentation, regularisation, early stopping, a smaller model.
+	\ii \textbf{Underfitting} (2 hidden units): both losses plateau high
+	($\gv{c05_regularise/u_tr}$ train, $\gv{c05_regularise/u_va}$ validation) with a small gap.
+	Remedies: a bigger model, longer training, less regularisation, better features.
+	\ii \textbf{Regularised} (dropout $0.2$): training loss stays higher
+	($\gv{c05_regularise/r_tr}$) and the curves stay closer together; here the validation loss ends at
+	$\gv{c05_regularise/r_va}$.
+\end{itemize}
+
+\begin{remark}
+	\trap Validation loss \emph{below} training loss is not a bug by itself: dropout and augmentation
+	are active when the training loss is recorded (here we evaluate both in \pt{eval()} mode, so they
+	are comparable), the training loss is often averaged over an epoch in which the model was still
+	improving, and the validation set may simply be easier. It becomes a bug when the validation set
+	overlaps the training set (leakage).
+\end{remark}
+
+\begin{moral}
+	Initialise so that signals neither vanish nor explode (He for ReLU), normalise (BN for CNNs, LN for
+	Transformers), regularise with weight decay (decoupled under Adam), dropout and augmentation, and read
+	the gap between the two curves before reaching for any of them.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	Give the Xavier-uniform bound and the He-normal standard deviation for a fully connected layer with
+	$512$ inputs and $512$ outputs.
+	\begin{hint}$\sqrt{6/(n_\text{in}+n_\text{out})}$ and $\sqrt{2/n_\text{in}}$.\end{hint}
+	\begin{sol}Both equal $\sqrt{6/1024}=\sqrt{2/512}=\gv{c05_init_norm/p_a}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A BatchNorm layer receives the batch $(4,4,4,4)$ for one feature. What is its training-mode output,
+	and what goes wrong?
+	\begin{hint}The variance is zero.\end{hint}
+	\begin{sol}
+		$\mu=4$, $\sigma^2=0$, so $\hat x=0/\sqrt{\eps}=0$ and the output is $\beta$ for every example; the
+		$\eps$ prevents division by zero. All information in that feature is lost for this batch, and the
+		gradient with respect to the inputs is zero. Constant features (or batch size 1) make BN degenerate.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A network uses dropout with $p=0.2$ in training but someone deploys it with the non-inverted
+	convention (no scaling during training, multiply by $1-p$ at test time) while the weights were
+	trained with inverted dropout. By what factor are the test-time activations off?
+	\begin{hint}Inverted dropout already rescaled during training.\end{hint}
+	\begin{sol}
+		Inverted dropout trained the weights to expect unscaled activations at test time; multiplying by
+		$0.8$ shrinks every dropout layer's output by $0.8$, compounding over layers ($0.8^k$ after $k$
+		such layers, before any normalisation). The model's logits shrink and its calibration and accuracy
+		change.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which statements are true? (a) BatchNorm uses batch statistics at inference. (b) LayerNorm does
+	not depend on the batch size. (c) Dropout increases model capacity. (d) Increasing $\lambda$ in
+	$E+\lambda\sum w^2$ shrinks the weights. (e) He initialisation is designed for ReLU.
+	\begin{hint}Three are true.\end{hint}
+	\begin{sol}(b), (d), (e). (a) It uses running averages; (c) dropout lowers effective capacity.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Show that a linear layer followed by BatchNorm does not need a bias, and count the parameters of
+	\pt{Linear(256,128,bias=False)} followed by \pt{BatchNorm1d(128)}.
+	\begin{hint}BN subtracts the batch mean.\end{hint}
+	\begin{sol}
+		A bias adds the same constant $b_j$ to every example's feature $j$; the batch mean then increases by
+		$b_j$ and the subtraction removes it exactly, so the bias has no effect (its gradient is zero); $\beta$
+		plays its role. Parameters: $256\cdot128=\gv{c05_init_norm/p_e_w}$ weights plus $2\cdot128=256$ for
+		$\gamma,\beta$, total $\gv{c05_init_norm/p_e}$ (plus $256$ buffers), as PyTorch counts.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Training loss $0.02$, validation loss $0.95$ after 50 epochs; at epoch 8 validation loss was $0.41$.
+	Diagnose and list three fixes in the order you would try them.
+	\begin{hint}Look at the gap and at when validation was best.\end{hint}
+	\begin{sol}
+		Overfitting: tiny training loss, large and growing gap, validation best early. (1) Early stopping /
+		restore the epoch-8 checkpoint; (2) stronger regularisation: augmentation, weight decay, dropout;
+		(3) more data or a smaller model. Also check for leakage-free splits before trusting either number.
+	\end{sol}
+\end{problem}

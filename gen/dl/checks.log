@@ -79,6 +79,26 @@
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=16): ours=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] ref=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] max|diff|=1.78e-15 -> OK
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=32): ours=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] ref=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] max|diff|=2.11e-15 -> OK
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=64): ours=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] ref=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] max|diff|=2.61e-15 -> OK
+[check] c05_init_norm: xavier_uniform bound (max |w| <= bound, ~ bound): ours=[0.124994] ref=[0.125] max|diff|=5.73e-06 -> OK
+[check] c05_init_norm: kaiming_normal std: ours=[0.088479] ref=[0.088388] max|diff|=9.07e-05 -> OK
+[check] c05_init_norm: xavier_normal std: ours=[0.072663] ref=[0.072169] max|diff|=4.94e-04 -> OK
+[check] c05_init_norm: nn.Linear default bound 1/sqrt(fan_in): ours=[0.062498] ref=[0.0625] max|diff|=1.58e-06 -> OK
+[check] c05_init_norm: E[relu(z)^2] = Var(z)/2: ours=[2.002487] ref=[2.] max|diff|=2.49e-03 -> OK
+[check] c05_init_norm: BN forward (train) vs torch: ours=[-1.069043 -1.13809  -0.534522 -0.069045  0.        1.      ] ref=[-1.069043e+00 -1.138090e+00 -5.345217e-01 -6.904495e-02 -1.110223e-16
+  1.000000e+00] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: BN backward dx vs autograd: ours=[-2.940107e-01 -2.335670e-04  3.735661e-01  4.323559e-03 -8.067486e-03
+ -5.375464e-03] ref=[-2.940107e-01 -2.335670e-04  3.735661e-01  4.323559e-03 -8.067486e-03
+ -5.375464e-03] max|diff|=1.25e-16 -> OK
+[check] c05_init_norm: BN backward dgamma vs autograd: ours=[-3.022844 -1.740172] ref=[-3.022844 -1.740172] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: BN backward dbeta vs autograd: ours=[0.310184 0.430923] ref=[0.310184 0.430923] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN running_mean after 1 step: ours=[0.3 3. ] ref=[0.3 3. ] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN running_var after 1 step (unbiased): ours=[ 1.366667 47.566667] ref=[ 1.366667 47.566667] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN eval uses running stats: ours=[2.309569 8.82965 ] ref=[2.309569 8.82965 ] max|diff|=1.78e-15 -> OK
+[check] c05_init_norm: LayerNorm vs torch: ours=[-1.069043 -0.534522  0.        1.603565] ref=[-1.069043 -0.534522  0.        1.603565] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: RMSNorm vs torch.nn.RMSNorm: ours=[0.282843 0.565685 0.848528 1.697056] ref=[0.282843 0.565685 0.848528 1.697056] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: GroupNorm vs torch: ours=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] ref=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] max|diff|=4.44e-16 -> OK
+[check] c05_init_norm: GroupNorm(G=C) = InstanceNorm: ours=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] ref=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] max|diff|=4.44e-16 -> OK
+[check] c05_init_norm: GroupNorm(G=1) = LayerNorm over (C,H,W): ours=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] ref=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] max|diff|=8.88e-16 -> OK
 [check] c04_optim: GD contraction factor (kappa-1)/(kappa+1): ours=[0.818182] ref=[0.818182] max|diff|=0.00e+00 -> OK
 [check] c04_optim: heavy-ball rate (sqrt k - 1)/(sqrt k + 1): ours=[0.522478] ref=[0.522491] max|diff|=1.37e-05 -> OK
 [check] c04_optim: SGD: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] max|diff|=1.11e-16 -> OK
@@ -97,4 +117,30 @@
 [check] c04_optim: minibatch-gradient variance scales like 1/B (slope): ours=[-1.000769] ref=[-1.] max|diff|=7.69e-04 -> OK
 [check] c04_optim: clip by norm vs torch: ours=[0.6 0.8] ref=[0.6 0.8] max|diff|=1.60e-07 -> OK
 [check] c04_optim: clip by value vs torch: ours=[1. 1.] ref=[1. 1.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: inverted dropout preserves the mean: ours=[2.0024  3.9996  5.9874  8.00008] ref=[2. 4. 6. 8.] max|diff|=1.26e-02 -> OK
+[check] c05_regularise: dropout at inference is identity: ours=[2. 4. 6. 8.] ref=[2. 4. 6. 8.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: torch dropout scales kept units by 1/(1-p): ours=[2.] ref=[2.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: torch dropout eval = identity: ours=[2. 4. 6. 8.] ref=[2. 4. 6. 8.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: ridge lambda=1e-08 vs sklearn: ours=[  13.654647   46.854356  -93.876782 -136.213793  242.981748  169.466702] ref=[  13.654647   46.854356  -93.876782 -136.213793  242.981749  169.466702] max|diff|=3.85e-07 -> OK
+[check] c05_regularise: ridge lambda=3e-08 vs sklearn: ours=[ 10.436824  32.174957 -65.667339 -93.756267 161.44123  119.29601 ] ref=[ 10.436824  32.174957 -65.667339 -93.756267 161.441229 119.29601 ] max|diff|=1.70e-07 -> OK
+[check] c05_regularise: ridge lambda=1e-07 vs sklearn: ours=[  7.182048  17.016627 -37.186822 -49.795819  79.263886  67.201087] ref=[  7.182048  17.016627 -37.186822 -49.795819  79.263886  67.201087] max|diff|=2.36e-08 -> OK
+[check] c05_regularise: ridge lambda=3e-07 vs sklearn: ours=[  5.3043     7.461019 -20.895651 -21.783386  32.647633  33.627757] ref=[  5.3043     7.461019 -20.895651 -21.783386  32.647633  33.627757] max|diff|=9.36e-09 -> OK
+[check] c05_regularise: ridge lambda=1e-06 vs sklearn: ours=[  4.557709   2.521091 -14.625976  -6.919416  15.300295  15.337012] ref=[  4.557709   2.521091 -14.625976  -6.919416  15.300295  15.337012] max|diff|=1.07e-09 -> OK
+[check] c05_regularise: ridge lambda=3e-06 vs sklearn: ours=[  4.2955     0.110649 -12.594715   0.489359  10.219268   6.028685] ref=[  4.2955     0.110649 -12.594715   0.489359  10.219268   6.028685] max|diff|=5.52e-10 -> OK
+[check] c05_regularise: ridge lambda=1e-05 vs sklearn: ours=[  4.161367  -0.936559 -11.686489   3.618159   8.490192   2.194691] ref=[  4.161367  -0.936559 -11.686489   3.618159   8.490192   2.194691] max|diff|=7.57e-11 -> OK
+[check] c05_regularise: ridge lambda=3e-05 vs sklearn: ours=[  3.986555  -1.422651 -10.609544   4.815697   7.034636   1.005236] ref=[  3.986555  -1.422651 -10.609544   4.815697   7.034636   1.005236] max|diff|=3.03e-11 -> OK
+[check] c05_regularise: ridge lambda=1e-04 vs sklearn: ours=[ 3.692495 -1.583365 -8.837075  5.094676  4.863495  0.791038] ref=[ 3.692495 -1.583365 -8.837075  5.094676  4.863495  0.791038] max|diff|=1.15e-11 -> OK
+[check] c05_regularise: ridge lambda=3e-04 vs sklearn: ours=[ 3.336374 -1.045205 -6.727559  4.281424  2.319812  0.5207  ] ref=[ 3.336374 -1.045205 -6.727559  4.281424  2.319812  0.5207  ] max|diff|=4.74e-12 -> OK
+[check] c05_regularise: ridge lambda=1e-03 vs sklearn: ours=[ 3.018574  0.118605 -4.983189  2.606168  0.309476 -0.104823] ref=[ 3.018574  0.118605 -4.983189  2.606168  0.309476 -0.104823] max|diff|=1.01e-12 -> OK
+[check] c05_regularise: ridge lambda=3e-03 vs sklearn: ours=[ 2.723157  0.999777 -3.757929  1.243849 -0.736901 -0.608031] ref=[ 2.723157  0.999777 -3.757929  1.243849 -0.736901 -0.608031] max|diff|=4.05e-13 -> OK
+[check] c05_regularise: ridge lambda=1e-02 vs sklearn: ours=[ 2.326016  1.224285 -2.659319  0.555618 -0.985127 -0.754888] ref=[ 2.326016  1.224285 -2.659319  0.555618 -0.985127 -0.754888] max|diff|=4.44e-14 -> OK
+[check] c05_regularise: ridge lambda=3e-02 vs sklearn: ours=[ 1.809763  0.961352 -1.490466  0.225865 -0.814881 -0.638182] ref=[ 1.809763  0.961352 -1.490466  0.225865 -0.814881 -0.638182] max|diff|=1.11e-14 -> OK
+[check] c05_regularise: ridge lambda=1e-01 vs sklearn: ours=[ 1.35096   0.512109 -0.62197   0.040838 -0.561175 -0.42085 ] ref=[ 1.35096   0.512109 -0.62197   0.040838 -0.561175 -0.42085 ] max|diff|=4.33e-15 -> OK
+[check] c05_regularise: ridge lambda=3e-01 vs sklearn: ours=[ 0.971958  0.168155 -0.182197 -0.055816 -0.327849 -0.249918] ref=[ 0.971958  0.168155 -0.182197 -0.055816 -0.327849 -0.249918] max|diff|=1.92e-15 -> OK
+[check] c05_regularise: ridge lambda=1e+00 vs sklearn: ours=[ 0.625847  0.010076  0.019191 -0.081952 -0.117122 -0.1494  ] ref=[ 0.625847  0.010076  0.019191 -0.081952 -0.117122 -0.1494  ] max|diff|=8.88e-16 -> OK
+[check] c05_regularise: ridge lambda=3e+00 vs sklearn: ours=[ 0.374123 -0.02508   0.093969 -0.06041   0.010169 -0.080913] ref=[ 0.374123 -0.02508   0.093969 -0.06041   0.010169 -0.080913] max|diff|=1.11e-16 -> OK
+[check] c05_regularise: ridge lambda=1e+01 vs sklearn: ours=[ 0.210073 -0.017327  0.087754 -0.030351  0.042676 -0.036371] ref=[ 0.210073 -0.017327  0.087754 -0.030351  0.042676 -0.036371] max|diff|=8.33e-17 -> OK
+[check] c05_regularise: ridge lambda=3e+01 vs sklearn: ours=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] ref=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] max|diff|=1.39e-17 -> OK
+[check] c05_regularise: ridge lambda=1e+02 vs sklearn: ours=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] ref=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] max|diff|=1.04e-17 -> OK
 [check] c04_optim: problem: clip (6,-8,0) by norm 5: ours=[ 3. -4.  0.] ref=[ 3. -4.  0.] max|diff|=4.00e-07 -> OK
+[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK

@@ -1,4 +1,4 @@
-RESUME HERE: skeleton compiles (47 pp of stubs); next = write chapter 01-perceptron with code/dl/c01_*.py.
+RESUME HERE: chapters 01-05 done and committed; next = chapter 06-cnn (code/dl/c06_*.py), then 07..14, preface last.
 
 # Deep Learning — progress log
 
@@ -44,11 +44,11 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 
 ## Chapter checklist
 - [ ] 00 Preface
-- [ ] 01 Perceptron and MLP ★
-- [ ] 02 Activations, losses, output layers ★
-- [ ] 03 Backpropagation ★
-- [ ] 04 Optimisers and schedules ★
-- [ ] 05 Init, normalisation, regularisation ★
+- [x] 01 Perceptron and MLP ★
+- [x] 02 Activations, losses, output layers ★
+- [x] 03 Backpropagation ★
+- [x] 04 Optimisers and schedules ★
+- [x] 05 Init, normalisation, regularisation ★
 - [ ] 06 CNNs ★
 - [ ] 07 RNNs ★
 - [ ] 08 Attention and Transformer ★ (+ capstone)
@@ -62,3 +62,9 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 
 ## Log
 - Session 1: infrastructure copied into the worktree; DL skeleton compiles (47 pp).
+- Merged coordinator template branch `claude/dazzling-faraday-h2h28z` (braced bold macros, `\script`,
+  `\fpath`, `draft.sh`, overfull count > 2pt only). Took its versions of build.sh/.gitignore/preamble.
+- `code/dlutil.py` (DL-only helpers: `sci`, `human`) lives next to common.py; common.py untouched.
+- `.dat` files with tiny values are written with `nd=16` (common's fixed-point format would print 0).
+- dl.tex: `\sloppy` before `\printbibliography` (a 3pt overfull in one bib entry).
+- Ch1-5 done (87 pp total so far), 139 library cross-checks.
