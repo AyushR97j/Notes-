@@ -1,4 +1,4 @@
-RESUME HERE: ch16 done; next = ch17 Implement it (~5-6 pages: table of from-scratch checks + key listings).
+RESUME HERE: ch17 done; next = ch18 Rapid-fire (80-100 items, compact) then ch19 Problems (>=60, compact), then preface, read-through.
 
 # Classical Machine Learning — progress log
 
@@ -59,7 +59,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 14 Statistics (c14_stats.py, c14_problems.py)
 - [x] 15 Data prep ★ (c15_dataprep.py incl. SMOTE + target-encoding leakage; c15_problems.py)
 - [x] 16 Optimisation (c16_optim.py, c16_problems.py)
-- [ ] 17 Implement it
+- [x] 17 Implement it (c17_implement.py: 11 implementations asserted vs sklearn + 7 in earlier chapters)
 - [ ] 18 Rapid-fire (80–100)
 - [ ] 19 Problems (≥60)
 - [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
