@@ -220,10 +220,12 @@ With $2\times2$ windows and stride 2:
 \[
 	X=\begin{pmatrix}1&3&2&1\\4&2&0&1\\5&1&2&7\\0&2&3&4\end{pmatrix}\!,\quad
 	\text{max}=\begin{pmatrix}\gv{c06_cnn/mp00}&\gv{c06_cnn/mp01}\\\gv{c06_cnn/mp10}&\gv{c06_cnn/mp11}\end{pmatrix}\!,\quad
-	\text{avg}=\begin{pmatrix}\gv{c06_cnn/ap00}&\gv{c06_cnn/ap01}\\\gv{c06_cnn/ap10}&\gv{c06_cnn/ap11}\end{pmatrix}\!,\quad
+	\text{avg}=\begin{pmatrix}\gv{c06_cnn/ap00}&\gv{c06_cnn/ap01}\\\gv{c06_cnn/ap10}&\gv{c06_cnn/ap11}\end{pmatrix}\!,
+\]
+\[
 	\pd{\textstyle\sum\text{max}}{X}=\begin{pmatrix}\gv{c06_cnn/mp_grad}\end{pmatrix}\!.
 \]
-The last matrix is PyTorch's gradient of the summed max-pool output: the max routes the gradient
+This last matrix is PyTorch's gradient of the summed max-pool output: the max routes the gradient
 to the arg-max of each window, as in \cref{ch:backprop}. \vocab{Global average pooling} averages each
 channel over the whole map, giving one number per channel, and makes the network accept any input
 size.

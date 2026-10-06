@@ -197,3 +197,22 @@
 [check] c06_cnn: NMS vs vectorised reference: ours=[0. 2. 5.] ref=[0. 2. 5.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem A conv2 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem C receptive field: ours=[19.] ref=[19.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: scalar RNN unrolled by hand vs nn.RNN: ours=[ 0.462117  0.550915 -0.059199] ref=[ 0.462117  0.550915 -0.059199] max|diff|=2.22e-16 -> OK
+[check] c07_rnn: dh3/dh1 by chain rule vs autograd: ours=[0.444193] ref=[0.444193] max|diff|=1.11e-16 -> OK
+[check] c07_rnn: rnn D=10 H=20 params: ours=[640.] ref=[640.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: lstm D=10 H=20 params: ours=[2560.] ref=[2560.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: gru D=10 H=20 params: ours=[1920.] ref=[1920.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: lstm2 D=10 H=20 params: ours=[5920.] ref=[5920.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: bilstm D=10 H=20 params: ours=[5120.] ref=[5120.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: bilstm2 D=10 H=20 params: ours=[15040.] ref=[15040.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: LSTM(100,128): ours=[117760.] ref=[117760.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: GRU(100,128): ours=[88320.] ref=[88320.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: LSTM cell h vs nn.LSTMCell: ours=[-0.066386  0.446007] ref=[-0.066386  0.446007] max|diff|=6.94e-17 -> OK
+[check] c07_rnn: LSTM cell c vs nn.LSTMCell: ours=[-0.146423  0.970548] ref=[-0.146423  0.970548] max|diff|=1.39e-16 -> OK
+[check] c07_rnn: GRU cell vs nn.GRUCell: ours=[0.253622 0.122621] ref=[0.253622 0.122621] max|diff|=5.55e-17 -> OK
+[check] c07_rnn: scalar LSTM step by hand: ours=[0.426753 0.839591] ref=[0.426753 0.839591] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: beam search with k = V^T equals brute force: ours=[-1.937942] ref=[-1.937942] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: CTC by enumerating alignments vs F.ctc_loss: ours=[0.938062] ref=[0.938062] max|diff|=1.11e-16 -> OK
+[check] c07_rnn: problem: LSTM(50,64): ours=[29696.] ref=[29696.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: problem: GRU(50,64): ours=[22272.] ref=[22272.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: problem: Linear(128,5): ours=[645.] ref=[645.] max|diff|=0.00e+00 -> OK
