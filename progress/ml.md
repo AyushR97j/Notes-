@@ -1,4 +1,4 @@
-RESUME HERE: ch07 done; next = ch08 SVM (aim ~10 pages).
+RESUME HERE: ch08 done; next = ch09 Decision trees (aim ~9 pages).
 
 # Classical Machine Learning — progress log
 
@@ -50,7 +50,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 05 Logistic regression ★ (c05_logistic.py, c05_problems.py)
 - [x] 06 Generative classifiers (c06_generative.py, c06_problems.py)
 - [x] 07 kNN (c07_knn.py incl. a KD-tree with visit counter, c07_problems.py)
-- [ ] 08 SVM ★
+- [x] 08 SVM ★ (c08_svm.py: hand hard margin, dual QP, primal QP, kernels, SVR; c08_problems.py)
 - [ ] 09 Trees ★
 - [ ] 10 Ensembles ★
 - [ ] 11 Unsupervised ★

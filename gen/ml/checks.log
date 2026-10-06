@@ -7,6 +7,7 @@
 [check] c02_maths: grad log det M = M^{-T}: ours=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] ref=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] max|diff|=5.48e-10 -> OK
 [check] c02_maths: P(disease | +) simulation vs Bayes: ours=[0.087235] ref=[0.087558] max|diff|=3.23e-04 -> OK
 [check] c02_maths: Pearson r numpy vs scipy: ours=[0.919239] ref=[0.919239] max|diff|=1.11e-16 -> OK
+[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
 [check] c03_linreg: 5-point slope vs sklearn: ours=[0.8] ref=[0.8] max|diff|=1.11e-16 -> OK
 [check] c03_linreg: 5-point intercept vs sklearn: ours=[1.8] ref=[1.8] max|diff|=2.22e-16 -> OK
 [check] c03_linreg: 5-point fit vs numpy.polyfit: ours=[0.8 1.8] ref=[0.8 1.8] max|diff|=2.66e-15 -> OK
@@ -18,7 +19,6 @@
 [check] c03_linreg: lstsq vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.11e-15 -> OK
 [check] c03_linreg: cond(X^T X) = cond(X)^2: ours=[13.062676] ref=[13.062676] max|diff|=4.23e-07 -> OK
 [check] c03_linreg: GD after 500 steps vs closed form: ours=[1.799714 0.800079] ref=[1.8 0.8] max|diff|=2.86e-04 -> OK
-[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
 [check] c02_maths: Bernoulli MLE numeric vs h/n: ours=[0.7] ref=[0.7] max|diff|=3.72e-07 -> OK
 [check] c02_maths: Beta-Bernoulli MAP numeric vs closed form: ours=[0.642857] ref=[0.642857] max|diff|=9.18e-08 -> OK
 [check] c02_maths: scipy norm.fit sigma^2 = MLE (ddof=0): ours=[3.2] ref=[3.2] max|diff|=4.44e-16 -> OK
@@ -39,20 +39,20 @@
 [check] c05_logistic: logistic gradient X^T(p-y)/n vs finite differences: ours=[-0.024672 -0.611269] ref=[-0.024672 -0.611269] max|diff|=4.30e-11 -> OK
 [check] c05_logistic: Newton/IRLS logistic vs sklearn (no penalty): ours=[-0.36077  -0.431708  0.975935  0.371698] ref=[-0.36077  -0.431708  0.975935  0.371698] max|diff|=3.14e-11 -> OK
 [check] c05_logistic: gradient descent logistic vs Newton: ours=[-0.360667 -0.431577  0.975715  0.371633] ref=[-0.36077  -0.431708  0.975935  0.371698] max|diff|=2.21e-04 -> OK
+[check] c05_problems: 5A loss vs sklearn: ours=[0.575939] ref=[0.575939] max|diff|=0.00e+00 -> OK
 [check] c05_logistic: softmax regression probabilities vs sklearn multinomial: ours=[0.897103 0.095909 0.006988 0.79108  0.199728 0.009193] ref=[0.897103 0.095909 0.006988 0.79108  0.199728 0.009193] max|diff|=2.38e-08 -> OK
 [check] c05_logistic: our perceptron separates AND: ours=[-1. -1. -1.  1.] ref=[-1. -1. -1.  1.] max|diff|=0.00e+00 -> OK
 [check] c05_logistic: sklearn Perceptron separates AND too: ours=[-1. -1. -1.  1.] ref=[-1. -1. -1.  1.] max|diff|=0.00e+00 -> OK
-[check] c05_problems: 5A loss vs sklearn: ours=[0.575939] ref=[0.575939] max|diff|=0.00e+00 -> OK
 [check] c05_logistic: perceptron with x1*x2 feature separates XOR: ours=[-1.  1.  1. -1.] ref=[-1.  1.  1. -1.] max|diff|=0.00e+00 -> OK
 [check] c05_logistic: Poisson regression Newton vs sklearn PoissonRegressor: ours=[ 0.28901   0.936997 -0.341632] ref=[ 0.28901   0.936997 -0.341632] max|diff|=1.74e-11 -> OK
-[check] c06_problems: 6D boundary sqrt(8 ln2 / 3): ours=[1.359556] ref=[1.359556] max|diff|=6.66e-16 -> OK
-[check] c06_problems: 6C NB on XOR predicts 0.5 for every input: ours=[0.5 0.5 0.5 0.5] ref=[0.5 0.5 0.5 0.5] max|diff|=5.55e-17 -> OK
-[check] c03_linreg: VIF by auxiliary regressions vs diag(inv corr): ours=[10.337063 10.324967  1.003782] ref=[10.337063 10.324967  1.003782] max|diff|=6.75e-14 -> OK
 [check] c06_generative: multinomial NB posterior by hand vs sklearn MultinomialNB: ours=[0.60042 0.39958] ref=[0.60042 0.39958] max|diff|=6.66e-16 -> OK
 [check] c06_generative: Bernoulli NB by hand vs sklearn BernoulliNB: ours=[0.745679 0.254321] ref=[0.745679 0.254321] max|diff|=3.33e-16 -> OK
 [check] c06_generative: Gaussian NB by hand vs sklearn GaussianNB: ours=[0.120414 0.879586] ref=[0.120414 0.879586] max|diff|=2.60e-09 -> OK
 [check] c06_generative: LDA posteriors from scratch vs sklearn: ours=[0.809338 0.190662 0.682312 0.317688 0.854073 0.145927] ref=[0.809338 0.190662 0.682312 0.317688 0.854073 0.145927] max|diff|=2.22e-16 -> OK
 [check] c06_generative: QDA posteriors from scratch vs sklearn: ours=[0.761157 0.238843 0.648067 0.351933 0.778943 0.221057] ref=[0.761157 0.238843 0.648067 0.351933 0.778943 0.221057] max|diff|=3.33e-15 -> OK
+[check] c03_linreg: VIF by auxiliary regressions vs diag(inv corr): ours=[10.337063 10.324967  1.003782] ref=[10.337063 10.324967  1.003782] max|diff|=6.75e-14 -> OK
+[check] c06_problems: 6D boundary sqrt(8 ln2 / 3): ours=[1.359556] ref=[1.359556] max|diff|=6.66e-16 -> OK
+[check] c06_problems: 6C NB on XOR predicts 0.5 for every input: ours=[0.5 0.5 0.5 0.5] ref=[0.5 0.5 0.5 0.5] max|diff|=5.55e-17 -> OK
 [check] c03_linreg: #poly features p=2, d=2 = C(p+d,d): ours=[6.] ref=[6.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=3, d=2 = C(p+d,d): ours=[10.] ref=[10.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=10, d=2 = C(p+d,d): ours=[66.] ref=[66.] max|diff|=0.00e+00 -> OK
@@ -66,6 +66,20 @@
 [check] c07_knn: cosine distance by formula: ours=[0.305121] ref=[0.305121] max|diff|=0.00e+00 -> OK
 [check] c07_knn: Hamming (scipy returns a fraction): ours=[0.5] ref=[0.5] max|diff|=0.00e+00 -> OK
 [check] c07_knn: Mahalanobis by formula: ours=[1.069045] ref=[1.069045] max|diff|=0.00e+00 -> OK
+[check] c08_problems: 8B polynomial kernel vs sklearn: ours=[125.] ref=[125.] max|diff|=0.00e+00 -> OK
+[check] c08_problems: 8B RBF vs sklearn: ours=[0.740818] ref=[0.740818] max|diff|=0.00e+00 -> OK
+[check] c08_svm: hard-margin w vs hand (2/3, 2/3): ours=[0.666667 0.666667] ref=[0.666667 0.666667] max|diff|=2.67e-11 -> OK
+[check] c08_svm: hard-margin b vs hand -5/3: ours=[-1.666667] ref=[-1.666667] max|diff|=1.33e-11 -> OK
+[check] c08_svm: margin width 2/||w|| = 3/sqrt(2): ours=[2.12132] ref=[2.12132] max|diff|=2.12e-11 -> OK
+[check] c08_svm: dual alphas vs hand (2/9, 2/9, 4/9 on the SVs): ours=[0.       0.222222 0.222222 0.444444 0.       0.      ] ref=[0.       0.222222 0.222222 0.444444 0.       0.      ] max|diff|=2.22e-11 -> OK
+[check] c08_svm: our dual QP (SLSQP) alphas vs sklearn: ours=[1.783229e-16 2.222227e-01 2.222220e-01 4.444447e-01 7.909183e-16
+ 0.000000e+00] ref=[0.       0.222222 0.222222 0.444444 0.       0.      ] max|diff|=4.87e-07 -> OK
+[check] c08_svm: w = sum a_i y_i x_i vs sklearn: ours=[0.666667 0.666667] ref=[0.666667 0.666667] max|diff|=7.90e-07 -> OK
+[check] c08_svm: soft-margin primal QP (w, b) vs sklearn SVC(C=1): ours=[ 0.851889  1.502238 -2.093579] ref=[ 0.851889  1.502238 -2.093579] max|diff|=7.50e-08 -> OK
+[check] c08_svm: optimal slacks equal hinge losses: ours=[0.       0.       0.262713 0.       0.       0.      ] ref=[0.       0.       0.262713 0.       0.       0.      ] max|diff|=3.16e-13 -> OK
+[check] c08_svm: (x.z+1)^2 = phi(x).phi(z) (6-dim map): ours=[36.] ref=[36.] max|diff|=0.00e+00 -> OK
+[check] c08_svm: (x.z+1)^2 vs sklearn polynomial_kernel: ours=[36.] ref=[36.] max|diff|=0.00e+00 -> OK
+[check] c08_svm: RBF kernel by formula vs sklearn: ours=[0.082085] ref=[0.082085] max|diff|=0.00e+00 -> OK
 [check] c07_knn: our KD-tree nearest-neighbour indices == sklearn KDTree (200 queries): ours=[1651. 1005.  290. 3307. 2201. 1841.] ref=[1651. 1005.  290. 3307. 2201. 1841.] max|diff|=0.00e+00 -> OK
 [check] c04_biasvar: bias^2 + variance + noise = simulated test MSE: ours=[0.644278 0.559275 0.488433 0.398459 0.296543 0.219718] ref=[0.640389 0.554534 0.494682 0.392011 0.296674 0.22178 ] max|diff|=6.45e-03 -> OK
 [check] c04_biasvar: 1-D ridge lambda=1 vs sklearn: ours=[0.727273] ref=[0.727273] max|diff|=0.00e+00 -> OK
