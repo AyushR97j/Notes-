@@ -1,4 +1,4 @@
-RESUME HERE: skeleton compiles (63 pp of stubs); next = write chapter 01-setup with code/ml/c01_*.py.
+RESUME HERE: ch01 done; next = ch02 Maths (code/ml/c02_*.py then chapters/ml/02-maths.tex).
 
 # Classical Machine Learning — progress log
 
@@ -43,7 +43,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 
 ## Chapter checklist
 - [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
-- [ ] 01 Setup ★
+- [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [ ] 02 Maths ★
 - [ ] 03 Linear regression ★
 - [ ] 04 Bias–variance and regularisation ★

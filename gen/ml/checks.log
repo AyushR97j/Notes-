@@ -1,0 +1,2 @@
+[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
+[check] c01_setup: E[max of 50 val accuracies] simulation vs exact: ours=[0.61193] ref=[0.612007] max|diff|=7.71e-05 -> OK

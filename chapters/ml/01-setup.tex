@@ -1,17 +1,404 @@
 \chapter{The Setup}
 \label{ch:setup}
+Every interview question in this book is secretly about one sentence:
+\emph{we choose a function using a finite sample, and we are paid for how it does on data we have
+not seen}. This chapter fixes the vocabulary for that sentence. It is short on algorithms and long on
+the distinctions that one-line MCQs love to blur: loss versus risk, validation versus test, training
+error versus generalisation gap.
+
 \section{The zoo of learning problems}
-\stub{The zoo of learning problems}
+\prototype{A bank has two million past loan applications, each with a ``defaulted / repaid''
+label, and wants a score for tomorrow's applicant.}
+
+The type of problem is decided by \emph{what supervision you have at training time}, not by the
+algorithm you later pick.
+
+\begin{definition}[The five regimes]
+	\begin{itemize}
+		\ii \vocab{Supervised learning}: each training example is a pair $(\x_i, y_i)$, and we learn $f$ with
+		$f(\x)\approx y$. If $y$ is real-valued it is \vocab{regression}; if $y$ lies in a finite set
+		it is \vocab{classification} (binary or multiclass; \vocab{multilabel} if several labels can
+		be on at once).
+		\ii \vocab{Unsupervised learning}: only $\x_i$. We look for structure: clusters,
+		low-dimensional coordinates, densities, anomalies.
+		\ii \vocab{Semi-supervised learning}: a few labelled pairs plus many unlabelled $\x$'s, and the
+		goal is still a supervised predictor (\Cref{ch:semisup}).
+		\ii \vocab{Self-supervised learning}: labels are \emph{manufactured from the input itself}
+		(mask a word and predict it; crop two views of an image and ask whether they match). It is
+		trained exactly like supervised learning, but nobody paid an annotator.
+		\ii \vocab{Reinforcement learning}: an agent acts, the environment returns states and a
+		scalar \vocab{reward}, and the goal is a policy that maximises long-run reward. There is no
+		correct action given per example, only delayed, noisy feedback on the actions you happened
+		to take.
+	\end{itemize}
+\end{definition}
+
+A useful everyday picture: supervised learning is a student with an answer key, unsupervised is a
+librarian sorting books with no catalogue, semi-supervised is the librarian who was shown how
+fifty books were shelved, self-supervised is a student who covers half a page and tries to recall
+it, and reinforcement learning is learning to cycle --- nobody tells you the correct handlebar angle,
+you just fall less over time.
+
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}X l l}
+		\toprule
+		Task & Regime & Output \\
+		\midrule
+		Price of a flat from area, floor, locality & supervised & regression \\
+		Is this transaction fraud? & supervised & binary classification \\
+		Which of 10 digits is in the image? & supervised & multiclass \\
+		Which genres does this film belong to? & supervised & multilabel \\
+		Segment customers by purchase behaviour & unsupervised & clustering \\
+		Flag unusual server logs (no labels) & unsupervised & anomaly score \\
+		Pre-train a language model by predicting masked words & self-supervised & classification over vocabulary\\
+		Learn to place bids in an ad auction from revenue & reinforcement & policy \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+
+\begin{remark}
+	\trap ``Predicting the number of goals in a match (0, 1, 2, \dots) is classification because the
+	output is discrete.'' Counts are ordered and arithmetic on them is meaningful, so the usual
+	answer is \emph{regression} (often Poisson regression, \Cref{ch:logistic}). Discreteness alone
+	does not make a problem classification; \emph{unordered} categories do. Similarly
+	``customer segmentation'' is clustering, not classification, unless someone hands you segment
+	labels.
+\end{remark}
+
+\begin{remark}
+	\trap Self-supervised $\neq$ unsupervised in an MCQ. Both use unlabelled data, but
+	self-supervised learning optimises an ordinary supervised loss on a \emph{pretext task}, and its
+	output is usually a representation reused downstream. If an option says ``BERT pre-training is
+	unsupervised'', many keys accept it; the precise term is self-supervised.
+\end{remark}
+
+\subsection{Parametric versus non-parametric; discriminative versus generative}
+A \vocab{parametric} model has a fixed number of parameters regardless of $n$ (linear and logistic
+regression). A \vocab{non-parametric} model grows with the data ($k$-nearest neighbours stores all of
+it; a fully grown tree can have up to $n$ leaves). A \vocab{discriminative} model learns $p(y\mid\x)$
+or a decision rule directly (logistic regression, SVM); a \vocab{generative} model learns
+$p(\x\mid y)$ and $p(y)$ and applies Bayes' rule (naive Bayes, LDA, \Cref{ch:generative}).
+
+\begin{moral}
+	The regime is set by the supervision available at training time; the output type (real, class,
+	set of classes) then decides regression versus classification.
+\end{moral}
 
 \section{Loss, risk and empirical risk}
-\stub{Loss, risk and empirical risk}
+\prototype{Predict $\hat y = 2x+1$ on five points and average the squared errors.}
+
+\begin{definition}
+	A \vocab{loss} $\ell(\hat y, y)\ge 0$ scores \emph{one} prediction. Common ones:
+	squared loss $(\hat y - y)^2$, absolute loss $\abs{\hat y - y}$, \vocab{0-1 loss}
+	$\ind{\hat y \ne y}$, log-loss $-\log \hat p_y$.
+	Assume data come from an unknown distribution $\D$ over $(\x,y)$.
+	The \vocab{risk} (true or expected risk, generalisation error) of $f$ is
+	\[ R(f) = \E_{(\x,y)\sim\D}\bigl[\ell(f(\x), y)\bigr], \]
+	and the \vocab{empirical risk} on a sample $S=\{(\x_i,y_i)\}_{i=1}^n$ is
+	\[ \wh R_S(f) = \frac1n\sum_{i=1}^n \ell(f(\x_i), y_i). \]
+	\vocab{Empirical risk minimisation} (ERM) picks $\wh f = \argmin_{f\in\Hyp}\wh R_S(f)$ over a
+	\vocab{hypothesis class} $\Hyp$.
+\end{definition}
+
+Loss is per example, risk is an expectation over the population, empirical risk is an average over
+your sample. MCQs swap these words freely; you should not.
+
+\begin{example}[Empirical risk by hand]
+	Points $x = 0,1,2,3,4$ with $y = 1.2, 2.9, 5.1, 7.2, 8.7$ and the predictor $f(x) = 2x+1$.
+	Predictions are $1,3,5,7,9$, so the residuals $y - f(x)$ are
+	\[ \begin{array}{ccccc} \gv{c01_setup/er_resid} \end{array}. \]
+	Mean squared error $=\gv{c01_setup/er_sq}$; mean absolute error $=\gv{c01_setup/er_abs}$.
+	For a 0-1 example, the rule ``predict 1 iff $x>2$'' on
+	$x = (0.5, 1.5, 2.2, 2.8, 3.5, 4.1)$, $y=(0,0,1,0,1,1)$ makes $\gv{c01_setup/er01_wrong}$
+	mistake (the point $x=2.8$), so the empirical 0-1 risk is $1/6 = \gv{c01_setup/er01}$.
+\end{example}
+
+\subsection{The best you can possibly do}
+Even a perfect learner cannot beat the noise in $y$ given $\x$.
+\begin{definition}
+	The \vocab{Bayes predictor} minimises the risk over \emph{all} functions. Under squared loss it
+	is $f^\star(\x) = \E[y\mid\x]$; under 0-1 loss it is
+	$f^\star(\x)=\argmax_c \Prob(y=c\mid\x)$. Its risk is the \vocab{Bayes risk} (\vocab{Bayes
+	error} for 0-1 loss), the irreducible error.
+\end{definition}
+\begin{proof}[Why the conditional mean is optimal for squared loss]
+	For fixed $\x$ write $m=\E[y\mid\x]$. Then
+	$\E[(c-y)^2\mid\x] = (c-m)^2 + \Var(y\mid\x)$, minimised at $c=m$; the leftover
+	$\Var(y\mid\x)$ is the Bayes risk at $\x$.
+\end{proof}
+
+\begin{example}[Bayes error of two Gaussians]
+	Class 0 is $\Normal(-1,1)$, class 1 is $\Normal(+1,1)$, equal priors. By symmetry the Bayes rule
+	thresholds at $0$, and its error is $\Phi(-1)=\gv{c01_setup/bayes_exact}$; a simulation with
+	200\,000 draws gives $\gv{c01_setup/bayes_mc}$. No classifier, however deep, does better on this
+	distribution. With priors $0.8/0.2$ the optimal threshold moves to
+	$\tfrac12\ln(0.8/0.2)=\gv{c01_setup/bayes_prior_t}$ (towards the rare class) and the error drops
+	to $\gv{c01_setup/bayes_prior_err}$; keeping the threshold at $0$ would leave it at
+	$\gv{c01_setup/bayes_prior_naive}$.
+\end{example}
+
+\begin{remark}
+	\trap ``Bayes error is the error of naive Bayes.'' No: Bayes error is a property of the
+	\emph{distribution}, the floor for every classifier. Naive Bayes is one particular (usually
+	sub-optimal) classifier.
+\end{remark}
+
+\subsection{No free lunch, inductive bias}
+Averaged over \emph{all} possible labelling functions, every learner has the same off-training-set
+error. Learning works only because real problems are not uniformly random: we assume smoothness,
+linearity, sparsity, locality, invariance. These assumptions are the model's \vocab{inductive bias},
+and choosing $\Hyp$ is choosing one. ``Which algorithm is best?'' has no answer without a data
+distribution.
 
 \section{Train, validation, test}
-\stub{Train, validation, test}
+\prototype{Fifty models compared on the same validation set; the winner's score is too good to be true.}
 
-\section{Over- and underfitting, generalisation gap}
-\stub{Over- and underfitting, generalisation gap}
+\begin{definition}
+	The \vocab{training set} fits parameters. The \vocab{validation set} (or cross-validation,
+	\Cref{ch:eval}) chooses among models and \vocab{hyper-parameters} (anything not learnt by the
+	fitting procedure itself: degree, $k$, $\lambda$, tree depth). The \vocab{test set} is touched
+	\emph{once}, at the end, to report an unbiased estimate of risk.
+\end{definition}
 
-\section{The i.i.d. assumption and when it breaks}
-\stub{The i.i.d. assumption and when it breaks}
+Why three sets and not two? Every time you pick the best of several candidates by a score, the
+winning score is biased upwards: you selected partly on luck. The test set must not have taken part
+in any choice.
 
+\begin{example}[Selection optimism]
+	Take $\gv{c01_setup/opt_nmodels}$ ``models'' that are pure coin flips and score each on a balanced
+	validation set of $\gv{c01_setup/opt_nval}$ points. Every model has true accuracy $0.5$, yet over
+	2000 repetitions the \emph{best} validation accuracy averages $\gv{c01_setup/opt_val}$ (exact
+	value from the distribution of the maximum of 50 binomials: $\gv{c01_setup/opt_exact}$). On fresh
+	data the winner scores $\gv{c01_setup/opt_test}$. A twelve-point ``improvement'' produced by
+	selection alone.
+\end{example}
+
+\begin{remark}
+	Typical splits: 60/20/20 or 80/10/10 for moderate data; with millions of rows a 1\% test set is
+	already tens of thousands of examples. With little data use $k$-fold cross-validation for
+	selection and keep a held-out test set if you can afford it; nested CV otherwise
+	(\Cref{ch:eval}).
+\end{remark}
+
+\begin{remark}
+	\trap Tuning on the test set (``I tried a few depths and kept the one with best test accuracy'')
+	turns the test set into a validation set. The reported number is then optimistic, exactly as in
+	the coin-flip example. Interviewers probe this with ``how many times did you look at the test
+	set?''
+\end{remark}
+
+\section{Over- and underfitting, the generalisation gap}
+\prototype{Fit polynomials of degree $0$ to $12$ to fifteen noisy samples of $\sin 2\pi x$.}
+
+\begin{definition}
+	The \vocab{generalisation gap} of $\wh f$ is $R(\wh f)-\wh R_S(\wh f)$: test (or validation)
+	error minus training error, or equivalently training accuracy minus test accuracy.
+	A model \vocab{underfits} when even its training error is high (too little capacity or too much
+	regularisation), and \vocab{overfits} when training error is low but the gap is large (it has
+	memorised noise specific to $S$).
+\end{definition}
+
+\begin{example}[OA one-liner]
+	Training accuracy $\gv{c01_setup/oa_train}$, test accuracy $\gv{c01_setup/oa_test}$.
+	The generalisation gap is $\gv{c01_setup/oa_gap}$ (17 percentage points): overfitting. Fixes, in
+	order of what interviewers want to hear: more data, regularisation, simpler model / fewer
+	features, early stopping, ensembling (bagging), data augmentation.
+\end{example}
+
+\begin{example}[The degree sweep]
+	Fifteen training points, $y=\sin(2\pi x)+\eps$ with $\eps\sim\Normal(0,0.3^2)$ (so the Bayes
+	risk is $\gv{c01_setup/noise_var}$). Median MSE over 200 repetitions:
+	\begin{center}
+		\begin{tabular}{rccc}
+			\toprule
+			degree & train MSE & test MSE & gap \\
+			\midrule
+			0 & \gv{c01_setup/tr0} & \gv{c01_setup/te0} & \gv{c01_setup/gap0} \\
+			1 & \gv{c01_setup/tr1} & \gv{c01_setup/te1} & \gv{c01_setup/gap1} \\
+			3 & \gv{c01_setup/tr3} & \gv{c01_setup/te3} & \gv{c01_setup/gap3} \\
+			9 & \gv{c01_setup/tr9} & \gv{c01_setup/te9} & \gv{c01_setup/gap9} \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Degree $0$ and $1$ underfit (both errors high, gap small); degree $\gv{c01_setup/deg_best}$ is
+	best on test; degree $9$ has the lowest training error and a huge gap. The \emph{mean} test MSE
+	at degree 9 is $\gv{c01_setup/te9_mean}$, because a few unlucky fits explode between and beyond
+	the training points --- variance in its purest form.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.6cm},
+				width=0.5\linewidth, height=0.42\linewidth, grid=major, grid style={gray!20},
+				axis lines=left, legend style={draw=none, font=\scriptsize, fill=none}]
+			\nextgroupplot[xlabel={degree}, ylabel={median MSE}, ymin=0, ymax=1.2,
+				legend pos=north west]
+			\addplot[blue!80!black, thick, mark=*, mark size=1.2pt] table[x=deg,y=train]
+				{gen/ml/data/c01_setup-degree.dat};
+			\addplot[red!80!black, thick, mark=square*, mark size=1.2pt] table[x=deg,y=test]
+				{gen/ml/data/c01_setup-degree.dat};
+			\addplot[gray, dashed, domain=0:12] {0.09};
+			\legend{train, test, noise $\sigma^2$}
+			\nextgroupplot[xlabel={$x$}, ylabel={$y$}, ymin=-2, ymax=2,
+				legend pos=south west, legend columns=2]
+			\addplot[black, thick, densely dotted] table[x=x,y=truth] {gen/ml/data/c01_setup-fits.dat};
+			\addplot[blue!80!black, thick] table[x=x,y=d1] {gen/ml/data/c01_setup-fits.dat};
+			\addplot[ForestGreen, thick] table[x=x,y=d3] {gen/ml/data/c01_setup-fits.dat};
+			\addplot[red!80!black, thick] table[x=x,y=d9] {gen/ml/data/c01_setup-fits.dat};
+			\addplot[only marks, mark=*, mark size=1.4pt] table[x=x,y=y] {gen/ml/data/c01_setup-fitpts.dat};
+			\legend{truth, deg 1, deg 3, deg 9}
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Left: training error falls monotonically with capacity; test error is U-shaped.
+		Right: degree 1 underfits, degree 3 is about right, degree 9 threads every noisy point.}
+	\label{fig:degree-sweep}
+\end{figure}
+
+\begin{remark}
+	\trap ``A small generalisation gap means a good model.'' A constant predictor has a tiny gap and
+	is useless. You need \emph{both} low training error and a small gap. Conversely a modest gap with
+	the best validation score is fine; deep nets routinely have training error near zero and are
+	still the best model available.
+\end{remark}
+
+\begin{remark}
+	\trap ``Training error keeps decreasing, so we are still improving.'' Training error is
+	non-increasing in capacity for nested model classes almost by definition; it says nothing about
+	generalisation. Watch validation error.
+\end{remark}
+
+\begin{ques}
+	If you add an irrelevant random feature to a least-squares model, can its training MSE go up?
+	(Answer: no --- the old solution is still available with weight $0$ on the new feature.)
+\end{ques}
+
+\section{The i.i.d.\ assumption and when it breaks}
+\prototype{A model trained on 2022 transactions is scored on 2024 transactions after a payment app
+	changes its UI.}
+
+Everything above assumes the training points and future points are drawn
+\vocab{independently and identically distributed} (\vocab{i.i.d.}) from the same $\D$. The two halves
+fail differently.
+\begin{itemize}
+	\ii \textbf{Not independent.} Several rows per patient, per user, per session; consecutive
+	time steps. A random row-level split puts the same patient in train and test, and the model
+	scores well by recognising the patient. Fix: split by group (\texttt{GroupKFold}) or by time.
+	\ii \textbf{Not identically distributed} (\vocab{distribution shift}).
+	\vocab{Covariate shift}: $p(\x)$ changes, $p(y\mid\x)$ does not (a new city with different
+	house sizes). \vocab{Label shift}: $p(y)$ changes, $p(\x\mid y)$ does not (fraud rate doubles
+	during a festival sale). \vocab{Concept drift}: $p(y\mid\x)$ itself changes (what counts as spam
+	evolves).
+\end{itemize}
+
+\begin{remark}
+	\trap Shuffling a time series before a train/test split leaks the future into the past: the
+	model sees Tuesday when predicting Monday. Use forward-chaining splits (\Cref{ch:eval}).
+\end{remark}
+
+\begin{moral}
+	Training error measures fit; the gap measures luck you mistook for signal; the i.i.d.\ assumption
+	is what lets either number say anything about tomorrow.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Name the regime]
+	\onechili
+	Classify each as supervised (regression/classification), unsupervised, self-supervised or RL:
+	(a) predicting tomorrow's maximum temperature; (b) grouping news articles into topics with no
+	labels; (c) predicting the next frame of a video from previous frames; (d) learning to play
+	Ludo from win/loss outcomes; (e) assigning one of five star ratings to a review.
+	\begin{hint}
+		Ask what plays the role of $y$ at training time, and where it came from.
+	\end{hint}
+	\begin{sol}
+		(a) supervised regression. (b) unsupervised clustering/topic modelling. (c) self-supervised:
+		the target frame is part of the input stream. (d) reinforcement learning: only delayed
+		reward. (e) supervised; strictly ordinal regression, but usually treated as five-class
+		classification --- in an interview say that the order matters and that a model ignoring it
+		penalises predicting 4 for a 5 as much as predicting 1.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Empirical risk]
+	\onechili
+	A predictor outputs $\hat y = (3, 5, 2, 8)$ for targets $y=(2, 5, 4, 7)$. Compute the mean
+	squared error and the mean absolute error. Which of the two is more affected if the last target
+	were $17$ instead of $7$?
+	\begin{hint}
+		Residuals are $(1, 0, -2, 1)$.
+	\end{hint}
+	\begin{sol}
+		MSE $=(1+0+4+1)/4 = 1.5$; MAE $=(1+0+2+1)/4=1$. With target $17$ the last residual is $-9$:
+		MSE becomes $(1+0+4+81)/4=21.5$, MAE becomes $(1+0+2+9)/4=3$. Squared loss is far more
+		sensitive to outliers, which is why MAE or Huber loss is used when targets have heavy
+		tails.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Gap arithmetic]
+	\onechili
+	Model A: train accuracy 0.99, validation 0.84. Model B: train 0.88, validation 0.86.
+	Model C: train 0.71, validation 0.70. Which overfits, which underfits, which would you ship?
+	\begin{hint}
+		Look at both the level and the gap.
+	\end{hint}
+	\begin{sol}
+		A overfits (gap 0.15). C underfits (both low, gap 0.01). B has the best validation accuracy
+		and a small gap; ship B (after confirming on the untouched test set). Note that A has the
+		best training accuracy, and that the overfitting A still beats the underfitting C on validation
+		(0.84 versus 0.70): overfitting is not automatically worse than underfitting; compare
+		validation scores.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Bayes rule with priors]
+	\twochili
+	Class 0 is $\Normal(0,1)$ and class 1 is $\Normal(2,1)$, with $\Prob(y=1)=\pi$.
+	Show that the Bayes classifier predicts 1 iff $x > 1 + \tfrac12\ln\frac{1-\pi}{\pi}$.
+	What happens as $\pi\to 0$?
+	\begin{hint}
+		Compare $\pi\,\phi(x-2)$ with $(1-\pi)\,\phi(x)$ and take logs.
+	\end{hint}
+	\begin{sol}
+		Predict 1 iff $\pi e^{-(x-2)^2/2} > (1-\pi)e^{-x^2/2}$, i.e.\
+		$\ln\pi - (x-2)^2/2 > \ln(1-\pi) - x^2/2$, i.e.\ $2x - 2 > \ln\frac{1-\pi}{\pi}$, which is
+		the claim. As $\pi\to 0$ the threshold goes to $+\infty$: when positives are rare you need
+		overwhelming evidence to predict one, which is why accuracy-optimal classifiers on imbalanced
+		data predict ``negative'' almost always (\Cref{ch:eval}).
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Leaky split]
+	\twochili
+	A hospital dataset has 10 X-rays each for 500 patients; the label is a diagnosis per patient. A
+	random 80/20 split of the 5000 images gives 97\% test accuracy, but the deployed model gets 78\%.
+	Explain, and propose a correct validation scheme.
+	\begin{hint}
+		Are the rows independent?
+	\end{hint}
+	\begin{sol}
+		Images of the same patient land in both train and test; the network can recognise the patient
+		(anatomy, implants, scanner artefacts) and copy that patient's label. The test score measures
+		memorisation, not diagnosis. Split by patient (\texttt{GroupKFold} with patient ID as the
+		group), and ideally also by hospital/scanner if deployment will see new sites.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Selection bias, quantified]
+	\threechili
+	You evaluate $m$ useless classifiers (each predicts with a fair coin) on a balanced validation set
+	of size $n$. Using the normal approximation, estimate the expected best validation accuracy for
+	$m=50$, $n=100$. (Use $\E[\max \text{ of } 50 \text{ standard normals}]\approx 2.25$.)
+	\begin{hint}
+		Each accuracy is approximately $\Normal(0.5, 0.25/n)$.
+	\end{hint}
+	\begin{sol}
+		Standard deviation $=\sqrt{0.25/100}=0.05$, so the best is about $0.5+2.25\times0.05 =
+		0.6125$, matching the simulation $\gv{c01_setup/opt_val}$ in the chapter. The optimism shrinks
+		like $1/\sqrt n$ and grows like $\sqrt{2\ln m}$: bigger validation sets help, comparing more
+		models hurts.
+	\end{sol}
+\end{problem}

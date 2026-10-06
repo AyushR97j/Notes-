@@ -22,3 +22,5 @@ __pycache__/
 gen/*/logs/
 !gen/**/*.dat
 !gen/*/checks.log
+/draft-*
+.claude/
