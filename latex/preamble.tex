@@ -112,6 +112,10 @@
 	{violet, mark=none, thick},
 	{gray, mark=none, thick, dashed}}
 
+%% overfull boxes up to 2pt are tolerated (done criterion), wider ones are reported
+\hfuzz=2pt
+\vfuzz=2pt
+
 %%fakesection Page layout (Napkin)
 \usepackage[headsepline]{scrlayer-scrpage}
 \renewcommand{\headfont}{}
@@ -459,3 +463,10 @@
 
 %% ---- references in plain text to the companion book
 \newcommand{\otherbook}[1]{\emph{#1}}
+
+%% ---- backmatter lists of hints/solutions (robust when still empty)
+\newcommand{\printanswers}[1]{%
+	\begin{enumerate}\setlength{\itemsep}{3pt}%
+		\item[]\vspace{-1.5\baselineskip}%
+		\input{#1}%
+	\end{enumerate}}
