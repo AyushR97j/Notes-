@@ -1,4 +1,4 @@
-RESUME HERE: ch17 done; next = ch18 Rapid-fire (80-100 items, compact) then ch19 Problems (>=60, compact), then preface, read-through.
+RESUME HERE: ch18 done (97 items); next = ch19 Problems (>=60) with code/ml/c19_problems.py, then preface, read-through.
 
 # Classical Machine Learning — progress log
 
@@ -60,7 +60,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 15 Data prep ★ (c15_dataprep.py incl. SMOTE + target-encoding leakage; c15_problems.py)
 - [x] 16 Optimisation (c16_optim.py, c16_problems.py)
 - [x] 17 Implement it (c17_implement.py: 11 implementations asserted vs sklearn + 7 in earlier chapters)
-- [ ] 18 Rapid-fire (80–100)
+- [x] 18 Rapid-fire (97 items)
 - [ ] 19 Problems (≥60)
 - [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
 
