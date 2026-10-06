@@ -1,4 +1,4 @@
-RESUME HERE: ch02 done; next = ch03 Linear regression (code/ml/c03_*.py then chapters/ml/03-linreg.tex).
+RESUME HERE: ch03 done; next = ch04 Bias–variance and regularisation.
 
 # Classical Machine Learning — progress log
 
@@ -45,7 +45,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
-- [ ] 03 Linear regression ★
+- [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
 - [ ] 04 Bias–variance and regularisation ★
 - [ ] 05 Logistic regression ★
 - [ ] 06 Generative classifiers

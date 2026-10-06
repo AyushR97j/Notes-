@@ -7,6 +7,17 @@
 [check] c02_maths: grad log det M = M^{-T}: ours=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] ref=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] max|diff|=5.48e-10 -> OK
 [check] c02_maths: P(disease | +) simulation vs Bayes: ours=[0.087235] ref=[0.087558] max|diff|=3.23e-04 -> OK
 [check] c02_maths: Pearson r numpy vs scipy: ours=[0.919239] ref=[0.919239] max|diff|=1.11e-16 -> OK
+[check] c03_linreg: 5-point slope vs sklearn: ours=[0.8] ref=[0.8] max|diff|=1.11e-16 -> OK
+[check] c03_linreg: 5-point intercept vs sklearn: ours=[1.8] ref=[1.8] max|diff|=2.22e-16 -> OK
+[check] c03_linreg: 5-point fit vs numpy.polyfit: ours=[0.8 1.8] ref=[0.8 1.8] max|diff|=2.66e-15 -> OK
+[check] c03_linreg: R^2 vs sklearn r2_score: ours=[0.727273] ref=[0.727273] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: R^2 = r^2 (simple regression): ours=[0.727273] ref=[0.727273] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: slope standard error vs scipy.linregress: ours=[0.282843] ref=[0.282843] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: normal equations vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=2.00e-15 -> OK
+[check] c03_linreg: QR solution vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.33e-15 -> OK
+[check] c03_linreg: lstsq vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.11e-15 -> OK
+[check] c03_linreg: cond(X^T X) = cond(X)^2: ours=[13.062676] ref=[13.062676] max|diff|=4.23e-07 -> OK
+[check] c03_linreg: GD after 500 steps vs closed form: ours=[1.799714 0.800079] ref=[1.8 0.8] max|diff|=2.86e-04 -> OK
 [check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
 [check] c02_maths: Bernoulli MLE numeric vs h/n: ours=[0.7] ref=[0.7] max|diff|=3.72e-07 -> OK
 [check] c02_maths: Beta-Bernoulli MAP numeric vs closed form: ours=[0.642857] ref=[0.642857] max|diff|=9.18e-08 -> OK
@@ -17,4 +28,12 @@
 [check] c02_maths: KL(p||q) vs scipy.stats.entropy: ours=[0.071928] ref=[0.071928] max|diff|=6.94e-17 -> OK
 [check] c02_maths: H(p) vs scipy.stats.entropy: ours=[1.5] ref=[1.5] max|diff|=0.00e+00 -> OK
 [check] c02_maths: log-sum-exp shift trick vs scipy: ours=[1002.407606] ref=[1002.407606] max|diff|=0.00e+00 -> OK
+[check] c03_problems: 2D odds form vs sequential Bayes: ours=[0.476882] ref=[0.476882] max|diff|=5.55e-17 -> OK
+[check] c03_problems: 3B slope = r s_y/s_x on simulated data: ours=[3.150737] ref=[3.150737] max|diff|=1.33e-15 -> OK
 [check] c01_setup: E[max of 50 val accuracies] simulation vs exact: ours=[0.61193] ref=[0.612007] max|diff|=7.71e-05 -> OK
+[check] c03_linreg: VIF by auxiliary regressions vs diag(inv corr): ours=[10.337063 10.324967  1.003782] ref=[10.337063 10.324967  1.003782] max|diff|=6.75e-14 -> OK
+[check] c03_linreg: #poly features p=2, d=2 = C(p+d,d): ours=[6.] ref=[6.] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: #poly features p=3, d=2 = C(p+d,d): ours=[10.] ref=[10.] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: #poly features p=10, d=2 = C(p+d,d): ours=[66.] ref=[66.] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: #poly features p=10, d=3 = C(p+d,d): ours=[286.] ref=[286.] max|diff|=0.00e+00 -> OK
+[check] c03_linreg: #poly features p=100, d=2 = C(p+d,d): ours=[5151.] ref=[5151.] max|diff|=0.00e+00 -> OK
