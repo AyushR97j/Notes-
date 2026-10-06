@@ -1,4 +1,4 @@
-RESUME HERE: ch13 done; next = ch14 Statistics interviewers ask (~6 pages, scipy.stats).
+RESUME HERE: ch14 done; next = ch15 Data prep and feature engineering (★, ~7 pages).
 
 # Classical Machine Learning — progress log
 
@@ -56,7 +56,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
 - [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
 - [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
-- [ ] 14 Statistics
+- [x] 14 Statistics (c14_stats.py, c14_problems.py)
 - [ ] 15 Data prep ★
 - [ ] 16 Optimisation
 - [ ] 17 Implement it
