@@ -284,6 +284,31 @@
 [check] c11_pytorch: same seed -> identical initial weights: ours=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] ref=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] max|diff|=0.00e+00 -> OK
 [check] c11_pytorch: GCN layer is permutation-equivariant: ours=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] ref=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] max|diff|=0.00e+00 -> OK
 [check] c11_pytorch: GCN matrix form == per-node message passing: ours=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] ref=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P1 sigmoid: ours=[0.425557] ref=[0.425557] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P2 MLP params: ours=[17226.] ref=[17226.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P6 CE: ours=[0.407606] ref=[0.407606] max|diff|=5.55e-17 -> OK
+[check] c14_problems: P7 CE: ours=[1.216415] ref=[1.216415] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P8 BCE: ours=[1.609438] ref=[1.609438] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P12 smoothed CE vs torch: ours=[0.648561] ref=[0.648561] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P13 gradients vs autograd: ours=[ 3.   1.5 -1.5 -1.5] ref=[ 3.   1.5 -1.5 -1.5] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P14 gradient: ours=[-0.574443 -1.148885] ref=[-0.574443 -1.148885] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P19 momentum steps vs torch: ours=[-0.1   -0.29  -0.561] ref=[-0.1   -0.29  -0.561] max|diff|=1.11e-16 -> OK
+[check] c14_problems: P20 Adam two steps vs torch: ours=[0.987337] ref=[0.987337] max|diff|=5.00e-10 -> OK
+[check] c14_problems: P21 RMSProp first step: ours=[-0.031623] ref=[-0.031623] max|diff|=6.94e-18 -> OK
+[check] c14_problems: P25 clip: ours=[0.5 1.  1. ] ref=[0.5 1.  1. ] max|diff|=3.33e-07 -> OK
+[check] c14_problems: P28 BN vs torch: ours=[-1.683279  0.105574  1.894426  3.683279] ref=[-1.683279  0.105574  1.894426  3.683279] max|diff|=4.44e-16 -> OK
+[check] c14_problems: P30 LN: ours=[-1.224743  0.        1.224743] ref=[-1.224743  0.        1.224743] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P35 params formula: ours=[  9472.      0.  73856. 295168.] ref=[  9472.      0.  73856. 295168.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P36 dilated size: ours=[26.] ref=[26.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P37 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P40 depthwise separable: ours=[133376.] ref=[133376.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P42 transposed: ours=[14.] ref=[14.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P45 LSTM: ours=[25088.] ref=[25088.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P46: ours=[37888.] ref=[37888.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P50 attention vs torch: ours=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] ref=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] max|diff|=2.78e-17 -> OK
+[check] c14_problems: P51 MHA: ours=[591360.] ref=[591360.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P52 encoder layer: ours=[789760.] ref=[789760.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P62 KL: ours=[0.568147] ref=[0.568147] max|diff|=0.00e+00 -> OK
 [check] c12_implement: NumPy MLP+BN+Adam: 50-step loss trajectory vs PyTorch: ours=[1.112759 1.094242 1.103179 0.955791 0.855986 0.855006] ref=[1.112759 1.094242 1.103179 0.955791 0.855986 0.855006] max|diff|=2.22e-16 -> OK
 [check] c12_implement: NumPy vs PyTorch weights after 50 steps: ours=[-0.181766 -0.004712 -0.317426 -0.109015 -0.140573  0.30508 ] ref=[-0.181766 -0.004712 -0.317426 -0.109015 -0.140573  0.30508 ] max|diff|=1.39e-16 -> OK
 [check] c12_implement: BN running variance after 50 steps: ours=[1.737285 0.715855 2.128207 1.862922 1.999912 3.889597] ref=[1.737285 0.715855 2.128207 1.862922 1.999912 3.889597] max|diff|=1.33e-15 -> OK
@@ -300,3 +325,28 @@
 [check] c12_implement: char-LM: NumPy training trajectory (300 Adam steps) vs PyTorch: ours=[3.284007 3.031819 3.034355 2.921772 2.752721 2.830714] ref=[3.284007 3.031819 3.034355 2.921772 2.752721 2.830714] max|diff|=8.88e-16 -> OK
 [check] c08_capstone: NumPy Transformer forward vs PyTorch (trained weights, 50 sequences): ours=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] ref=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] max|diff|=1.20e-14 -> OK
 [check] c08_capstone: NumPy greedy decoding == PyTorch greedy decoding (200 sequences): ours=[ 1.  9.  4.  4. 10.  6.] ref=[ 1.  9.  4.  4. 10.  6.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P1 sigmoid: ours=[0.425557] ref=[0.425557] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P2 MLP params: ours=[17226.] ref=[17226.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P6 CE: ours=[0.407606] ref=[0.407606] max|diff|=5.55e-17 -> OK
+[check] c14_problems: P7 CE: ours=[1.216415] ref=[1.216415] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P8 BCE: ours=[1.609438] ref=[1.609438] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P12 smoothed CE vs torch: ours=[0.648561] ref=[0.648561] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P13 gradients vs autograd: ours=[ 3.   1.5 -1.5 -1.5] ref=[ 3.   1.5 -1.5 -1.5] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P14 gradient: ours=[-0.574443 -1.148885] ref=[-0.574443 -1.148885] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P19 momentum steps vs torch: ours=[-0.1   -0.29  -0.561] ref=[-0.1   -0.29  -0.561] max|diff|=1.11e-16 -> OK
+[check] c14_problems: P20 Adam two steps vs torch: ours=[0.987337] ref=[0.987337] max|diff|=5.00e-10 -> OK
+[check] c14_problems: P21 RMSProp first step: ours=[-0.031623] ref=[-0.031623] max|diff|=6.94e-18 -> OK
+[check] c14_problems: P25 clip: ours=[0.5 1.  1. ] ref=[0.5 1.  1. ] max|diff|=3.33e-07 -> OK
+[check] c14_problems: P28 BN vs torch: ours=[-1.683279  0.105574  1.894426  3.683279] ref=[-1.683279  0.105574  1.894426  3.683279] max|diff|=4.44e-16 -> OK
+[check] c14_problems: P30 LN: ours=[-1.224743  0.        1.224743] ref=[-1.224743  0.        1.224743] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P35 params formula: ours=[  9472.      0.  73856. 295168.] ref=[  9472.      0.  73856. 295168.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P36 dilated size: ours=[26.] ref=[26.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P37 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P40 depthwise separable: ours=[133376.] ref=[133376.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P42 transposed: ours=[14.] ref=[14.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P45 LSTM: ours=[25088.] ref=[25088.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P46: ours=[37888.] ref=[37888.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P50 attention vs torch: ours=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] ref=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] max|diff|=2.78e-17 -> OK
+[check] c14_problems: P51 MHA: ours=[591360.] ref=[591360.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P52 encoder layer: ours=[789760.] ref=[789760.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P62 KL: ours=[0.568147] ref=[0.568147] max|diff|=0.00e+00 -> OK
