@@ -1,4 +1,4 @@
-RESUME HERE: ch08 done; next = ch09 Decision trees (aim ~9 pages).
+RESUME HERE: ch09 done; next = ch10 Ensembles (big ★ chapter, ~12 pages, XGBoost checked against library).
 
 # Classical Machine Learning — progress log
 
@@ -51,7 +51,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 06 Generative classifiers (c06_generative.py, c06_problems.py)
 - [x] 07 kNN (c07_knn.py incl. a KD-tree with visit counter, c07_problems.py)
 - [x] 08 SVM ★ (c08_svm.py: hand hard margin, dual QP, primal QP, kernels, SVR; c08_problems.py)
-- [ ] 09 Trees ★
+- [x] 09 Trees ★ (c09_trees.py, c09_problems.py)
 - [ ] 10 Ensembles ★
 - [ ] 11 Unsupervised ★
 - [ ] 12 Semi-/self-supervised

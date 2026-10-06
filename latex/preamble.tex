@@ -475,3 +475,6 @@
 %% ---- file paths in running text (breakable, underscores allowed)
 \newcommand{\script}[1]{\nolinkurl{code/\bookid/#1.py}}
 \newcommand{\fpath}[1]{\nolinkurl{#1}}
+% \code{max_depth}: inline code that may break at _ . / - (no escaping needed)
+\makeatletter\g@addto@macro\UrlBreaks{\do\_\do\.\do\-\do\=}\makeatother
+\newcommand{\code}[1]{\nolinkurl{#1}}
