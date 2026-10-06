@@ -1,4 +1,4 @@
-RESUME HERE: ch15 done; next = ch16 Optimisation (~4 pages).
+RESUME HERE: ch16 done; next = ch17 Implement it (~5-6 pages: table of from-scratch checks + key listings).
 
 # Classical Machine Learning — progress log
 
@@ -58,7 +58,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
 - [x] 14 Statistics (c14_stats.py, c14_problems.py)
 - [x] 15 Data prep ★ (c15_dataprep.py incl. SMOTE + target-encoding leakage; c15_problems.py)
-- [ ] 16 Optimisation
+- [x] 16 Optimisation (c16_optim.py, c16_problems.py)
 - [ ] 17 Implement it
 - [ ] 18 Rapid-fire (80–100)
 - [ ] 19 Problems (≥60)
