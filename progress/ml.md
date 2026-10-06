@@ -1,4 +1,4 @@
-RESUME HERE: ch05 done; next = ch06 Generative classifiers (aim ~7 pages).
+RESUME HERE: ch06 done; next = ch07 kNN and distances (aim ~7 pages).
 
 # Classical Machine Learning — progress log
 
@@ -48,7 +48,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
 - [x] 04 Bias–variance and regularisation ★ (c04_biasvar.py, c04_problems.py)
 - [x] 05 Logistic regression ★ (c05_logistic.py, c05_problems.py)
-- [ ] 06 Generative classifiers
+- [x] 06 Generative classifiers (c06_generative.py, c06_problems.py)
 - [ ] 07 kNN
 - [ ] 08 SVM ★
 - [ ] 09 Trees ★
