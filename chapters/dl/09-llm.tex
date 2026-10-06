@@ -1,4 +1,297 @@
 \chapter{Language models and LLMs}
 \label{ch:llm}
-\section{Language models and LLMs}
-\stub{Language models and LLMs}
+
+A language model assigns probabilities to sequences of tokens; a large language model is a
+Transformer trained to do that on a very large corpus and then adapted to follow
+instructions. Placement OAs mostly ask what fine-tuning means; interviews at AI companies
+ask how tokenisation works, how decoding knobs change outputs, what LoRA saves, how to
+serve a model in less memory, and how retrieval reduces hallucination. This chapter covers
+each at the depth of one good interview answer, with the arithmetic done by code.
+
+\section{Tokens and embeddings}
+\prototype{Byte-pair encoding learns that \texttt{e}+\texttt{p} is the most frequent pair in a
+small corpus and merges it first.}
+
+Models see integer \vocab{tokens}, not characters or words. Word-level vocabularies cannot
+handle unseen words; character-level sequences are long. \vocab{Subword} tokenisers sit in
+between: frequent words become one token, rare words split into pieces.
+\vocab{Byte-pair encoding} (BPE) \cite{bpe} starts from characters (with an end-of-word marker)
+and repeatedly merges the most frequent adjacent pair:
+
+\codefile[\script{c09_llm}]{gen/dl/snip/c09_llm-bpe.py}
+
+\begin{example}[BPE on a toy corpus]
+	Word counts: \pt{deep} 6, \pt{deeper} 3, \pt{deepest} 2, \pt{keep} 4, \pt{keeper} 2, \pt{sleep} 3. The
+	first eight merges (pair count in brackets, \pt{\_} marks end of word) are
+	\gv{c09_llm/bpe_merges}. The corpus shrinks from $\gv{c09_llm/bpe_before}$ symbols to
+	$\gv{c09_llm/bpe_after}$. Unseen words are still encodable: \pt{sleeper} $\to$
+	\pt{\gv{c09_llm/enc_sleeper}}, \pt{keepest} $\to$ \pt{\gv{c09_llm/enc_keepest}}. The script checks
+	that decoding inverts encoding and that encoding each training word reproduces its training
+	segmentation.
+\end{example}
+Production tokenisers work on bytes (so any string is encodable), learn tens of thousands to a few
+hundred thousand merges, and (WordPiece, unigram LM) differ in how they choose merges. Consequences
+worth saying in an interview: costs and context limits are counted in tokens; numbers and rare scripts
+fragment into many tokens; spelling-level tasks are hard because the model never sees letters.
+
+An \vocab{embedding} layer is a lookup table $\mathbf E\in\RR^{V\times d}$: token $i$ becomes row $i$.
+It is equivalent to multiplying a one-hot vector by $\mathbf E$, and it is trained like any other
+weight. Similar tokens end up with similar vectors because they appear in similar contexts
+(\cref{ch:generative} derives word2vec).
+
+\section{Objectives and model families}
+\prototype{GPT predicts the next token; BERT fills in masked tokens; T5 maps an input text to an output
+text.}
+
+\begin{itemize}
+	\ii \vocab{Causal (autoregressive) LM}: $p(x_1,\dots,x_T)=\prod_tp(x_t\mid x_{<t})$, trained with
+	cross-entropy on every position at once under a causal mask. Decoder-only (GPT family). Natural for
+	generation.
+	\ii \vocab{Masked LM} (BERT \cite{bert}): choose $15\%$ of positions; of those, replace $80\%$ by a
+	\pt{[MASK]} token, $10\%$ by a random token, keep $10\%$; predict the originals using context on both
+	sides. Simulated on $100{,}000$ tokens: $\gv{c09_llm/mlm_sel}\%$ selected, $\gv{c09_llm/mlm_mask}\%$
+	masked, $\gv{c09_llm/mlm_rand}\%$ random, $\gv{c09_llm/mlm_keep}\%$ kept. The random and kept cases stop
+	the model from learning that only \pt{[MASK]} positions matter. Encoder-only; strong representations for
+	classification and retrieval; not a generator.
+	\ii \vocab{Sequence-to-sequence} (T5, BART): an encoder reads the input, a decoder generates the output;
+	pretrained by reconstructing corrupted spans.
+\end{itemize}
+
+\begin{definition}
+	The \vocab{perplexity} of a model on a sequence of $T$ tokens is
+	\[ \PPL=\exp\Bigl(-\frac1T\sum_{t=1}^T\log p(x_t\mid x_{<t})\Bigr), \]
+	the exponential of the per-token cross-entropy: the effective number of equally likely choices per token.
+\end{definition}
+For per-token probabilities $0.5,0.25,0.1,0.4,0.8$ the mean NLL is $\gv{c09_llm/ppl_ce}$ nats and
+$\PPL=\gv{c09_llm/ppl}$ (the inverse geometric mean of the probabilities, as checked). A uniform model over
+$V$ tokens has $\PPL=V$ (checked for $V=\gv{c09_llm/ppl_uniform}$). Perplexities are only comparable with
+the same tokeniser and test text.
+
+\section{Scale}
+\prototype{Training a $1$B-parameter model on $20$B tokens costs about $6ND=\gv{c09_llm/c_flops}$ FLOPs.}
+
+Training one token through a dense Transformer costs about $2N$ FLOPs forward and $4N$ backward, so total
+training compute is $C\approx6ND$ for $N$ parameters and $D$ tokens. \vocab{Scaling laws} are empirical
+power laws: in the regimes studied, test loss falls smoothly as a power of $N$, $D$ and $C$ when the other
+two are not bottlenecks \cite{kaplan}. A later analysis concluded that compute-optimal training scales $N$
+and $D$ in roughly equal proportion, which in their fits came to roughly twenty tokens per parameter
+\cite{chinchilla}; many later models train on far more tokens than that because inference cost favours
+smaller models. At a sustained $40\%$ of $100$ TFLOP/s, the $1$B/$20$B example above is about
+$\gv{c09_llm/c_days}$ GPU-days. Treat all such exponents and constants as properties of particular fits, not
+laws of nature.
+
+\section{Adapting a pretrained model}
+\prototype{LoRA with rank $8$ on one $4096\times4096$ weight trains $\gv{c09_llm/lora_8}$ parameters instead of
+$\gv{c09_llm/lora_full}$ ($\gv{c09_llm/lora_pct_8}\%$).}
+
+\subsection{Fine-tuning, from cheapest to most expensive}
+\begin{itemize}
+	\ii \vocab{Prompting} / in-context learning: no weights change; instructions and examples go in the input.
+	\ii \vocab{Feature extraction} (linear probing): freeze the model, train a small head on its embeddings.
+	\ii \vocab{Prompt / prefix tuning}: learn a few virtual-token embeddings (or per-layer key/value prefixes)
+	prepended to the input; the model stays frozen.
+	\ii \vocab{Adapters}: small bottleneck MLPs inserted in each layer and trained, model frozen.
+	\ii \vocab{LoRA} \cite{lora}: below.
+	\ii \vocab{Full fine-tuning}: update every weight on the task data, with a small learning rate. Best
+	quality per example when data are plentiful, but one full copy of the model per task, and optimiser state
+	(\cref{ch:pytorch}) for every parameter.
+\end{itemize}
+\vocab{Instruction tuning} is supervised fine-tuning on (instruction, good response) pairs, turning a
+next-token predictor into an assistant. \vocab{RLHF} \cite{instructgpt} then collects human preferences
+between pairs of responses, trains a reward model on them, and optimises the policy against that reward with
+reinforcement learning (typically PPO) plus a KL penalty that keeps it close to the supervised model.
+\vocab{DPO} \cite{dpo} reaches the same kind of objective without a separate reward model or RL loop: a
+classification-style loss directly on preference pairs that raises the log-probability ratio (relative to a
+frozen reference model) of preferred over rejected responses.
+
+\subsection{LoRA}
+Freeze the pretrained $\W_0\in\RR^{d_\text{out}\times d_\text{in}}$ and learn a low-rank update:
+\[ \W=\W_0+\tfrac{\alpha}{r}\,\B\A,\qquad \B\in\RR^{d_\text{out}\times r},\ \A\in\RR^{r\times d_\text{in}},\ r\ll d. \]
+$\B$ starts at zero so training starts exactly from the pretrained model; after training $\B\A$ can be merged
+into $\W_0$, so inference costs nothing extra.
+
+\codefile[\script{c09_llm}]{gen/dl/snip/c09_llm-lora.py}
+
+The script checks that the layer equals the base layer at initialisation, that merging gives the same output,
+and that the trainable count is $r(d_\text{in}+d_\text{out})$.
+\begin{example}[What LoRA saves]
+	For a $4096\times4096$ matrix: rank $4$, $8$, $16$, $64$ train $\gv{c09_llm/lora_4}$, $\gv{c09_llm/lora_8}$,
+	$\gv{c09_llm/lora_16}$, $\gv{c09_llm/lora_64}$ parameters, i.e.\ $\gv{c09_llm/lora_pct_4}\%$,
+	$\gv{c09_llm/lora_pct_8}\%$, $\gv{c09_llm/lora_pct_16}\%$, $\gv{c09_llm/lora_pct_64}\%$ of the full matrix.
+	For an illustrative 32-layer model with $\dmodel=4096$ ($\approx12L\dmodel^2=\gv{c09_llm/lora_model_full}$
+	weights in its blocks), rank-8 LoRA on $\Wq$ and $\Wv$ only trains $\gv{c09_llm/lora_model_lora}$
+	($\gv{c09_llm/lora_model_pct}\%$). The saving is in gradients and optimiser state (and in storing one small
+	adapter per task); the frozen weights still have to fit in memory for the forward pass.
+\end{example}
+
+\begin{remark}
+	\trap ``LoRA reduces inference latency'' or ``LoRA makes the model smaller''. It reduces the number of
+	\emph{trainable} parameters and the training memory; after merging, the model has exactly the original size
+	and speed. Combined with a quantised frozen base (QLoRA-style) it also cuts the memory of the frozen weights.
+\end{remark}
+
+\section{Decoding}
+\prototype{Logits $(3,2.5,1,0.5,0,-1)$: greedy always says token 1; top-$p$ with $p=0.9$ samples among
+$\gv{c09_llm/dec_p09_n}$ tokens.}
+
+Given next-token logits, \vocab{greedy} decoding takes the arg-max, \vocab{beam search} keeps $k$ hypotheses
+(\cref{ch:rnn}), and sampling methods reshape the distribution before drawing:
+
+\codefile[\script{c09_llm}]{gen/dl/snip/c09_llm-sampling.py}
+
+\begin{example}[Four decoding distributions]
+	For $\z=(3,2.5,1,0.5,0,-1)$:
+	\begin{center}
+		\small
+		\begin{tabular}{ll}
+			\toprule
+			rule & distribution over the six tokens \\
+			\midrule
+			softmax ($T=1$) & $(\gv{c09_llm/dec_p})$ \\
+			$T=0.5$ & $(\gv{c09_llm/dec_t05})$ \\
+			$T=2$ & $(\gv{c09_llm/dec_t2})$ \\
+			top-$k$, $k=2$ & $(\gv{c09_llm/dec_k2})$ \\
+			top-$p$, $p=0.9$ & $(\gv{c09_llm/dec_p09})$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Cumulative sorted probabilities are $(\gv{c09_llm/dec_cum})$, so the nucleus for $p=0.9$ is the first three
+	tokens, renormalised (checked against a brute-force implementation).
+\end{example}
+Temperature $\to0$ recovers greedy; top-$k$ uses a fixed number of candidates even when the distribution is
+flat or peaked, which top-$p$ adapts to. Greedy and beam search tend to produce repetitive, generic text in
+open-ended generation; sampling with moderate temperature and top-$p$ is the usual default there, while
+greedy is preferred for tasks with one right answer (code, extraction).
+
+\section{Evaluation and its limits}
+\prototype{``the cat is on the mat'' against the reference ``the cat sat on the mat'': BLEU-2
+$\gv{c09_llm/bleu2}$.}
+
+\vocab{BLEU} (translation) multiplies a brevity penalty by the geometric mean of clipped $n$-gram precisions
+of the output against references; \vocab{ROUGE} (summarisation) emphasises recall, e.g.\ ROUGE-L uses the
+longest common subsequence. In the example, unigram precision $\gv{c09_llm/bleu_p1}$, bigram precision
+$\gv{c09_llm/bleu_p2}$, brevity penalty $\gv{c09_llm/bleu_bp}$, BLEU-2 $\gv{c09_llm/bleu2}$; the LCS has length
+$\gv{c09_llm/rouge_lcs}$, so ROUGE-L recall and precision are both $\gv{c09_llm/rouge_r}$. The limits: a correct
+paraphrase (``a cat was sitting on the mat'') gets bigram precision only $\gv{c09_llm/bleu_para_p2}$; one wrong
+word can flip meaning at a small score cost; and none of these measures factuality. Perplexity measures
+fit to text, not usefulness. LLMs are therefore evaluated on task benchmarks, by human preference, and
+increasingly by other models as judges, each with its own biases (contamination of benchmarks by training
+data being the main one).
+
+\section{Making models cheaper: quantisation, distillation, MoE}
+\prototype{A $7$B-parameter model needs $\gv{c09_llm/mem_fp16}$\,GB for its weights in fp16 and
+$\gv{c09_llm/mem_int4}$\,GB in 4-bit.}
+
+\subsection{Quantisation}
+Weights alone: $\gv{c09_llm/mem_fp32}$\,GB in fp32, $\gv{c09_llm/mem_fp16}$ in fp16/bf16,
+$\gv{c09_llm/mem_int8}$ in int8, $\gv{c09_llm/mem_int4}$ in 4-bit, for $7\times10^9$ parameters. Symmetric
+per-tensor int8:
+\codefile[\script{c09_llm}]{gen/dl/snip/c09_llm-quant.py}
+For a $64\times64$ Gaussian matrix (std $0.05$) with one outlier of $0.4$ the scale is $\gv{c09_llm/q_scale}$ and the
+worst error $\gv{c09_llm/q_err}$ (codes identical to \pt{torch.quantize\_per\_tensor}); without the outlier the
+worst error is $\gv{c09_llm/q_err_noout}$, and the mean error with it is $\gv{c09_llm/q_ratio}\times$ larger. One
+outlier stretches the grid for everyone, which is why practical schemes use per-channel or per-group scales
+and treat outliers separately. \vocab{Post-training quantisation} needs no retraining;
+\vocab{quantisation-aware training} simulates rounding during training.
+
+\subsection{Distillation}
+A small \vocab{student} is trained to match a large \vocab{teacher}'s softened output distribution:
+$\Loss=T^2\,\KL\bigl(\softmax(\z_t/T)\Vert\softmax(\z_s/T)\bigr)$, usually mixed with the ordinary
+label loss. Temperature reveals the teacher's ``dark knowledge'': for teacher logits $(4,1.5,1,-1)$ the
+$T=1$ distribution is $(\gv{c09_llm/kd_pt1})$ but at $T=2$ it is $(\gv{c09_llm/kd_pt})$, exposing which wrong
+classes are nearly right. With student logits $(3,2,0,-0.5)$ the loss is $\gv{c09_llm/kd}$ (equal to
+\pt{F.kl\_div}); the $T^2$ keeps gradient magnitudes comparable across temperatures.
+
+\subsection{Mixture of experts}
+An MoE layer replaces the FFN by $E$ expert FFNs and a router that sends each token to the top $k$. For an
+illustrative layer with $\dmodel=4096$, a gated FFN of width $14{,}336$ ($\gv{c09_llm/moe_ffn}$ parameters)
+and $E=8$, $k=2$: $\gv{c09_llm/moe_total}$ parameters stored, $\gv{c09_llm/moe_active}$ ($\gv{c09_llm/moe_frac}\%$)
+active per token. Capacity grows with total parameters while compute per token follows active parameters;
+the costs are memory for all experts, routing load balance (auxiliary losses), and communication when experts
+live on different devices.
+
+\begin{remark}
+	\trap ``An MoE model with $X$ total parameters runs as fast as a dense model with $X$ parameters'' (it runs
+	closer to the speed of its \emph{active} size, if memory bandwidth allows) and ``quantisation reduces FLOPs''
+	(it mainly reduces memory and memory traffic; speed-ups need kernels for the low-precision format).
+\end{remark}
+
+\section{Retrieval, tools and failure modes}
+\prototype{A question about the KV cache retrieves the document about the KV cache, which is pasted into the
+prompt before the model answers.}
+
+\vocab{Retrieval-augmented generation} (RAG): embed documents into vectors offline; at query time embed the
+question, retrieve the top-$k$ most similar chunks (cosine similarity, approximate nearest-neighbour index),
+and put them in the prompt with an instruction to answer from them and cite them. In a four-document toy with
+TF-IDF vectors the query ``what does the KV cache store during decoding?'' retrieves document
+$\gv{c09_llm/rag_best}$ (cosine $\gv{c09_llm/rag_score}$, matching scikit-learn); real systems use learned dense
+embeddings, chunking, re-ranking and hybrid keyword search. RAG gives the model fresh and private knowledge
+without retraining and makes answers checkable. \vocab{Tool use} and \vocab{agents} extend the idea: the model
+emits structured calls (search, code execution, APIs), the system runs them and feeds results back, looping
+until done.
+
+\vocab{Hallucination}: fluent, confident, wrong output, a consequence of training to produce likely text rather
+than true text. Mitigations: grounding with retrieval and citations, asking the model to abstain when the
+context lacks the answer, lower temperature for factual tasks, verification steps and tools, evaluation sets
+that measure it. Safety basics an interviewer expects: prompt injection (instructions hidden in retrieved or
+user content), data leakage of private information, harmful-content filtering, bias, and the principle that a
+model's output is untrusted input to the rest of the system.
+
+\begin{moral}
+	Pretrain to predict tokens, adapt cheaply (LoRA, instruction tuning, preference optimisation), decode with
+	the right knob, serve with fewer bits, and ground answers in retrieved evidence.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	A language model assigns probabilities $0.2$, $0.5$ and $0.1$ to the three tokens of a test sentence. What is its
+	perplexity on the sentence?
+	\begin{hint}$\exp$ of the mean negative log-probability.\end{hint}
+	\begin{sol}NLLs $(\gv{c09_llm/pa_nll})$, mean $\gv{c09_llm/pa_mean}$, so
+		$\PPL=e^{\gv{c09_llm/pa_mean}}=(0.2\cdot0.5\cdot0.1)^{-1/3}=\gv{c09_llm/pa_ppl}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many trainable parameters does LoRA with $r=16$ add to a $1024\times4096$ projection, and what fraction of the
+	matrix is that?
+	\begin{hint}$r(d_\text{in}+d_\text{out})$.\end{hint}
+	\begin{sol}$16\cdot(1024+4096)=\gv{c09_llm/pb_n}$, i.e.\ $\gv{c09_llm/pb_pct}\%$ of the $4{,}194{,}304$
+		weights.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Logits $(2,1,0)$. Give the sampling distribution for temperature $0.5$, for top-$k$ with $k=1$, and for top-$p$ with
+	$p=0.5$. Which of them are deterministic?
+	\begin{hint}Top-$p$ keeps the smallest prefix with mass $\ge p$.\end{hint}
+	\begin{sol}
+		With $T=0.5$ the logits become $(4,2,0)$ and the distribution is $(\gv{c09_llm/pc_t05})$.
+		With $k=1$: $(1,0,0)$. Top-$p$:
+		$\softmax(2,1,0)=(\gv{c09_llm/pc_p})$; the first token alone has mass $\ge0.5$, so
+		$(\gv{c09_llm/pc_topp})$. Top-$k$ with $k=1$ and this top-$p$ are deterministic
+		(greedy).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A team fine-tunes a 3B-parameter model by full fine-tuning in fp16 with Adam, and runs out of memory. Give two
+	changes from this chapter and what each saves.
+	\begin{hint}Where does training memory go?\end{hint}
+	\begin{sol}
+		LoRA: gradients and Adam moments only for the low-rank matrices (well under $1\%$ of parameters), instead of
+		for all 3B. Quantise the frozen base (e.g.\ 4-bit), cutting weight memory about four-fold from fp16. Gradient
+		checkpointing (\cref{ch:backprop}) additionally cuts activation memory.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Explain why BERT cannot simply be used for left-to-right text generation, and why GPT is a weaker sentence encoder
+	for retrieval than a bidirectional encoder of the same size.
+	\begin{hint}What can each position see during pretraining?\end{hint}
+	\begin{sol}
+		BERT was trained to fill masked tokens from both sides and never to model $p(x_t\mid x_{<t})$; it has no causal
+		structure for sampling one token at a time. GPT's representation of a token sees only the left context, so early
+		tokens of a sentence carry little information about the rest; a bidirectional encoder's representations use the
+		whole sentence.
+	\end{sol}
+\end{problem}

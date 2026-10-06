@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-08 done and committed; next = chapter 09-llm (code/dl/c09_*.py), then 10..14, preface last. Keep later chapters tight (page budget 140-190 incl. appendices).
+RESUME HERE: chapters 01-09 done; next = chapter 10-generative (script code/dl/c10_generative.py written), then 11..14, preface. Full build >2 min: use long timeouts.
 
 # Deep Learning — progress log
 
@@ -52,7 +52,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 06 CNNs ★
 - [x] 07 RNNs ★
 - [x] 08 Attention and Transformer ★ (+ capstone)
-- [ ] 09 LLMs
+- [x] 09 LLMs
 - [ ] 10 Generative and representation learning
 - [ ] 11 Practice and PyTorch
 - [ ] 12 Implement it
