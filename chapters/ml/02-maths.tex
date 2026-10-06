@@ -1,0 +1,529 @@
+\chapter{Maths at Your Fingertips}
+\label{ch:maths}
+This chapter is the toolkit. Nothing here is decoration: every later derivation (normal equations,
+ridge, logistic gradients, the SVM dual, PCA, EM) is one of these facts applied once. Read it
+quickly, then come back when a later chapter says ``by the identity in \Cref{ch:maths}''.
+
+\section{Linear algebra}
+\prototype{The hat matrix $\Hm = \X(\X\T\X)\inv\X\T$, which projects $\y$ onto the column space of $\X$.}
+
+\subsection{Vectors, norms, inner products}
+For $\x\in\RR^d$, the $\ell_p$ \vocab{norm} is $\norm{\x}_p = (\sum_i \abs{x_i}^p)^{1/p}$.
+The three you need: $\norm{\x}_1=\sum\abs{x_i}$ (lasso), $\norm{\x}_2=\sqrt{\sum x_i^2}$ (ridge,
+Euclidean distance), $\norm{\x}_\infty=\max\abs{x_i}$. For $\x=(3,-4,12)$:
+$\norm{\x}_1=\gv{c02_maths/l1}$, $\norm{\x}_2=\gv{c02_maths/l2}$,
+$\norm{\x}_\infty=\gv{c02_maths/linf}$. Always $\norm{\x}_\infty\le\norm{\x}_2\le\norm{\x}_1$.
+
+The inner product $\x\T\y=\norm{\x}\norm{\y}\cos\theta$; \vocab{cosine similarity} is
+$\cos\theta$, which ignores length --- why it is the default for comparing TF-IDF vectors and
+embeddings, where document length is a nuisance (\Cref{ch:dataprep}).
+
+\subsection{Rank, inverses, conditioning}
+The \vocab{rank} of $\A$ is the dimension of its column space. $\A\in\RR^{d\times d}$ is invertible
+iff rank $d$ iff $\det\A\ne0$ iff no eigenvalue is $0$. In regression, $\X\T\X$ is singular exactly
+when a feature is a linear combination of others (perfect multicollinearity, \Cref{ch:linreg}); when
+some $n<d$ it is \emph{always} singular.
+The \vocab{condition number} $\kappa(\A) = \sigma_{\max}/\sigma_{\min}$ measures how much relative
+error in $\bb$ can be amplified in the solution of $\A\x=\bb$; for $\diag(1,10^{-4})$ it is
+$\gv{c02_maths/cond}$. Large $\kappa$ also makes gradient descent zig-zag (\Cref{ch:optim}).
+
+\subsection{Eigenvalues and the spectral theorem}
+$\A\vv=\lambda\vv$ with $\vv\neq\zero$. A real symmetric matrix has real eigenvalues and an
+orthonormal eigenbasis: $\A=\Q\Lambda\Q\T$ (\vocab{spectral theorem}). Useful facts:
+$\Tr\A=\sum\lambda_i$, $\det\A=\prod\lambda_i$, and eigenvalues of $\A^k$ are $\lambda_i^k$.
+
+\begin{example}[A rank-one matrix]
+	$\mathbf S=\begin{psmallmatrix}4&2\\2&1\end{psmallmatrix}$ has trace $5$ and determinant
+	$\gv{c02_maths/detS}$, so its eigenvalues are $\gv{c02_maths/eig_hi}$ and
+	$\gv{c02_maths/eig_lo}$ and its rank is $\gv{c02_maths/rankS}$ (it is
+	$(2,1)\T(2,1)$). Trace and determinant give a $2\times2$'s eigenvalues in ten seconds: they are
+	the roots of $\lambda^2-(\Tr)\lambda+\det$.
+\end{example}
+
+\subsection{Positive semi-definite matrices}
+\begin{definition}
+	Symmetric $\A$ is \vocab{positive semi-definite} (PSD, $\A\succeq0$) if $\x\T\A\x\ge0$ for all
+	$\x$, and \vocab{positive definite} (PD) if $>0$ for all $\x\ne\zero$. Equivalently: all
+	eigenvalues $\ge0$ (resp.\ $>0$).
+\end{definition}
+Every covariance matrix and every Gram matrix $\X\T\X$ is PSD, because
+$\vv\T\X\T\X\vv=\norm{\X\vv}^2\ge0$. Adding $\lambda\I$ with $\lambda>0$ makes a PSD matrix PD
+--- the whole reason ridge regression always has a unique solution. Kernel matrices must be PSD
+(Mercer, \Cref{ch:svm}). $\begin{psmallmatrix}2&-1\\-1&2\end{psmallmatrix}$ is PD (eigenvalues
+$\gv{c02_maths/P_eig1}$, $\gv{c02_maths/P_eig2}$); a diagonal-dominance glance tells you so.
+
+\subsection{Singular value decomposition}
+Every $\A\in\RR^{n\times d}$ factors as $\A=\U\bSigma\V\T$ with orthonormal columns in $\U,\V$ and
+non-negative \vocab{singular values} $\sigma_1\ge\sigma_2\ge\dots$ on the diagonal of $\bSigma$.
+The $\sigma_i^2$ are the eigenvalues of $\A\T\A$ (and of $\A\A\T$), $\V$ holds the eigenvectors of
+$\A\T\A$.
+\begin{theorem}[Eckart--Young]
+	The best rank-$k$ approximation of $\A$ in Frobenius (or spectral) norm is the truncated SVD
+	$\A_k=\sum_{i\le k}\sigma_i\uu_i\vv_i\T$, with error
+	$\norm{\A-\A_k}_F=\sqrt{\sum_{i>k}\sigma_i^2}$.
+\end{theorem}
+\begin{example}[SVD by eigenvalues]
+	$\A=\begin{psmallmatrix}3&1\\1&3\\1&1\end{psmallmatrix}$ gives
+	$\A\T\A=\begin{psmallmatrix}11&7\\7&11\end{psmallmatrix}$ with eigenvalues $11\pm7$, i.e.\
+	$\gv{c02_maths/ata_e1}$ and $\gv{c02_maths/ata_e2}$, so $\sigma_1=\sqrt{18}=\gv{c02_maths/svd1}$
+	and $\sigma_2=\gv{c02_maths/svd2}$. The best rank-one approximation misses by exactly
+	$\sigma_2=\gv{c02_maths/trunc_fro}$ in Frobenius norm. PCA (\Cref{ch:unsup}) is this theorem
+	applied to a centred data matrix.
+\end{example}
+
+\subsection{Projections}
+The orthogonal projection onto the column space of a full-column-rank $\X$ is
+$\Hm=\X(\X\T\X)\inv\X\T$. It is symmetric and \vocab{idempotent} ($\Hm^2=\Hm$: projecting twice
+changes nothing), its eigenvalues are $0$ or $1$, and $\Tr\Hm=\rank\X$.
+\begin{example}[Projecting onto a line]
+	With $\X=\begin{psmallmatrix}1&0\\1&1\\1&2\end{psmallmatrix}$ (intercept and $x=0,1,2$) and
+	$\y=(1,2,2)$, the projection is $\hat\y=\Hm\y=(\gv{c02_maths/proj_yhat})$ --- the fitted values
+	of the least-squares line --- and $\Tr\Hm=\gv{c02_maths/trH}$, the number of parameters. The
+	residual $\y-\hat\y$ is orthogonal to every column of $\X$.
+\end{example}
+
+\begin{moral}
+	Symmetric $\Rightarrow$ orthogonal eigenvectors; Gram and covariance matrices are PSD; adding
+	$\lambda\I$ makes them invertible; least squares is a projection.
+\end{moral}
+
+\section{Calculus and matrix calculus}
+\prototype{$\nabla_{\w}\norm{\X\w-\y}^2=2\X\T(\X\w-\y)$, the gradient behind every linear model.}
+
+\subsection{Gradient, Jacobian, Hessian}
+For $f:\RR^d\to\RR$, the \vocab{gradient} $\nabla f\in\RR^d$ collects partial derivatives and points
+in the direction of steepest ascent; $-\nabla f$ is the descent direction. For $\bm f:\RR^d\to\RR^m$
+the \vocab{Jacobian} $\mathbf J\in\RR^{m\times d}$ has $J_{ij}=\partial f_i/\partial x_j$; the chain
+rule is a product of Jacobians, which is all backpropagation is (see \otherbook{Deep Learning}). The
+\vocab{Hessian} $\nabla^2 f$ is the $d\times d$ matrix of second derivatives; it is symmetric for
+smooth $f$.
+
+At a stationary point ($\nabla f=\zero$): Hessian PD $\Rightarrow$ local minimum, ND
+$\Rightarrow$ local maximum, eigenvalues of both signs $\Rightarrow$ \vocab{saddle point}. For
+$f=x^2+3xy+y^2$ the Hessian $\begin{psmallmatrix}2&3\\3&2\end{psmallmatrix}$ has eigenvalues
+$\gv{c02_maths/saddle_e2}$ and $\gv{c02_maths/saddle_e1}$, so the origin is a saddle, although
+the function is a ``bowl'' along both axes.
+
+\subsection{The identities you will use}
+With $\A$ a constant matrix and $\bb$ a constant vector (``numerator layout'' gradients as column
+vectors):
+\begin{align*}
+	\nabla_{\x}(\bb\T\x) &= \bb, \\
+	\nabla_{\x}(\x\T\A\x) &= (\A+\A\T)\x \qquad (=2\A\x \text{ if }\A\text{ is symmetric}),\\
+	\nabla_{\x}\norm{\A\x-\bb}^2 &= 2\A\T(\A\x-\bb), \qquad
+	\nabla^2_{\x}\norm{\A\x-\bb}^2 = 2\A\T\A,\\
+	\nabla_{\A}\Tr(\A\B) &= \B\T, \qquad
+	\nabla_{\A}\log\det\A = \A^{-\top}.
+\end{align*}
+All four non-trivial ones are checked numerically against finite differences in
+\script{c02_maths}.
+
+\begin{remark}
+	\trap Writing $\nabla_\x(\x\T\A\x)=2\A\x$ for a non-symmetric $\A$ is a common slip; the
+	correct answer is $(\A+\A\T)\x$. When deriving by hand, check dimensions at every step: a
+	gradient with respect to a $d$-vector is a $d$-vector, so terms like $\x\T\A$ must be
+	transposed.
+\end{remark}
+
+\section{Probability}
+\prototype{A test for a disease with 1\% prevalence is 95\% sensitive and 90\% specific; a patient
+	tests positive.}
+
+\subsection{Bayes' rule}
+\[ \Prob(A\mid B)=\frac{\Prob(B\mid A)\Prob(A)}{\Prob(B)},\qquad
+	\Prob(B)=\sum_k\Prob(B\mid A_k)\Prob(A_k). \]
+In ML language: posterior $\propto$ likelihood $\times$ prior.
+\begin{example}[Base rates]
+	Prevalence $0.01$, sensitivity $\Prob(+\mid D)=0.95$, specificity $\Prob(-\mid\neg D)=0.90$.
+	Then $\Prob(+)=0.95\cdot0.01+0.10\cdot0.99=\gv{c02_maths/bayes_ppos}$ and
+	\[ \Prob(D\mid +)=\frac{0.0095}{\gv{c02_maths/bayes_ppos}}=\gv{c02_maths/bayes_post}. \]
+	Under 9\%: most positives are false positives because healthy people vastly outnumber sick ones.
+	This is the precision problem of every rare-event classifier (\Cref{ch:eval}).
+\end{example}
+
+\subsection{Expectation, variance, covariance}
+Expectation is linear always: $\E[a X+bY]=a\E X+b\E Y$, independent or not.
+$\Var X=\E[X^2]-(\E X)^2$, $\Var(aX+b)=a^2\Var X$, and
+\[ \Var(X+Y)=\Var X+\Var Y+2\Cov(X,Y),\qquad \Cov(X,Y)=\E[XY]-\E X\,\E Y. \]
+For a vector, the \vocab{covariance matrix} $\bSigma=\E[(\x-\bmu)(\x-\bmu)\T]$ is PSD and
+$\Var(\w\T\x)=\w\T\bSigma\w$. A fair die has mean $\gv{c02_maths/dice_mean}$ and variance
+$35/12=\gv{c02_maths/dice_var}$.
+
+\subsection{Correlation and \texorpdfstring{$r^2$}{r squared}}
+\begin{definition}
+	The (Pearson) \vocab{correlation} is
+	$r=\Corr(X,Y)=\dfrac{\Cov(X,Y)}{\sigma_X\sigma_Y}\in[-1,1]$.
+\end{definition}
+Covariance has units (rupees $\times$ kilograms) and changes when you rescale; correlation is
+unit-free and invariant to positive affine maps of either variable. It measures \emph{linear}
+association only.
+
+\begin{example}[Covariance and correlation of five points]
+	$x=(2,4,6,8,10)$, $y=(3,7,5,11,14)$. Sample covariance (divide by $n-1$)
+	$=\gv{c02_maths/cov}$; $s_x=\gv{c02_maths/sx}$, $s_y=\gv{c02_maths/sy}$, so
+	$r=13/(3.1623\cdot4.4721)=\gv{c02_maths/r}$ and $r^2=\gv{c02_maths/r2}$.
+	Rescaling $x$ by $100$ makes the covariance $\gv{c02_maths/cov_scaled}$ but leaves $r$ at
+	$\gv{c02_maths/r_scaled}$.
+\end{example}
+
+\begin{theorem}[$r^2$ is the $R^2$ of simple regression]
+	For least-squares regression of $y$ on a single $x$ with an intercept, the coefficient of
+	determination equals the squared correlation: $R^2=r^2$. (Proof in \Cref{ch:linreg}.)
+\end{theorem}
+So the OA question ``the correlation between $x$ and $y$ is $\gv{c02_maths/oa_r}$; what fraction of
+the variance of $y$ is explained by a linear fit on $x$?'' has answer
+$(-0.8)^2=\gv{c02_maths/oa_r2}$, i.e.\ 64\%. The sign of $r$ disappears.
+
+\begin{remark}
+	\trap Three classics. (i) $r=0$ does not mean independent: for $x$ uniform on $[-1,1]$ and
+	$y=x^2$, $y$ is a deterministic function of $x$ yet $r=\gv{c02_maths/r_parabola}$.
+	(ii) $r^2=0.64$ does not mean ``64\% of points are predicted correctly''; it is a fraction of
+	\emph{variance}. (iii) $R^2=r^2$ holds for \emph{simple} linear regression with intercept; with
+	several features $R^2$ is the squared correlation between $y$ and $\hat y$, not with any one
+	feature.
+\end{remark}
+
+\subsection{Law of large numbers and the central limit theorem}
+\begin{theorem}[LLN and CLT]
+	If $X_1,X_2,\dots$ are i.i.d.\ with mean $\mu$ and variance $\sigma^2<\infty$, then the sample
+	mean $\bar X_n\to\mu$ (LLN), and $\sqrt n(\bar X_n-\mu)/\sigma\to\Normal(0,1)$ in distribution
+	(CLT). In particular $\mathrm{sd}(\bar X_n)=\sigma/\sqrt n$, the \vocab{standard error}.
+\end{theorem}
+The LLN is why empirical risk approximates risk; the CLT is why confidence intervals and $z$-tests
+(\Cref{ch:stats}) work even for non-normal data. \Cref{fig:clt} shows both for an exponential
+distribution, which is heavily skewed (skewness $\gv{c02_maths/clt_skew1}$); means of $30$ draws
+already have skewness $\gv{c02_maths/clt_skew30}$.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.5cm},
+				width=0.48\linewidth, height=0.4\linewidth, grid=major, grid style={gray!20},
+				axis lines=left, legend style={draw=none, font=\scriptsize, fill=none}]
+			\nextgroupplot[xmode=log, ymode=log, xlabel={$n$}, ylabel={sd of $\bar X_n$}]
+			\addplot[blue!80!black, only marks, mark=*] table[x=n,y=sd] {gen/ml/data/c02_maths-clt_sd.dat};
+			\addplot[red!80!black, thick] table[x=n,y=theory] {gen/ml/data/c02_maths-clt_sd.dat};
+			\legend{simulated, $1/\sqrt n$}
+			\nextgroupplot[xlabel={$\bar X_{30}$}, ylabel={density}]
+			\addplot[ybar interval, fill=blue!20, draw=blue!60] table[x=x,y=dens] {gen/ml/data/c02_maths-clt_hist.dat};
+			\addplot[red!80!black, thick] table[x=x,y=normal] {gen/ml/data/c02_maths-clt_hist.dat};
+			\legend{simulated, CLT normal}
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Means of Exponential(1) draws: the spread shrinks like $1/\sqrt n$ (left) and the
+		shape becomes normal (right, $n=30$, 50\,000 repetitions).}
+	\label{fig:clt}
+\end{figure}
+
+\section{Information theory in five lines}
+\prototype{Cross-entropy between the true label distribution and a classifier's predicted probabilities.}
+For distributions $p,q$ over the same outcomes:
+\begin{align*}
+	\text{entropy } \Ent(p)&=-\textstyle\sum_i p_i\log p_i, \\
+	\text{cross-entropy } \Ent(p,q)&=-\textstyle\sum_i p_i\log q_i=\Ent(p)+\KL(p\,\|\,q),\\
+	\text{KL divergence } \KL(p\,\|\,q)&=\textstyle\sum_i p_i\log\frac{p_i}{q_i}\ge0.
+\end{align*}
+With $p=(0.5,0.25,0.25)$, $q=(0.4,0.4,0.2)$ in bits: $\Ent(p)=\gv{c02_maths/Hp}$,
+$\Ent(p,q)=\gv{c02_maths/CEpq}$, $\KL(p\|q)=\gv{c02_maths/KLpq}$ but
+$\KL(q\|p)=\gv{c02_maths/KLqp}$ --- KL is not symmetric and not a metric. Because $\Ent(p)$ does
+not depend on the model $q$, minimising cross-entropy \emph{is} minimising KL to the data
+distribution. Entropy reappears as a tree impurity (\Cref{ch:trees}).
+
+\begin{remark}[Numerical stability]
+	$\log\sum_i e^{z_i}$ overflows for $z=(1000,1001,1002)$: numpy returns
+	$\gv{c02_maths/lse_naive}$. Subtract the max first:
+	$\log\sum e^{z_i}=m+\log\sum e^{z_i-m}=\gv{c02_maths/lse}$. Every softmax and log-loss
+	implementation does this.
+\end{remark}
+
+\section{Maximum likelihood and MAP}
+\prototype{A coin lands heads 7 times in 10; estimate $p$ with and without a prior.}
+
+\begin{definition}
+	Given i.i.d.\ data and a model $p(\x\mid\btheta)$, the \vocab{likelihood} is
+	$L(\btheta)=\prod_i p(\x_i\mid\btheta)$ and the \vocab{maximum likelihood estimate} (MLE) is
+	$\argmax_{\btheta}\sum_i\log p(\x_i\mid\btheta)$. With a prior $p(\btheta)$ the
+	\vocab{maximum a posteriori} (MAP) estimate is $\argmax_{\btheta}\,[\log p(\btheta)+\sum_i\log
+		p(\x_i\mid\btheta)]$.
+\end{definition}
+We take logs because products of many small numbers underflow, sums are easier to differentiate,
+and $\log$ is monotone so the maximiser is unchanged.
+
+\begin{example}[Bernoulli MLE and MAP]
+	$\ell(p)=7\log p+3\log(1-p)$; $\ell'(p)=7/p-3/(1-p)=0$ gives $\hat p_{\text{MLE}}=7/10=
+		\gv{c02_maths/mle_p}$. With a $\mathrm{Beta}(3,3)$ prior (two pseudo-heads and two
+	pseudo-tails) the posterior is $\mathrm{Beta}(10,6)$, whose mode is
+	$\hat p_{\text{MAP}}=(7+2)/(10+4)=\gv{c02_maths/map_p}$ and whose mean is
+	$10/16=\gv{c02_maths/post_mean}$. The prior pulls the estimate towards $1/2$; with more data the
+	pull fades. Laplace smoothing in naive Bayes (\Cref{ch:generative}) is exactly this.
+\end{example}
+
+\subsection{Three losses that are really likelihoods}
+\begin{enumerate}
+	\ii \textbf{Least squares $=$ Gaussian MLE.} If $y_i=\w\T\x_i+\eps_i$ with
+	$\eps_i\iid\Normal(0,\sigma^2)$, then
+	$-\log L(\w)=\frac{1}{2\sigma^2}\sum_i(y_i-\w\T\x_i)^2+\frac n2\log(2\pi\sigma^2)$, so
+	maximising likelihood minimises the sum of squared errors.
+	\ii \textbf{Ridge $=$ MAP with a Gaussian prior.} Add $\w\sim\Normal(\zero,\tau^2\I)$:
+	$-\log p(\w\mid\D)=\frac{1}{2\sigma^2}\sum(y_i-\w\T\x_i)^2+\frac{1}{2\tau^2}\norm{\w}^2+c$,
+	i.e.\ ridge with $\lambda=\sigma^2/\tau^2$. A Laplace prior gives the lasso. A tight prior
+	(small $\tau$) means large $\lambda$.
+	\ii \textbf{Cross-entropy $=$ categorical MLE.} If the model outputs probabilities $\hat p_{ik}$
+	and $y_i$ is one-hot, $-\log L=-\sum_i\sum_k y_{ik}\log\hat p_{ik}$, the log-loss of logistic
+	and softmax regression (\Cref{ch:logistic}).
+\end{enumerate}
+
+\begin{remark}
+	\trap The MLE of a Gaussian variance divides by $n$, not $n-1$, and is biased. For the sample
+	$(4,7,5,9,5)$: mean $\gv{c02_maths/g_mean}$, MLE variance $\gv{c02_maths/g_var_mle}$, unbiased
+	variance $\gv{c02_maths/g_var_unb}$. \texttt{numpy.var} defaults to \texttt{ddof=0} (the MLE);
+	\texttt{pandas} defaults to \texttt{ddof=1}. MLEs are typically consistent and asymptotically
+	efficient, not necessarily unbiased.
+\end{remark}
+
+\section{Convexity}
+\prototype{Why $\abs{x}$ is convex, $\sin x$ is not, and the 0-1 loss is not.}
+
+\begin{definition}
+	A set $C$ is \vocab{convex} if the segment between any two of its points stays in $C$.
+	A function $f$ on a convex set is \vocab{convex} if for all $\x,\y$ and $t\in[0,1]$
+	\[ f(t\x+(1-t)\y)\le tf(\x)+(1-t)f(\y): \]
+	the chord lies on or above the graph. \vocab{Strictly convex}: strict inequality for
+	$\x\ne\y$, $t\in(0,1)$.
+\end{definition}
+
+\begin{theorem}[Tests]
+	For differentiable $f$: convex $\iff f(\y)\ge f(\x)+\nabla f(\x)\T(\y-\x)$ (every tangent is a
+	global under-estimator). For twice-differentiable $f$: convex $\iff \nabla^2 f\succeq0$
+	everywhere; $\nabla^2f\succ0$ everywhere implies strictly convex.
+\end{theorem}
+
+\begin{theorem}[Why we care]
+	For a convex function every local minimum is a global minimum, and the set of minimisers is
+	convex. A strictly convex function has at most one minimiser.
+\end{theorem}
+
+\subsection{Building convex functions}
+Convexity is preserved by: non-negative weighted sums; composition with an affine map
+($f(\A\x+\bb)$); and the \emph{pointwise maximum} (or supremum) of convex functions. It is
+\textbf{not} preserved by the pointwise minimum, by products, or by differences.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=3 by 1, horizontal sep=1.0cm},
+				width=0.37\linewidth, height=0.33\linewidth, grid=major, grid style={gray!20},
+				axis lines=middle, ticklabel style={font=\scriptsize},
+				title style={font=\small}]
+			\nextgroupplot[title={$\max(\abs x, x^2/3)$: convex}, ymin=-0.5, ymax=3.2]
+			\addplot[gray, dashed] table[x=x,y=abs] {gen/ml/data/c02_maths-convex.dat};
+			\addplot[gray, dotted, thick] table[x=x,y=sq] {gen/ml/data/c02_maths-convex.dat};
+			\addplot[blue!80!black, very thick] table[x=x,y=maxf] {gen/ml/data/c02_maths-convex.dat};
+			\nextgroupplot[title={$\min(\abs x, (x-1.5)^2/2)$: not}, ymin=-0.5, ymax=3.2]
+			\addplot[gray, dashed] table[x=x,y=abs] {gen/ml/data/c02_maths-convex.dat};
+			\addplot[red!80!black, very thick] table[x=x,y=minf] {gen/ml/data/c02_maths-convex.dat};
+			\addplot[black, mark=*, mark size=1.2pt] coordinates {(0,0) (1.5,0)};
+			\nextgroupplot[title={$\sin x$: not}, ymin=-1.3, ymax=1.3, xtick={-6,-3,0,3,6}]
+			\addplot[red!80!black, very thick] table[x=x,y=y] {gen/ml/data/c02_maths-sin.dat};
+			\addplot[black, dashed, mark=*, mark size=1.2pt] coordinates {(0,0) (3.1416,0)};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{The maximum of convex functions is convex; the minimum generally is not (two local
+		minima, at $0$ and $1.5$). For $\sin x$ the chord from $0$ to $\pi$ lies \emph{below} the
+		graph.}
+	\label{fig:convexity}
+\end{figure}
+
+\begin{example}[OA: which are convex?]
+	Each of these has appeared as a ``which statements are true'' option.
+	\begin{itemize}
+		\ii $\abs x$: convex (a max of $x$ and $-x$, both linear), but not differentiable at $0$
+		and not strictly convex.
+		\ii $\sin x$ on $\RR$: not convex. Chord test on $[0,\pi]$: the midpoint of the chord is
+		$0$, but $\sin(\pi/2)=\gv{c02_maths/sin_mid}>0$. (It is convex on $[\pi,2\pi]$ where
+		$\sin''=-\sin\ge0$, which is why a question may restrict the domain.)
+		\ii $e^x$, $x^2$, $-\log x$, $x\log x$, $\norm{\x}$, $\max_i x_i$, $\log\sum e^{x_i}$:
+		convex. $\log x$, $\sqrt x$: concave.
+		\ii $\max(f,g)$ for convex $f,g$: convex. $\min(f,g)$: not in general (\Cref{fig:convexity}).
+		\ii Jensen's inequality $f(\E X)\le\E f(X)$ for convex $f$: with $X$ uniform on
+		$\{1,2,6\}$ and $f(x)=x^2$, $(\E X)^2=\gv{c02_maths/jensen_rhs}\le\E X^2=
+			\gv{c02_maths/jensen_lhs}$; this is just $\Var X\ge0$.
+	\end{itemize}
+\end{example}
+
+\subsection{Why the 0-1 loss is not convex, and what we do about it}
+Write a binary classifier as $\sign(f(\x))$ with labels $y\in\{-1,+1\}$ and \vocab{margin}
+$m=yf(\x)$. The 0-1 loss is $\ind{m\le0}$, a step. Chord test: at $m=-0.5$ the loss is $1$, at
+$m=0.5$ it is $0$, the chord's midpoint is $\gv{c02_maths/zo_chord}$, but the loss at $m=0$ is
+$1$. It is also flat almost everywhere, so its gradient is zero almost everywhere and gradient
+methods get no signal; minimising it exactly over linear classifiers is NP-hard in general.
+
+So we minimise a convex \vocab{surrogate loss} that upper-bounds the step: the \vocab{hinge}
+$\max(0,1-m)$ (SVM), the \vocab{logistic} loss $\log_2(1+e^{-m})$ (logistic regression), the
+\vocab{exponential} $e^{-m}$ (AdaBoost), or the squared loss $(1-m)^2$ (which also penalises being
+``too right'', a reason it is a poor classification loss).
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.72\linewidth, height=0.42\linewidth, xlabel={margin $m=yf(\x)$},
+				ylabel={loss}, ymin=0, ymax=4, xmin=-2, xmax=2.5, legend pos=north east]
+			\addplot[black, very thick, const plot] table[x=m,y=zeroone] {gen/ml/data/c02_maths-losses.dat};
+			\addplot[blue!80!black, thick] table[x=m,y=hinge] {gen/ml/data/c02_maths-losses.dat};
+			\addplot[red!80!black, thick, dashed] table[x=m,y=logistic] {gen/ml/data/c02_maths-losses.dat};
+			\addplot[ForestGreen, thick, densely dotted] table[x=m,y=expo] {gen/ml/data/c02_maths-losses.dat};
+			\addplot[orange!90!black, thick, dashdotted] table[x=m,y=sq] {gen/ml/data/c02_maths-losses.dat};
+			\legend{0-1, hinge, logistic (base 2), exponential, squared}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{The 0-1 loss and its convex surrogates as functions of the margin. All surrogates
+		upper-bound the step; only the squared loss rises again for confident correct predictions.}
+	\label{fig:surrogates}
+\end{figure}
+
+\begin{remark}
+	\trap ``Convex loss $\Rightarrow$ convex training objective.'' Only if the model is linear in its
+	parameters. Log-loss of a neural network is non-convex in the weights even though log-loss is
+	convex in the logits: composition of a convex function with a non-affine map breaks convexity.
+\end{remark}
+
+\begin{moral}
+	Max of convex is convex, min is not; the 0-1 loss is a non-convex step with zero gradient, so we
+	optimise convex surrogates that bound it from above.
+\end{moral}
+
+\section{Lagrange multipliers and KKT}
+\prototype{Maximise $xy$ subject to $x+y=10$; then minimise $(x-2)^2$ subject to $x\le1$.}
+
+\subsection{Equality constraints}
+To optimise $f(\x)$ subject to $g(\x)=0$, form the \vocab{Lagrangian}
+$\Loss(\x,\lambda)=f(\x)+\lambda g(\x)$ and set $\nabla_\x\Loss=\zero$, $g=0$. Geometrically, at
+the optimum $\nabla f$ is parallel to $\nabla g$: you cannot improve $f$ while staying on the
+constraint surface.
+\begin{example}
+	Maximise $xy$ with $x+y=10$: $\nabla(xy)=(y,x)=\lambda(1,1)$ forces $x=y=5$ (checked with
+	SciPy's SLSQP). A more ML-flavoured one: the maximum-entropy distribution on $\{1,2,3\}$ with
+	mean $2.5$ has the exponential-family form $p_i\propto e^{tx_i}$; solving for $t$ gives
+	$p=(\gv{c02_maths/maxent_p})$, matching a numerical constrained optimiser. The same calculation
+	with an unconstrained mean gives the uniform distribution, and with a variance constraint on
+	$\RR$ gives the Gaussian.
+\end{example}
+
+\subsection{Inequality constraints: KKT}
+For $\min f(\x)$ s.t.\ $g_j(\x)\le0$, $h_k(\x)=0$, with Lagrangian
+$f+\sum_j\mu_jg_j+\sum_k\lambda_kh_k$, the \vocab{Karush--Kuhn--Tucker} (KKT) conditions are
+\begin{enumerate}
+	\ii stationarity: $\nabla f+\sum\mu_j\nabla g_j+\sum\lambda_k\nabla h_k=\zero$;
+	\ii primal feasibility: $g_j\le0$, $h_k=0$;
+	\ii dual feasibility: $\mu_j\ge0$;
+	\ii \vocab{complementary slackness}: $\mu_jg_j(\x)=0$ for each $j$.
+\end{enumerate}
+For convex problems satisfying a mild regularity condition (Slater: a strictly feasible point
+exists), KKT is necessary and sufficient.
+
+\begin{example}[An active constraint]
+	$\min(x-2)^2$ s.t.\ $x\le1$. Unconstrained the answer would be $2$, which is infeasible, so the
+	constraint is active: $x^\star=1$. Stationarity $2(x-2)+\mu=0$ gives $\mu=2>0$. Complementary
+	slackness reads: either the constraint is tight ($x=1$) or its multiplier is zero. In SVMs
+	(\Cref{ch:svm}) this is exactly why only the \emph{support vectors} have non-zero $\alpha_i$.
+\end{example}
+
+\begin{moral}
+	Multipliers price constraints; complementary slackness says a constraint either binds or costs
+	nothing.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[$r^2$ from $r$]
+	\onechili
+	The correlation between hours studied and marks is $-0.3$ in one batch and $0.6$ in another.
+	In each, what fraction of the variance of marks is explained by a straight-line fit on hours?
+	Which batch has the ``stronger'' linear relationship?
+	\begin{hint}
+		Square, and ignore the sign for strength.
+	\end{hint}
+	\begin{sol}
+		$\gv{c03_problems/p2a_1}$ (9\%) and $\gv{c03_problems/p2a_2}$ (36\%). The second is stronger; the first is weaker and negative.
+		Strength is $\abs r$, direction is the sign, and $r^2$ is the explained fraction of
+		variance in simple linear regression.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Which are convex?]
+	\twochili
+	Decide convexity on the stated domain: (a) $f(x)=\max(x^2, 2x+1)$; (b) $f(x)=\min(x^2,1)$;
+	(c) $f(\w)=\sum_i\log(1+e^{-y_i\w\T\x_i})+\lambda\norm{\w}_1$; (d) $f(x)=x^3$ on $\RR$; (e)
+	$f(x)=x^3$ on $[0,\infty)$; (f) $f(x,y)=xy$.
+	\begin{hint}
+		Use the closure rules and the second-derivative test; for (f) look at the Hessian.
+	\end{hint}
+	\begin{sol}
+		(a) convex: max of convex functions. (b) not convex: it equals $x^2$ on $[-1,1]$ and $1$ outside. The chord from $x=0$ to $x=2$ has
+		midpoint value $(0+1)/2=0.5$, while $f(1)=1>0.5$: the graph rises above the chord. (c) convex: logistic loss
+		composed with an affine map, plus a norm. (d) not convex ($f''=6x<0$ for $x<0$).
+		(e) convex ($f''\ge0$). (f) not convex: Hessian $\begin{psmallmatrix}0&1\\1&0\end{psmallmatrix}$
+		has eigenvalues $\pm1$, a saddle.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Gradient of a quadratic form]
+	\twochili
+	Let $f(\w)=\frac12\w\T\A\w-\bb\T\w+c$ with $\A$ symmetric PD. Find the minimiser and the
+	minimum value. What goes wrong if $\A$ has a zero eigenvalue?
+	\begin{hint}
+		Set $\A\w-\bb=\zero$.
+	\end{hint}
+	\begin{sol}
+		$\nabla f=\A\w-\bb$, so $\w^\star=\A\inv\bb$ and $f(\w^\star)=c-\frac12\bb\T\A\inv\bb$.
+		If $\A$ is singular the minimiser is not unique (any null-space direction can be added) and
+		may not exist if $\bb$ has a component outside the range of $\A$ ($f$ is then unbounded
+		below). Ridge's $+\lambda\I$ removes the problem.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Bayes with two tests]
+	\twochili
+	In the disease example (prevalence 1\%, sensitivity 95\%, specificity 90\%) the patient takes a
+	second, conditionally independent test with the same characteristics and is positive again.
+	What is $\Prob(D\mid ++)$?
+	\begin{hint}
+		Use the first posterior as the new prior, or multiply likelihoods.
+	\end{hint}
+	\begin{sol}
+		Likelihood ratio of one positive is $0.95/0.10=9.5$. Prior odds $1/99$; after two
+		positives the odds are $9.5^2/99=\gv{c03_problems/p2d_odds}$, so $\Prob(D\mid++)=\gv{c03_problems/p2d_post}$.
+		Updating in odds form is the fastest way to do this in an interview.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[MAP shrinkage]
+	\onechili
+	A click-through rate is estimated from 2 clicks in 3 impressions. Compare the MLE with the MAP
+	under a $\mathrm{Beta}(2,20)$ prior. Which would you show on a dashboard ranking ads?
+	\begin{hint}
+		MAP $=(h+a-1)/(n+a+b-2)$.
+	\end{hint}
+	\begin{sol}
+		MLE $=2/3=\gv{c03_problems/p2e_mle}$; MAP $=(2+1)/(3+20)=3/23=\gv{c03_problems/p2e_map}$. The MLE would put a
+		3-impression ad at the top of the ranking; the prior encodes that typical CTRs are low and
+		shrinks small-sample estimates towards it. Use the shrunk estimate (or a lower confidence
+		bound) for ranking.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[KKT in one dimension]
+	\twochili
+	Solve $\min_{x}\,(x-a)^2$ subject to $0\le x\le1$ for any real $a$ using KKT, and identify which
+	multiplier is positive in each case.
+	\begin{hint}
+		Three cases: $a<0$, $0\le a\le1$, $a>1$.
+	\end{hint}
+	\begin{sol}
+		The answer is the clip of $a$ to $[0,1]$. For $0\le a\le 1$ both constraints are slack and
+		both multipliers are $0$. For $a>1$ the constraint $x\le1$ binds, $x^\star=1$, and
+		stationarity $2(1-a)+\mu_1=0$ gives $\mu_1=2(a-1)>0$. For $a<0$, $x^\star=0$ and the
+		multiplier on $-x\le0$ is $\mu_0=-2a>0$. This box-constrained step is exactly the clipping
+		in the SMO update for SVMs.
+	\end{sol}
+\end{problem}

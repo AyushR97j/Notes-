@@ -1,0 +1,27 @@
+\documentclass[11pt,twoside=semi,openright,numbers=noenddot,titlepage=false]{scrbook}
+\newcommand{\booktitle}{Template Test}
+\newcommand{\bookshort}{Template Test}
+\newcommand{\bookauthor}{Philospher}
+\newcommand{\bookid}{test}
+\input{latex/preamble}
+\input{gen/test/all}
+\title{\booktitle}
+\author{\bookauthor}
+\begin{document}
+\frontmatter
+\maketitle
+\mainmatter
+\tableofcontents
+\Opensolutionfile{\bookid-hints}
+\Opensolutionfile{\bookid-solns}
+\part{Test}
+\parttoc
+\include{chapters/test/t01}
+\Closesolutionfile{\bookid-hints}
+\Closesolutionfile{\bookid-solns}
+\appendix
+\chapter{Hints}
+\begin{enumerate}\input{\bookid-hints.out}\end{enumerate}
+\chapter{Solutions}
+\begin{enumerate}\input{\bookid-solns.out}\end{enumerate}
+\end{document}

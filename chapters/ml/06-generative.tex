@@ -1,0 +1,269 @@
+\chapter{Generative Classifiers}
+\label{ch:generative}
+A discriminative model learns the boundary; a generative model learns what each class looks like
+and lets Bayes' rule draw the boundary. Placement papers test the generative family through naive
+Bayes numericals (a spam posterior with Laplace smoothing) and through ``which statement about
+naive Bayes is false''. LDA appears less often but is the cleanest bridge to logistic regression.
+
+\section{Naive Bayes}
+\prototype{Is ``free meeting money'' spam, given five labelled emails?}
+
+\subsection{The model}
+By Bayes' rule $\Prob(y=c\mid\x)\propto\Prob(y=c)\,p(\x\mid y=c)$. Modelling $p(\x\mid y)$ for a
+$d$-dimensional $\x$ is hard; \vocab{naive Bayes} assumes the features are \emph{conditionally
+	independent given the class}:
+\[ p(\x\mid y=c)=\prod_{j=1}^dp(x_j\mid y=c)
+	\qquad\Longrightarrow\qquad
+	\hat y=\argmax_c\Bigl[\log\pi_c+\sum_j\log p(x_j\mid c)\Bigr]. \]
+Each factor is a one-dimensional estimate (a count ratio, or a mean and variance), so training is a
+single pass over the data, $O(nd)$, and the model works with tiny datasets and huge vocabularies.
+Always compute in log space: a product of a few hundred word probabilities underflows to $0.0$.
+
+The variants differ only in $p(x_j\mid c)$:
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+		\toprule
+		variant & feature type & $p(x_j\mid c)$ \\ \midrule
+		Multinomial & word counts & $\theta_{cj}^{x_j}$, $\theta_{cj}$ = share of class-$c$ tokens that are word $j$ \\
+		Bernoulli & word present/absent & $\theta_{cj}^{x_j}(1-\theta_{cj})^{1-x_j}$ (absence counts as evidence) \\
+		Gaussian & continuous & $\Normal(x_j;\mu_{cj},\sigma^2_{cj})$ \\
+		Categorical & categories & table of $\Prob(x_j=v\mid c)$ \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+
+\section{Laplace smoothing}
+\prototype{The word ``money'' never appeared in a legitimate email; should a single occurrence make
+	``ham'' impossible?}
+
+The MLE $\hat\theta_{cj}=N_{cj}/N_c$ (count of word $j$ in class $c$ over total tokens in class $c$)
+is zero for any word unseen in that class, and one zero factor kills the whole product. \vocab{Additive
+	(Laplace) smoothing} adds $\alpha$ pseudo-counts to every word:
+\[ \hat\theta_{cj}=\frac{N_{cj}+\alpha}{N_c+\alpha V}, \]
+with $V$ the vocabulary size; $\alpha=1$ is Laplace, $0<\alpha<1$ is Lidstone. It is exactly the MAP
+estimate under a symmetric Dirichlet prior (the Beta-prior coin of \Cref{ch:maths}, generalised).
+
+\begin{example}[Spam posterior by hand]
+	Training emails (spam: ``free offer win money'', ``win free prize now''; ham: ``meeting schedule
+	today'', ``project meeting notes'', ``free lunch meeting today''). Vocabulary size
+	$V=\gv{c06_generative/V}$; total tokens: ham $\gv{c06_generative/tot0}$, spam
+	$\gv{c06_generative/tot1}$. Priors $\pi_{\text{spam}}=\gv{c06_generative/prior1}$,
+	$\pi_{\text{ham}}=\gv{c06_generative/prior0}$. Smoothed likelihoods ($\alpha=1$):
+	\begin{center}
+		\begin{tabular}{lcccc}
+			\toprule
+			word & count in ham & $\hat\theta_{\text{ham}}$ & count in spam & $\hat\theta_{\text{spam}}$\\
+			\midrule
+			free & \gv{c06_generative/cnt_0_free} & $2/22=\gv{c06_generative/p_0_free}$ &
+			\gv{c06_generative/cnt_1_free} & $3/20=\gv{c06_generative/p_1_free}$ \\
+			meeting & \gv{c06_generative/cnt_0_meeting} & $4/22=\gv{c06_generative/p_0_meeting}$ &
+			\gv{c06_generative/cnt_1_meeting} & $1/20=\gv{c06_generative/p_1_meeting}$ \\
+			money & \gv{c06_generative/cnt_0_money} & $1/22=\gv{c06_generative/p_0_money}$ &
+			\gv{c06_generative/cnt_1_money} & $2/20=\gv{c06_generative/p_1_money}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	For ``free meeting money'':
+	spam score $0.4\times0.15\times0.05\times0.10=\gv{c06_generative/score1}$, ham score
+	$0.6\times0.0909\times0.1818\times0.0455=\gv{c06_generative/score0}$, so
+	$\Prob(\text{spam}\mid\text{doc})=\gv{c06_generative/post_spam}$: ham, narrowly. This matches
+	\texttt{MultinomialNB(alpha=1)} exactly. Without smoothing, ``money'' has zero probability under
+	ham and the ham score is $\gv{c06_generative/nosmooth_ham}$, so the email would be called spam on
+	the strength of one word. The Bernoulli variant, which also uses the \emph{absence} of the other
+	nine words, gives $\Prob(\text{spam})=\gv{c06_generative/bern_spam}$.
+\end{example}
+
+\begin{remark}
+	\trap The denominator adds $\alpha V$, not $\alpha$ and not $\alpha\cdot(\text{number of
+		classes})$: every word in the vocabulary gets a pseudo-count, so the probabilities still sum to
+	one. For Bernoulli NB it is $(N_{cj}+\alpha)/(N_c+2\alpha)$ with $N_c$ the number of
+	\emph{documents} in class $c$, because each word has two outcomes.
+\end{remark}
+
+\subsection{Gaussian naive Bayes}
+For continuous features, estimate a mean and variance per feature per class.
+\begin{example}[Height and weight]
+	Four ``male'' rows with means $(\gv{c06_generative/gnb_mu1})$ and variances
+	$(\gv{c06_generative/gnb_var1})$; four ``female'' rows with means $(\gv{c06_generative/gnb_mu0})$
+	and variances $(\gv{c06_generative/gnb_var0})$ (MLE variances, divide by $n$). For a query
+	$(5.8,160)$ multiply the two univariate normal densities per class and the equal priors:
+	$\Prob(\text{male}\mid\x)=\gv{c06_generative/gnb_p1}$, matching \texttt{GaussianNB}.
+\end{example}
+
+\section{Limitations, and why it still works}
+\prototype{Duplicate a feature ten times and watch naive Bayes become 95\% sure.}
+
+\begin{example}[Double counting]
+	One feature $x$, classes $\Normal(0,1)$ and $\Normal(1,1)$, equal priors, observation $x=0.8$.
+	The correct posterior of class 1 is $\gv{c06_generative/dup_true}$. If the same feature is copied
+	$k$ times, naive Bayes multiplies the same evidence $k$ times:
+	\begin{center}
+		\begin{tabular}{rc}
+			\toprule
+			copies $k$ & NB posterior of class 1 \\ \midrule
+			\gv{c06_generative/dup_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Correlated features (``free'', ``free!!!'', ``FREE'') behave the same way.
+\end{example}
+
+The standard list of limitations, each a common MCQ option:
+\begin{itemize}
+	\ii The independence assumption is almost always false; correlated features are double-counted,
+	so the \emph{probabilities} are over-confident (pushed towards 0 and 1) and poorly calibrated.
+	\ii Zero-frequency problem without smoothing.
+	\ii Gaussian NB assumes each feature is unimodal and normal within a class; a skewed or
+	bimodal feature needs a transform or binning.
+	\ii It cannot learn interactions: a rule like ``spam if (A and B) but not A alone'' is invisible to
+	a model that factorises over features.
+	\ii It is a high-bias, low-variance learner: excellent with little data, overtaken by logistic
+	regression as data grow.
+\end{itemize}
+
+Why it still classifies well: classification needs only the \emph{argmax} to be right, not the
+probability. Over-confidence that pushes the right class from $0.6$ to $0.99$ costs nothing in
+accuracy. This is why naive Bayes remains a strong text baseline.
+
+\begin{remark}
+	\trap ``Naive Bayes assumes features are independent.'' Precisely: \emph{conditionally}
+	independent given the class. Words like ``machine'' and ``learning'' are strongly dependent
+	overall (both frequent in ML documents), which naive Bayes allows; it assumes that \emph{within}
+	the ML class one does not inform the other. And ``naive Bayes requires features to be
+	normally distributed'' is true only of Gaussian NB.
+\end{remark}
+
+\begin{moral}
+	Naive Bayes is count, smooth, multiply in log space; it ranks well and calibrates badly.
+\end{moral}
+
+\section{LDA and QDA}
+\prototype{Two Gaussian blobs: shared covariance gives a straight boundary, separate covariances a
+	curved one.}
+
+\subsection{The models}
+Gaussian class-conditionals without the naive assumption: $\x\mid y=c\sim\Normal(\bmu_c,\bSigma_c)$.
+\begin{itemize}
+	\ii \vocab{Quadratic discriminant analysis} (QDA) estimates a separate $\bSigma_c$ per class.
+	The log-posterior contains $-\frac12\x\T\bSigma_c\inv\x$, which differs between classes, so the
+	boundary is a quadratic surface.
+	\ii \vocab{Linear discriminant analysis} (LDA) assumes a shared $\bSigma$. The quadratic terms
+	cancel between classes, leaving the linear discriminant
+	\[ \delta_c(\x)=\x\T\bSigma\inv\bmu_c-\tfrac12\bmu_c\T\bSigma\inv\bmu_c+\log\pi_c, \]
+	and a hyperplane boundary.
+\end{itemize}
+\codefile[code/ml/c06\_generative.py: LDA scores]{gen/ml/snip/c06_generative-lda.py}
+With MLE estimates (class means, pooled covariance divided by $n$) these posteriors equal
+scikit-learn's \texttt{LinearDiscriminantAnalysis} to $10^{-8}$; QDA with per-class MLE covariances
+matches \texttt{QuadraticDiscriminantAnalysis}.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.66\linewidth, height=0.48\linewidth, xlabel=$x_1$, ylabel=$x_2$,
+				xmin=-3.5, xmax=6, ymin=-3.5, ymax=5, legend pos=south east, legend style={font=\scriptsize}]
+			\addplot[only marks, mark=o, mark size=1.3pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c06_generative-cls0.dat};
+			\addplot[only marks, mark=+, mark size=1.6pt, red!80!black] table[x=x,y=y] {gen/ml/data/c06_generative-cls1.dat};
+			\addplot[black, very thick] table[x=x,y=y] {gen/ml/data/c06_generative-ldab.dat};
+			\addplot[ForestGreen, very thick, dashed] table[x=x,y=y] {gen/ml/data/c06_generative-qdab.dat};
+			\legend{class 0, class 1, LDA boundary, QDA boundary}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Class 0 is round, class 1 is elongated and tilted. LDA (shared covariance) draws a
+		line; QDA follows the different shapes with a conic. Training accuracies:
+		LDA $\gv{c06_generative/lda_acc}$, QDA $\gv{c06_generative/qda_acc}$.}
+	\label{fig:lda-qda}
+\end{figure}
+
+\subsection{Parameter counts: the bias--variance view}
+With $K=2$ classes in $d$ dimensions (ignoring priors): Gaussian NB has $2d$ means and $2d$
+variances; LDA has $2d$ means and $d(d+1)/2$ shared covariance entries; QDA has $2d$ means and
+$2\cdot d(d+1)/2$ covariance entries. For $d=10$ that is $40$, $\gv{c06_generative/lda_p10}$ and
+$\gv{c06_generative/qda_p10}$; for $d=100$, $400$, $\gv{c06_generative/lda_p100}$ and
+$\gv{c06_generative/qda_p100}$. QDA's flexibility costs variance, and its per-class covariance is
+singular whenever a class has fewer than $d+1$ points; regularised variants shrink
+$\bSigma_c$ towards the pooled or diagonal estimate.
+
+\subsection{LDA versus logistic regression}
+For two classes LDA's posterior is $\sigma(\w\T\x+b)$ --- the same functional form as logistic
+regression. The difference is how $\w$ is fitted: LDA plugs in Gaussian MLEs of means and
+covariance (generative, uses $p(\x)$), logistic regression maximises the conditional likelihood
+(discriminative, ignores $p(\x)$). If the Gaussian assumption holds, LDA is more data-efficient;
+if not (heavy tails, outliers, binary features), logistic regression is more robust. LDA is also a
+dimensionality reduction: projecting onto the at most $K-1$ discriminant directions that maximise
+between-class over within-class scatter (Fisher's criterion).
+
+\begin{remark}
+	\trap LDA here is \emph{linear discriminant analysis}, not latent Dirichlet allocation (the topic
+	model). And ``generative models are always better with little data'' is a tendency, not a law:
+	it holds when the generative assumptions are close to true.
+\end{remark}
+
+\begin{moral}
+	Shared covariance $\Rightarrow$ linear boundary (LDA); separate covariances $\Rightarrow$
+	quadratic (QDA); diagonal covariances $\Rightarrow$ Gaussian naive Bayes.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Naive Bayes posterior]
+	\onechili
+	$\Prob(\text{spam})=0.3$. Word probabilities (already smoothed): $\Prob(\text{``offer''}\mid
+		\text{spam})=0.05$, $\Prob(\text{``offer''}\mid\text{ham})=0.005$, $\Prob(\text{``team''}\mid
+		\text{spam})=0.002$, $\Prob(\text{``team''}\mid\text{ham})=0.01$. Find $\Prob(\text{spam}\mid
+		\text{``offer team''})$ with multinomial NB.
+	\begin{hint}
+		Multiply prior by both likelihoods for each class and normalise.
+	\end{hint}
+	\begin{sol}
+		Spam: $0.3\cdot0.05\cdot0.002=\gv{c06_problems/p6a_s}$. Ham: $0.7\cdot0.005\cdot0.01=
+			\gv{c06_problems/p6a_h}$. Posterior $\gv{c06_problems/p6a_post}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Laplace smoothing arithmetic]
+	\onechili
+	In the ``positive review'' class there are $500$ tokens and a vocabulary of $V=1000$. The word
+	``refund'' occurs $0$ times there and $12$ times among $800$ tokens of the negative class. Give
+	the smoothed probabilities with $\alpha=1$ and their ratio.
+	\begin{hint}
+		$(N_{cj}+1)/(N_c+V)$.
+	\end{hint}
+	\begin{sol}
+		Positive: $1/1500=\gv{c06_problems/p6b_pos}$. Negative: $13/1800=\gv{c06_problems/p6b_neg}$.
+		Ratio negative/positive $=\gv{c06_problems/p6b_ratio}$: seeing ``refund'' multiplies the
+		odds of negative by about 11.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[True or false]
+	\onechili
+	(a) Naive Bayes can learn XOR of two binary features. (b) Doubling a feature changes naive
+	Bayes' predicted probabilities. (c) Naive Bayes needs feature scaling. (d) LDA's boundary between
+	two classes is linear. (e) QDA has fewer parameters than LDA.
+	\begin{hint}
+		Think about what each model can represent and count parameters.
+	\end{hint}
+	\begin{sol}
+		(a) False: with conditionally independent features, each $p(x_j\mid c)$ is the same for both
+		classes in XOR (each feature is 50/50 within each class), so the model cannot distinguish
+		them. (b) True (double counting). (c) False for multinomial/Bernoulli; Gaussian NB estimates a
+		scale per feature, so scaling has no effect either. (d) True. (e) False: QDA has more.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Gaussian NB boundary]
+	\twochili
+	One feature; class A $\sim\Normal(0,1)$, class B $\sim\Normal(0,4)$, equal priors. Where is the
+	decision boundary, and why is it not a single threshold?
+	\begin{hint}
+		Set the two log-densities equal.
+	\end{hint}
+	\begin{sol}
+		$-\frac{x^2}{2}-\frac12\log(2\pi)=-\frac{x^2}{8}-\frac12\log(8\pi)$ gives
+		$\frac{3x^2}{8}=\log2$, $\abs x=\sqrt{8\log2/3}=\gv{c06_problems/p6d_x}$. Predict A inside
+		$(-1.36,1.36)$ and B outside: unequal variances give a quadratic boundary (two thresholds), the
+		one-dimensional QDA picture.
+	\end{sol}
+\end{problem}

@@ -1,0 +1,1 @@
+slope=0.60 intercept=2.20

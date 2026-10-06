@@ -1,0 +1,454 @@
+\chapter{Linear Regression}
+\label{ch:linreg}
+Linear regression is the one model every interviewer assumes you can derive in three ways
+(calculus, geometry, probability), fit by hand in an OA, and criticise in a design round. It is
+also the template for everything else: a hypothesis class, a loss, a closed form or a gradient,
+and a list of assumptions whose violation you should be able to diagnose.
+
+\section{Least squares and the normal equations}
+\prototype{Predict flat price from area: $\hat y = w_0 + w_1\cdot\text{area}$.}
+
+\subsection{The model}
+Stack $n$ examples as rows of the \vocab{design matrix} $\X\in\RR^{n\times(d+1)}$, whose first
+column is all ones (the intercept), and the targets as $\y\in\RR^n$. The model is
+$\hat\y=\X\w$ and \vocab{ordinary least squares} (OLS) minimises the \vocab{residual sum of squares}
+\[ \RSS(\w)=\norm{\y-\X\w}^2=\sum_{i=1}^n(y_i-\w\T\x_i)^2. \]
+``Linear'' means linear \emph{in the parameters} $\w$: $y=w_0+w_1x+w_2x^2+w_3\log x$ is still
+linear regression.
+
+\subsection{The closed form}
+Using $\nabla_{\w}\norm{\X\w-\y}^2=2\X\T(\X\w-\y)$ from \Cref{ch:maths} and setting it to zero gives
+the \vocab{normal equations}
+\[ \X\T\X\,\hat\w=\X\T\y\qquad\Longrightarrow\qquad\hat\w=(\X\T\X)\inv\X\T\y \]
+whenever $\X\T\X$ is invertible (i.e.\ $\X$ has full column rank). The Hessian $2\X\T\X$ is PSD,
+so $\RSS$ is convex and any stationary point is a global minimum; if $\X$ has full column rank the
+Hessian is PD and the minimiser is unique.
+
+\begin{remark}[How it is actually computed]
+	Nobody inverts $\X\T\X$. Forming it squares the condition number: for an intercept column
+	plus a feature ranging over $[1000,1001]$, $\kappa(\X)=\gv{c03_linreg/kX}$ but
+	$\kappa(\X\T\X)=\gv{c03_linreg/kXtX}$, so you lose about twice as many digits.
+	Libraries use a QR decomposition ($\X=\Q\mathbf R$, then solve $\mathbf R\w=\Q\T\y$) or the
+	SVD (\texttt{numpy.linalg.lstsq}, \texttt{scikit-learn}). On a 200-row, 3-feature example the
+	normal equations, QR, \texttt{lstsq} and \texttt{LinearRegression} all give
+	$\hat\w=(\gv{c03_linreg/w_ne})$ to machine precision (\script{c03_linreg}). Cost: $O(nd^2+d^3)$;
+	for very large $d$ or streaming data, use gradient descent instead.
+\end{remark}
+
+\begin{remark}
+	\trap ``The normal equations fail when features are correlated.'' They fail when features are
+	\emph{perfectly} collinear (or $n<d+1$), because $\X\T\X$ is singular. Strong but imperfect
+	correlation still gives a unique solution, only an unstable one (\S\ref{sec:collinear}).
+	Centring and scaling features do not change the fitted values of OLS, only the coefficients'
+	scale and the numerical conditioning.
+\end{remark}
+
+\section{The projection and MLE views}
+\prototype{$\hat\y$ is the shadow of $\y$ on the plane spanned by the feature columns.}
+
+\subsection{Geometry}
+$\X\w$ ranges over the column space $\mathcal C(\X)$, a $(d+1)$-dimensional subspace of $\RR^n$.
+The closest point to $\y$ in it is the orthogonal projection $\hat\y=\Hm\y$ with
+$\Hm=\X(\X\T\X)\inv\X\T$ (the \vocab{hat matrix}: it puts the hat on $\y$). The normal equations say
+$\X\T(\y-\hat\y)=\zero$: the residual vector is orthogonal to every column of $\X$.
+Two corollaries an interviewer can ask:
+\begin{itemize}
+	\ii With an intercept, residuals sum to zero (orthogonal to the ones column) and the fitted
+	line passes through $(\bar x,\bar y)$.
+	\ii Residuals are uncorrelated with every feature and with $\hat\y$ in the sample. A residual
+	plot that shows a trend against $\hat y$ therefore signals \emph{non-linearity}, not a coding
+	bug.
+\end{itemize}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}[scale=1.0, >=Stealth]
+		\fill[blue!8] (0,0) -- (5,0) -- (6.4,2) -- (1.4,2) -- cycle;
+		\node[blue!60!black] at (5.3,0.3) {$\mathcal C(\X)$};
+		\draw[->, thick] (2,0.6) -- (4.2,3.6) node[above] {$\y$};
+		\draw[->, thick, red!70!black] (2,0.6) -- (4.2,1.25) node[right] {$\hat\y=\Hm\y$};
+		\draw[dashed, thick] (4.2,3.6) -- (4.2,1.25) node[midway, right] {$\y-\hat\y\perp\mathcal C(\X)$};
+		\draw (4.2,1.5) -- (3.95,1.43) -- (3.95,1.18);
+		\fill (2,0.6) circle (1.2pt);
+	\end{tikzpicture}
+	\caption{Least squares projects $\y$ onto the column space of $\X$; the residual is
+		perpendicular to it.}
+	\label{fig:projection}
+\end{figure}
+
+\subsection{Probability}
+Assume $y_i=\w\T\x_i+\eps_i$ with $\eps_i\iid\Normal(0,\sigma^2)$. The log-likelihood is
+$-\frac{1}{2\sigma^2}\RSS(\w)-\frac n2\log(2\pi\sigma^2)$, so the MLE of $\w$ is OLS (as derived in
+\Cref{ch:maths}), and the MLE of $\sigma^2$ is $\RSS/n$ (biased; the unbiased estimate divides by
+$n-d-1$). Squared loss is therefore the natural loss when noise is Gaussian; with Laplace noise the
+MLE is least \emph{absolute} deviations, which estimates a conditional median.
+
+\begin{theorem}[Gauss--Markov]
+	If $\E[\bm\eps]=\zero$ and $\Cov(\bm\eps)=\sigma^2\I$ (zero mean, equal variance, uncorrelated
+	--- normality \emph{not} required), then OLS is the \vocab{BLUE}: the best (minimum-variance)
+	linear unbiased estimator of $\w$. Its covariance is $\sigma^2(\X\T\X)\inv$.
+\end{theorem}
+``Best among \emph{linear unbiased}'' is the catch: ridge is biased and can have lower mean squared
+error (\Cref{ch:biasvar}).
+
+\begin{moral}
+	OLS = calculus (normal equations) = geometry (projection) = statistics (Gaussian MLE).
+\end{moral}
+
+\section{Five points by hand}
+\prototype{The OA question: ``fit $y=b_0+b_1x$ to these five points''.}
+
+For one feature the normal equations reduce to
+\[ \hat b_1=\frac{\sum(x_i-\bar x)(y_i-\bar y)}{\sum(x_i-\bar x)^2}
+	=\frac{n\sum x_iy_i-\sum x_i\sum y_i}{n\sum x_i^2-(\sum x_i)^2}=r\frac{s_y}{s_x},
+	\qquad \hat b_0=\bar y-\hat b_1\bar x. \]
+The middle form is what you use with raw sums when the means are messy; the centred form is faster
+when $\bar x$ is an integer.
+
+\begin{example}[The OA fit]
+	Data: $x=(1,2,3,4,5)$, $y=(2,4,5,4,6)$.
+	Raw sums: $\sum x=\gv{c03_linreg/Sx}$, $\sum y=\gv{c03_linreg/Sy}$,
+	$\sum xy=\gv{c03_linreg/Sxy}$, $\sum x^2=\gv{c03_linreg/Sxx}$.
+	\[ \hat b_1=\frac{5\cdot71-15\cdot21}{5\cdot55-15^2}=\frac{40}{50}=\gv{c03_linreg/b1},\qquad
+		\hat b_0=\gv{c03_linreg/ybar}-0.8\cdot\gv{c03_linreg/xbar}=\gv{c03_linreg/b0}. \]
+	Centred check: $\sum(x-\bar x)(y-\bar y)=\gv{c03_linreg/cxy}$ and
+	$\sum(x-\bar x)^2=\gv{c03_linreg/cxx}$, ratio $0.8$.
+	Fitted values and residuals:
+	\begin{center}
+		\begin{tabular}{l|ccccc}
+			$x$ & 1 & 2 & 3 & 4 & 5 \\ \hline
+			$y$ & 2 & 4 & 5 & 4 & 6 \\
+			$\hat y$ & \gv{c03_linreg/yhat} \\
+			$y-\hat y$ & \gv{c03_linreg/res}
+		\end{tabular}
+	\end{center}
+	The residuals sum to $\gv{c03_linreg/sum_res}$ and $\sum x_i(y_i-\hat y_i)=\gv{c03_linreg/sum_xres}$,
+	as the normal equations demand. $\RSS=\gv{c03_linreg/rss}$, $\TSS=\sum(y-\bar y)^2=
+		\gv{c03_linreg/tss}$, so $R^2=1-2.4/8.8=\gv{c03_linreg/R2}$, which equals $r^2$ with
+	$r=\gv{c03_linreg/r}$. Prediction at $x=6$: $\gv{c03_linreg/pred6}$.
+	(Checked against \texttt{LinearRegression}, \texttt{numpy.polyfit} and
+	\texttt{scipy.stats.linregress}.)
+\end{example}
+
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.6\linewidth, height=0.42\linewidth, xlabel=$x$, ylabel=$y$,
+				xmin=0, xmax=6, ymin=0, ymax=7]
+			\addplot[blue!80!black, thick, domain=0:6] {\gv{c03_linreg/b0}+\gv{c03_linreg/b1}*x};
+			\addplot[only marks, mark=*, red!80!black] table[x=x,y=y] {gen/ml/data/c03_linreg-pts.dat};
+			\addplot[gray, dashed] coordinates {(1,2) (1,2.6)};
+			\addplot[gray, dashed] coordinates {(2,4) (2,3.4)};
+			\addplot[gray, dashed] coordinates {(3,5) (3,4.2)};
+			\addplot[gray, dashed] coordinates {(4,4) (4,5.0)};
+			\addplot[gray, dashed] coordinates {(5,6) (5,5.8)};
+			\node[font=\footnotesize, anchor=west] at (axis cs:0.2,6.3) {$\hat y=1.8+0.8x$};
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+
+\begin{example}[Is the slope significant?]
+	Residual variance $s^2=\RSS/(n-2)=0.8$; standard error
+	$\mathrm{SE}(\hat b_1)=\sqrt{s^2/\sum(x-\bar x)^2}=\gv{c03_linreg/se_b1}$; $t=0.8/0.2828=
+		\gv{c03_linreg/t_b1}$ on $3$ degrees of freedom, two-sided $p=\gv{c03_linreg/p_b1}$. With five
+	points, an $R^2$ of $0.73$ is \emph{not} significant at the 5\% level. Small samples make large
+	$R^2$ cheap.
+\end{example}
+
+\begin{remark}
+	\trap Regressing $x$ on $y$ does \emph{not} give slope $1/\hat b_1$. It gives
+	$r\,s_x/s_y$, and the product of the two slopes is $r^2\le1$. Both lines pass through
+	$(\bar x,\bar y)$ and coincide only if $\abs r=1$. Also: the slope has units of $y$ per unit of
+	$x$, so ``a bigger coefficient means a more important feature'' is meaningless unless features
+	are on a common scale.
+\end{remark}
+
+\section{Gradient descent, traced}
+\prototype{Three gradient steps on the five points, by hand.}
+
+For MSE $J(\w)=\frac1n\norm{\X\w-\y}^2$ the gradient is $\frac2n\X\T(\X\w-\y)$ and the update is
+$\w\leftarrow\w-\eta\nabla J$. In coordinates, with $e_i=\hat y_i-y_i$:
+\[ w_0\leftarrow w_0-\eta\cdot\tfrac2n\textstyle\sum e_i,\qquad
+	w_1\leftarrow w_1-\eta\cdot\tfrac2n\sum e_ix_i. \]
+
+\begin{example}[The first iterations, $\eta=0.05$, from $\w=\zero$]
+	\begin{center}
+		\small
+		\begin{tabular}{rrrrrr}
+			\toprule
+			$t$ & $w_0$ & $w_1$ & MSE & $\partial J/\partial w_0$ & $\partial J/\partial w_1$\\
+			\midrule
+			\gv{c03_linreg/gd_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Step 0: all predictions are $0$, errors are $-y$, so $\partial J/\partial w_0=-2\cdot21/5=-8.4$
+	and $\partial J/\partial w_1=-2\cdot71/5=-28.4$; the step moves to $(0.42, 1.42)$. After 500
+	steps $\w=(\gv{c03_linreg/gd_w0},\gv{c03_linreg/gd_w1})$, the closed form to three decimals, and
+	the MSE floor is $\RSS/n=\gv{c03_linreg/loss_min}$.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth, xlabel={iteration},
+				ylabel={MSE}, ymode=log, xmin=0, xmax=500]
+			\addplot[blue!80!black, thick] table[x=t,y=loss] {gen/ml/data/c03_linreg-gd.dat};
+			\addplot[gray, dashed, domain=0:500] {0.48};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{GD on the five points: a fast drop along the steep direction, then slow progress
+		along the shallow one (the intercept), typical of an ill-conditioned quadratic.}
+	\label{fig:gd-trace}
+\end{figure}
+
+On a quadratic, GD converges iff $\eta<2/\lambda_{\max}$ of the Hessian $\frac2n\X\T\X$; here
+that bound is $\gv{c03_linreg/eta_max}$, so $\eta=0.05$ is safe and $\eta=0.1$ would diverge
+(\Cref{ch:optim}). Unscaled features make $\lambda_{\max}$ huge, forcing a tiny $\eta$ and slow
+convergence along the other directions: the practical reason to standardise before gradient
+descent, even though OLS's solution does not care.
+
+\section{\texorpdfstring{$R^2$}{R squared} and adjusted \texorpdfstring{$R^2$}{R squared}}
+\prototype{Adding twenty columns of random noise raises $R^2$ from $0.64$ to $0.83$.}
+
+\begin{definition}
+	$R^2=1-\RSS/\TSS$ with $\TSS=\sum(y_i-\bar y)^2$: the fraction of variance of $y$ explained
+	by the model, relative to predicting $\bar y$. With $p$ features (excluding the intercept),
+	\[ R^2_{\text{adj}}=1-(1-R^2)\frac{n-1}{n-p-1}. \]
+\end{definition}
+
+Facts worth stating crisply:
+\begin{itemize}
+	\ii On the training data with an intercept, $0\le R^2\le1$, and $R^2$ never decreases when
+	you add a feature (the old fit is still available).
+	\ii On \emph{test} data $R^2$ can be negative: the model is worse than predicting the training
+	mean. \texttt{sklearn}'s \texttt{r2\_score} returns such values.
+	\ii Adjusted $R^2$ rises when a new feature's $\abs t>1$ and falls otherwise; it penalises
+	features but is not a substitute for validation.
+\end{itemize}
+
+\begin{example}[Junk features]
+	$n=40$, one real feature, then $k=0,\dots,20$ added columns of pure noise, averaged over 300
+	datasets. $R^2$ climbs from $\gv{c03_linreg/r2_0}$ to $\gv{c03_linreg/r2_20}$; adjusted $R^2$
+	stays flat ($\gv{c03_linreg/adj_0}\to\gv{c03_linreg/adj_20}$).
+	OA version: $R^2=0.80$, $n=50$, $p=4$ gives
+	$R^2_{\text{adj}}=1-0.2\cdot49/45=\gv{c03_linreg/oa_adj}$.
+\end{example}
+
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth,
+				xlabel={number of noise features added}, ylabel={mean over 300 datasets},
+				legend pos=north west, ymin=0.5, ymax=0.9]
+			\addplot[blue!80!black, thick, mark=*, mark size=1pt] table[x=k,y=r2] {gen/ml/data/c03_linreg-adjr2.dat};
+			\addplot[red!80!black, thick, mark=square*, mark size=1pt] table[x=k,y=adj] {gen/ml/data/c03_linreg-adjr2.dat};
+			\legend{$R^2$, adjusted $R^2$}
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+	\trap ``High $R^2$ means the model is correct'' and ``low $R^2$ means it is useless'' are both
+	wrong. A curved relationship fitted by a line can have $R^2=0.9$ and systematic residuals; a
+	noisy but real effect (returns on a stock) can have $R^2=0.02$ and be valuable. $R^2$ also
+	depends on the spread of $x$ in the sample: restrict the range and $R^2$ drops with the same
+	underlying slope.
+\end{remark}
+
+\section{Assumptions, diagnostics, multicollinearity}
+\label{sec:collinear}
+\prototype{Two nearly identical features --- area in square feet and in square metres rounded
+	differently --- get coefficients $+300$ and $-290$.}
+
+\subsection{The assumptions, and what breaks when each fails}
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{0.2\linewidth}
+		>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+		\toprule
+		Assumption & Diagnostic & If violated \\
+		\midrule
+		Linearity of $\E[y\mid\x]$ & residuals vs fitted show a curve & biased predictions; add
+		features/transforms or a non-linear model \\
+		Independent errors & residuals vs time/order, Durbin--Watson & standard errors too small;
+		use time-series models or clustered errors \\
+		Homoscedasticity (constant variance) & funnel-shaped residual plot & OLS still unbiased but
+		SEs wrong; log-transform $y$, weighted LS, robust SEs \\
+		Normal errors & Q--Q plot of residuals & only matters for small-sample tests and intervals \\
+		No perfect collinearity & rank of $\X$, VIF & no unique solution; drop/combine features,
+		ridge \\
+		No influential outliers & leverage $h_{ii}$, Cook's distance & a single point drags the
+		line; robust losses \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+
+\begin{remark}
+	\trap ``Linear regression requires $x$ and $y$ to be normally distributed.'' No assumption is
+	made about the distribution of $x$ at all, and the normality assumption (needed only for exact
+	$t$/$F$ inference) is on the \emph{errors}, not on $y$.
+\end{remark}
+
+\subsection{Multicollinearity and VIF}
+When features are highly correlated, $\X\T\X$ is nearly singular, $(\X\T\X)\inv$ has huge entries,
+and since $\Cov(\hat\w)=\sigma^2(\X\T\X)\inv$ the individual coefficients have huge variance.
+Predictions inside the data range are fine; \emph{interpretation} of individual coefficients is
+not.
+
+\begin{definition}
+	The \vocab{variance inflation factor} of feature $j$ is $\VIF_j=1/(1-R_j^2)$, where $R_j^2$ is
+	the $R^2$ of regressing feature $j$ on all the other features. Equivalently, $\VIF_j$ is the
+	$j$-th diagonal entry of the inverse of the feature correlation matrix. Rules of thumb: above
+	5 worrying, above 10 serious.
+\end{definition}
+
+\begin{example}[VIF and unstable coefficients]
+	Features $a,b,c$ with $\Corr(a,b)=\gv{c03_linreg/corr_ab}$ and $c$ independent. VIFs are
+	$(\gv{c03_linreg/vif})$ (computed both by auxiliary regressions and from the inverse correlation
+	matrix). Fit $y=1+a+b+c+\eps$ on 500 bootstrap resamples: the standard deviation of $\hat w_a$
+	is $\gv{c03_linreg/sd_a}$, about $\gv{c03_linreg/ratio_sd}$ times that of $\hat w_c$
+	($\gv{c03_linreg/sd_c}$), roughly $\sqrt{\VIF}$ as theory predicts. But the \emph{sum}
+	$\hat w_a+\hat w_b$ has standard deviation only $\gv{c03_linreg/sd_sum}$: the data pin down the
+	combined effect, not how to split it.
+\end{example}
+
+\begin{remark}
+	\trap Multicollinearity does not bias OLS and does not hurt prediction on data like the
+	training data. It inflates the variance of individual coefficients, flips signs, and makes
+	``feature importance from coefficients'' meaningless. Remedies: drop one of a correlated pair,
+	combine them, use ridge (which splits weight between them), or PCA regression.
+\end{remark}
+
+\subsection{Interpreting coefficients}
+$\hat w_j$ is the change in predicted $y$ per unit change in $x_j$ \emph{holding the other
+	features fixed}. With $\log y$ as the target, $100\hat w_j$ is approximately the percentage
+change in $y$ per unit of $x_j$; with both logged, $\hat w_j$ is an elasticity. A dummy variable's
+coefficient is the shift relative to the omitted (reference) category; including all $K$ dummies
+plus an intercept is the \vocab{dummy variable trap} (perfect collinearity).
+
+\section{Polynomial features and robust losses}
+\prototype{Fit $y=w_0+w_1x+w_2x^2$ with the same OLS machinery.}
+
+Replacing $\x$ by a feature map $\phi(\x)$ (powers, interactions, splines, logs) keeps the problem
+linear in $\w$, so all of the above applies. The cost is dimension: all monomials of degree
+$\le D$ in $p$ variables number $\binom{p+D}{D}$. For $p=10$: degree 2 gives
+$\gv{c03_linreg/poly_10_2}$ features and degree 3 gives $\gv{c03_linreg/poly_10_3}$; $p=100$ at
+degree 2 already gives $\gv{c03_linreg/poly_100_2}$ (counts checked against
+\texttt{PolynomialFeatures}). High degrees overfit and extrapolate wildly (\Cref{fig:degree-sweep});
+scale $x$ first, because $x^9$ for $x\sim1000$ wrecks conditioning. Kernels (\Cref{ch:svm}) are a
+way to use enormous feature maps without forming them.
+
+\begin{example}[One outlier]
+	Ten points on $y\approx2x+1$, with the last $y$ replaced by $60$. The OLS slope becomes
+	$\gv{c03_linreg/ols_slope}$; the Huber loss (quadratic for small residuals, linear for large
+	ones) gives $\gv{c03_linreg/hub_slope}$. Squared loss lets one point with a large residual
+	dominate the fit.
+\end{example}
+
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.6\linewidth, height=0.38\linewidth, xlabel=$x$, ylabel=$y$,
+				legend pos=north west]
+			\addplot[only marks, mark=*, mark size=1.5pt] table[x=x,y=y] {gen/ml/data/c03_linreg-outlier_pts.dat};
+			\addplot[red!80!black, thick, dashed] table[x=x,y=ols] {gen/ml/data/c03_linreg-outlier_line.dat};
+			\addplot[blue!80!black, thick] table[x=x,y=hub] {gen/ml/data/c03_linreg-outlier_line.dat};
+			\legend{data, OLS, Huber}
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+
+\begin{moral}
+	Linear in the parameters, not in the inputs: feature maps buy flexibility, squared loss buys a
+	closed form and sensitivity to outliers.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Fit a line]
+	\onechili
+	Fit $y=b_0+b_1x$ to $(1,1)$, $(2,3)$, $(3,2)$, $(4,5)$, $(5,4)$. Report $b_0$, $b_1$, $R^2$,
+	and the prediction at $x=7$.
+	\begin{hint}
+		$\bar x=3$, $\bar y=3$; compute $\sum(x-\bar x)(y-\bar y)$.
+	\end{hint}
+	\begin{sol}
+		Centred products: $(-2)(-2)+(-1)(0)+0+(1)(2)+(2)(1)=8$; $\sum(x-\bar x)^2=10$. So
+		$b_1=\gv{c03_problems/p3a_b1}$, $b_0=3-2.4=\gv{c03_problems/p3a_b0}$. Fitted: $\gv{c03_problems/p3a_yhat}$; residuals $\gv{c03_problems/p3a_res}$,
+		$\RSS=0.16+0.64+1+1.44+0.36=\gv{c03_problems/p3a_rss}$, $\TSS=4+0+1+4+1=\gv{c03_problems/p3a_tss}$, $R^2=\gv{c03_problems/p3a_r2}$. At $x=7$: $\gv{c03_problems/p3a_pred7}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Slope from summary statistics]
+	\onechili
+	For 100 students, the correlation between study hours and score is $0.6$, the standard
+	deviation of hours is 2 and of scores is 10. Mean hours 5, mean score 60. Give the regression
+	line of score on hours and the predicted score for 8 hours. What is the slope of the regression
+	of hours on score?
+	\begin{hint}
+		$b_1=r\,s_y/s_x$.
+	\end{hint}
+	\begin{sol}
+		$b_1=0.6\cdot10/2=\gv{c03_problems/p3b_b1}$, $b_0=60-3\cdot5=\gv{c03_problems/p3b_b0}$; prediction $45+24=\gv{c03_problems/p3b_pred}$. The reverse regression has
+		slope $0.6\cdot2/10=\gv{c03_problems/p3b_rev}$, not $1/3$; the product of the slopes is $r^2=0.36$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Duplicated feature]
+	\twochili
+	You accidentally include the same feature twice, $x_2=x_1$. What happens to (a) the normal
+	equations, (b) \texttt{sklearn}'s \texttt{LinearRegression}, (c) the predictions, (d) ridge?
+	\begin{hint}
+		Rank of $\X$; minimum-norm solutions.
+	\end{hint}
+	\begin{sol}
+		(a) $\X\T\X$ is singular; no unique solution (any $w_1+w_2=c$ works). (b) It uses an SVD
+		least-squares solver and returns the minimum-norm solution, splitting the weight equally.
+		(c) Predictions are unchanged and well defined; only the coefficients are not identified.
+		(d) Ridge has a unique solution and also splits the weight equally, $w_1=w_2$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Adjusted $R^2$]
+	\onechili
+	Model A has 3 features and $R^2=0.70$; model B has 10 features and $R^2=0.74$; $n=60$.
+	Which has higher adjusted $R^2$?
+	\begin{hint}
+		Plug into $1-(1-R^2)(n-1)/(n-p-1)$.
+	\end{hint}
+	\begin{sol}
+		A: $1-0.30\cdot59/56=\gv{c03_problems/p3d_a}$. B: $1-0.26\cdot59/49=\gv{c03_problems/p3d_b}$. B is marginally higher; the
+		extra features carry a little signal. In practice, compare on validation data.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Residual orthogonality]
+	\twochili
+	Prove that for OLS with an intercept, $\sum_i(y_i-\hat y_i)=0$ and $\sum_i\hat y_i(y_i-\hat y_i)=0$.
+	Deduce $\TSS=\RSS+\mathrm{ESS}$ where $\mathrm{ESS}=\sum(\hat y_i-\bar y)^2$.
+	\begin{hint}
+		$\X\T(\y-\hat\y)=\zero$ and $\hat\y=\X\hat\w$.
+	\end{hint}
+	\begin{sol}
+		The first row of $\X\T(\y-\hat\y)=\zero$ is the ones column: residuals sum to zero.
+		$\hat\y\T(\y-\hat\y)=\hat\w\T\X\T(\y-\hat\y)=0$. Write $y_i-\bar y=(y_i-\hat y_i)+(\hat y_i-\bar
+			y)$, square and sum; the cross term is $\sum e_i\hat y_i-\bar y\sum e_i=0$. Without an
+		intercept this decomposition (and $R^2\ge0$) can fail.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Learning-rate bound]
+	\threechili
+	For $J(\w)=\frac1n\norm{\X\w-\y}^2$, show that gradient descent converges for every starting
+	point iff $0<\eta<2/\lambda_{\max}$ where $\lambda_{\max}$ is the largest eigenvalue of
+	$\frac2n\X\T\X$ (assume full column rank).
+	\begin{hint}
+		Write the error $\w_t-\hat\w$ and show it is multiplied by $\I-\eta\Hm_J$ each step.
+	\end{hint}
+	\begin{sol}
+		With $\Hm_J=\frac2n\X\T\X$, $\nabla J(\w)=\Hm_J(\w-\hat\w)$, so
+		$\w_{t+1}-\hat\w=(\I-\eta\Hm_J)(\w_t-\hat\w)$. In the eigenbasis each component is multiplied
+		by $1-\eta\lambda_i$ per step; all shrink iff $\abs{1-\eta\lambda_i}<1$ for every $i$, i.e.\
+		$0<\eta<2/\lambda_i$ for all $i$, i.e.\ $\eta<2/\lambda_{\max}$. The slowest direction
+		contracts by $1-\eta\lambda_{\min}$, which is why the condition number
+		$\lambda_{\max}/\lambda_{\min}$ governs speed.
+	\end{sol}
+\end{problem}
