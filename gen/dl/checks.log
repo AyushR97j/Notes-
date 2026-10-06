@@ -190,13 +190,13 @@
 [check] c06_cnn: transposed conv out n=5 k=3 s=1 p=1: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: transposed conv by scattering vs torch: ours=[1. 3. 2. 4. 9. 4.] ref=[1. 3. 2. 4. 9. 4.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: <conv(x), y> = <x, conv_transpose(y)>: ours=[14.531618] ref=[14.531618] max|diff|=1.78e-15 -> OK
-[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: VGG-16 config: feature map 7x7x512 at 224: ours=[  1. 512.   7.   7.] ref=[  1. 512.   7.   7.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: ResNet-18 config output shape: ours=[   1. 1000.] ref=[   1. 1000.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: IoU vs pixel counting: ours=[0.142857] ref=[0.142857] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: NMS vs vectorised reference: ours=[0. 2. 5.] ref=[0. 2. 5.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem A conv2 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem C receptive field: ours=[19.] ref=[19.] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
 [check] c07_rnn: scalar RNN unrolled by hand vs nn.RNN: ours=[ 0.462117  0.550915 -0.059199] ref=[ 0.462117  0.550915 -0.059199] max|diff|=2.22e-16 -> OK
 [check] c07_rnn: dh3/dh1 by chain rule vs autograd: ours=[0.444193] ref=[0.444193] max|diff|=1.11e-16 -> OK
 [check] c07_rnn: rnn D=10 H=20 params: ours=[640.] ref=[640.] max|diff|=0.00e+00 -> OK
@@ -216,3 +216,31 @@
 [check] c07_rnn: problem: LSTM(50,64): ours=[29696.] ref=[29696.] max|diff|=0.00e+00 -> OK
 [check] c07_rnn: problem: GRU(50,64): ours=[22272.] ref=[22272.] max|diff|=0.00e+00 -> OK
 [check] c07_rnn: problem: Linear(128,5): ours=[645.] ref=[645.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: 3-token attention vs F.scaled_dot_product_attention: ours=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] ref=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
+[check] c08_attention: causal attention vs is_causal=True: ours=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] ref=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
+[check] c08_attention: padding-masked attention vs attn_mask: ours=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] ref=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] max|diff|=4.44e-16 -> OK
+[check] c08_capstone: our MHA (cross, key padding) vs nn.MultiheadAttention: ours=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] ref=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: our pre-LN encoder layer vs nn.TransformerEncoderLayer(norm_first=True): ours=[ 0.909841 -0.820358  0.08486   1.345751 -1.570617 -1.669031] ref=[ 0.90984  -0.820358  0.08486   1.345751 -1.570617 -1.669031] max|diff|=2.38e-07 -> OK
+[check] c08_capstone: our pre-LN decoder layer vs nn.TransformerDecoderLayer(norm_first=True): ours=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] ref=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] max|diff|=3.58e-07 -> OK
+[check] c08_attention: Var(q.k) grows linearly in d_k (log-log slope): ours=[0.993558] ref=[1.] max|diff|=6.44e-03 -> OK
+[check] c08_attention: NumPy MHA vs nn.MultiheadAttention (output): ours=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] ref=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] max|diff|=1.67e-16 -> OK
+[check] c08_attention: NumPy MHA vs nn.MultiheadAttention (weights): ours=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] ref=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] max|diff|=5.55e-17 -> OK
+[check] c08_attention: NumPy causal MHA vs nn.MultiheadAttention(attn_mask): ours=[-0.573042  0.202951 -0.590569 -0.14893  -0.828076 -0.640935] ref=[-0.573042  0.202951 -0.590569 -0.14893  -0.828076 -0.640935] max|diff|=8.33e-17 -> OK
+[check] c08_attention: self-attention is permutation-equivariant: ours=[-0.222018 -0.025682 -0.280655  0.068826 -0.23368  -0.38999 ] ref=[-0.222018 -0.025682 -0.280655  0.068826 -0.23368  -0.38999 ] max|diff|=1.11e-16 -> OK
+[check] c08_attention: MHA d=512 params: ours=[1050624.] ref=[1050624.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: MHA d=768 params: ours=[2362368.] ref=[2362368.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: MHA d=1024 params: ours=[4198400.] ref=[4198400.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: PE(p+k) = R_k PE(p) for all p: ours=[-0.958924  0.283662  0.323935 -0.946079  0.999947 -0.010342] ref=[-0.958924  0.283662  0.323935 -0.946079  0.999947 -0.010342] max|diff|=2.66e-15 -> OK
+[check] c08_attention: RoPE: q_m . k_n depends only on m - n: ours=[4.397777 4.397777 4.397777] ref=[4.397777 4.397777 4.397777] max|diff|=0.00e+00 -> OK
+[check] c08_attention: RoPE preserves norms: ours=[3.096369] ref=[3.096369] max|diff|=0.00e+00 -> OK
+[check] c08_attention: encoder layer d=512: ours=[3152384.] ref=[3152384.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: decoder layer d=512: ours=[4204032.] ref=[4204032.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: encoder layer d=768: ours=[7087872.] ref=[7087872.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: decoder layer d=768: ours=[9451776.] ref=[9451776.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: nn.Transformer(512, 8, 6+6, 2048) body: ours=[44140544.] ref=[44140544.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: 12-layer d=768 encoder stack: ours=[85054464.] ref=[85054464.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: blockwise online-softmax attention == standard: ours=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] ref=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] max|diff|=4.44e-16 -> OK
+[check] c08_attention: problem A vs torch: ours=[13.302385 15.      ] ref=[13.302385 15.      ] max|diff|=1.78e-15 -> OK
+[check] c08_attention: problem B MHA(256): ours=[263168.] ref=[263168.] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: NumPy Transformer forward vs PyTorch (trained weights, 50 sequences): ours=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] ref=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] max|diff|=1.20e-14 -> OK
+[check] c08_capstone: NumPy greedy decoding == PyTorch greedy decoding (200 sequences): ours=[ 1.  9.  4.  4. 10.  6.] ref=[ 1.  9.  4.  4. 10.  6.] max|diff|=0.00e+00 -> OK

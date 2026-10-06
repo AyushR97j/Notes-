@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-05 done and committed; next = chapter 06-cnn (code/dl/c06_*.py), then 07..14, preface last.
+RESUME HERE: chapters 01-08 done and committed; next = chapter 09-llm (code/dl/c09_*.py), then 10..14, preface last. Keep later chapters tight (page budget 140-190 incl. appendices).
 
 # Deep Learning — progress log
 
@@ -49,9 +49,9 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 03 Backpropagation ★
 - [x] 04 Optimisers and schedules ★
 - [x] 05 Init, normalisation, regularisation ★
-- [ ] 06 CNNs ★
-- [ ] 07 RNNs ★
-- [ ] 08 Attention and Transformer ★ (+ capstone)
+- [x] 06 CNNs ★
+- [x] 07 RNNs ★
+- [x] 08 Attention and Transformer ★ (+ capstone)
 - [ ] 09 LLMs
 - [ ] 10 Generative and representation learning
 - [ ] 11 Practice and PyTorch

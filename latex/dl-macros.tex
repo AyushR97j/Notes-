@@ -47,3 +47,6 @@
 	flow/.style={-{Stealth[length=2mm]}, thick, black!70},
 	gradflow/.style={-{Stealth[length=2mm]}, thick, red!70!black, dashed},
 }
+
+% part entries in the ToC have 3-digit page numbers in this book (2.8pt overfull otherwise)
+\RedeclareSectionCommand[tocnumwidth=4.2em,tocpagenumberwidth=2.6em]{part}

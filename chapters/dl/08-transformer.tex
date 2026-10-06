@@ -1,4 +1,524 @@
 \chapter{Attention and the Transformer}
 \label{ch:transformer}
-\section{Attention and the Transformer}
-\stub{Attention and the Transformer}
+
+The Transformer \cite{vaswani} is the architecture behind essentially every large
+language model and much of modern vision and speech. It is also the most common
+``implement it from scratch'' request in ML interviews, from founder rounds at
+start-ups to research-engineer loops. This chapter builds it piece by piece with the
+shapes written out at every step, derives why the scores are divided by $\sqrt{d_k}$,
+counts parameters and FLOPs, and ends with a capstone: a complete encoder--decoder
+Transformer written in PyTorch and again in NumPy, trained on a toy task, with the two
+implementations and PyTorch's own layers asserted to agree.
+
+\section{Attention as a soft dictionary lookup}
+\prototype{A decoder translating word $t$ looks back at all encoder states and takes a
+weighted average, with weights from a softmax over relevance scores.}
+
+A Python dictionary returns the value whose key \emph{equals} the query. Attention returns
+a blend of \emph{all} values, weighted by how well each key matches the query:
+\[
+	\text{output}=\sum_i\alpha_i\,\vv_i,\qquad
+	\alpha_i=\frac{\exp(\mathrm{score}(\bq,\bk_i))}{\sum_j\exp(\mathrm{score}(\bq,\bk_j))}.
+\]
+Because the weights come from a softmax, the lookup is differentiable and can be learned.
+
+Attention entered deep learning to fix the seq2seq bottleneck of \cref{ch:rnn}: instead of
+squeezing the source sentence into one vector, the decoder at step $t$ computes a fresh
+\vocab{context vector} $\bc_t=\sum_i\alpha_{ti}\h_i$ over all encoder states $\h_i$.
+\begin{itemize}
+	\ii \vocab{Additive (Bahdanau) attention} \cite{bahdanau} scores with a one-hidden-layer
+	network on the previous decoder state and an encoder state,
+	$\mathrm{score}(\bs_{t-1},\h_i)=\vv\T\tanh(\W\bs_{t-1}+\U\h_i)$.
+	\ii \vocab{Multiplicative (Luong) attention}: $\mathrm{score}(\bs_t,\h_i)=\bs_t\T\W\h_i$ (or just
+	the dot product $\bs_t\T\h_i$). Cheaper: one matrix multiplication for all pairs.
+\end{itemize}
+The Transformer keeps the dot product, adds a scale, and, crucially, uses attention between
+positions of the \emph{same} sequence (\vocab{self-attention}) as its main operation, dropping
+recurrence entirely.
+
+\section{Scaled dot-product attention}
+\prototype{Three tokens with $2$-dimensional queries, keys and values; the first output row is
+$(\gv{c08_attention/o1_0},\,4.000)$.}
+
+\subsection{Definition and a worked example}
+Stack queries, keys and values as rows: $\Q\in\RR^{T_q\times d_k}$, $\K\in\RR^{T_k\times d_k}$,
+$\V\in\RR^{T_k\times d_v}$. Then
+\[
+	\Attn(\Q,\K,\V)=\softmax\!\Bigl(\frac{\Q\K\T}{\sqrt{d_k}}\Bigr)\V,
+\]
+with the softmax taken over each row (over keys). The score matrix has shape $\shp{T_q,T_k}$;
+each row of the weight matrix sums to one; the output has shape $\shp{T_q,d_v}$.
+
+\codefile[\script{c08_attention}]{gen/dl/snip/c08_attention-sdpa.py}
+
+\begin{example}[Attention on three tokens]
+	\label{ex:attn3}
+	$\Q=\K=\begin{psmallmatrix}1&0\\0&1\\1&1\end{psmallmatrix}$,
+	$\V=\begin{psmallmatrix}1&2\\3&4\\5&6\end{psmallmatrix}$, $d_k=2$.
+	\[
+		\Q\K\T=\begin{pmatrix}\gv{c08_attention/QKt}\end{pmatrix},\quad
+		\frac{\Q\K\T}{\sqrt2}=\begin{pmatrix}\gv{c08_attention/S}\end{pmatrix},
+	\]
+	\[
+		\A=\begin{pmatrix}\gv{c08_attention/A}\end{pmatrix},\quad
+		\A\V=\begin{pmatrix}\gv{c08_attention/O}\end{pmatrix}.
+	\]
+	Token 3 matches every key and attends most to itself; token 1 splits its attention equally
+	between keys 1 and 3. The result equals \pt{F.scaled\_dot\_product\_attention}.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[width=0.36\linewidth, height=0.36\linewidth, enlargelimits=false, axis on top,
+		xlabel={key}, ylabel={query}, y dir=reverse, xtick={0,1,2}, ytick={0,1,2},
+		xticklabels={1,2,3}, yticklabels={1,2,3}, colormap/viridis, colorbar,
+		colorbar style={width=0.25cm, font=\scriptsize}, point meta min=0, point meta max=1, font=\small]
+		\addplot[matrix plot*, point meta=explicit, mesh/cols=3, mesh/ordering=y varies]
+			table[x=x, y=y, meta=a] {gen/dl/data/c08_attention-heat3.dat};
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+\end{example}
+
+\subsection{Why divide by $\sqrt{d_k}$}
+\begin{proposition}
+	If the components of $\bq$ and $\bk$ are independent with mean $0$ and variance $1$, then
+	$\bq\T\bk=\sum_{i=1}^{d_k}q_ik_i$ has mean $0$ and variance $d_k$.
+\end{proposition}
+\begin{proof}
+	Each term has mean $\E q_i\E k_i=0$ and variance $\E q_i^2\E k_i^2=1$; the $d_k$ terms are
+	independent, so the variances add.
+\end{proof}
+So unscaled scores have standard deviation $\sqrt{d_k}$, and for $d_k=64$ typical score gaps are
+around $8$: the softmax is then nearly one-hot. A saturated softmax has a Jacobian
+$\diag(\bm p)-\bm p\bm p\T$ close to zero, so the gradients through the attention weights vanish and
+learning stalls. Dividing by $\sqrt{d_k}$ restores unit variance whatever the head size.
+
+\begin{example}[Measuring it]
+	Random unit-variance $\bq,\bk$; variance of $\bq\T\bk$: $\gv{c08_attention/var_4}$,
+	$\gv{c08_attention/var_16}$, $\gv{c08_attention/var_64}$, $\gv{c08_attention/var_256}$,
+	$\gv{c08_attention/var_1024}$ for $d_k=4,16,64,256,1024$. Mean largest attention weight over
+	$32$ keys, without and with scaling:
+	\begin{center}
+		\small
+		\begin{tabular}{lccccc}
+			\toprule
+			$d_k$ & 4 & 16 & 64 & 256 & 1024 \\
+			\midrule
+			unscaled & $\gv{c08_attention/maxraw_4}$ & $\gv{c08_attention/maxraw_16}$ & $\gv{c08_attention/maxraw_64}$ & $\gv{c08_attention/maxraw_256}$ & $\gv{c08_attention/maxraw_1024}$ \\
+			scaled & $\gv{c08_attention/maxsc_4}$ & $\gv{c08_attention/maxsc_16}$ & $\gv{c08_attention/maxsc_64}$ & $\gv{c08_attention/maxsc_256}$ & $\gv{c08_attention/maxsc_1024}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	At $d_k=1024$ the unscaled weights have entropy $\gv{c08_attention/ent_raw_1024}$ nats against
+	$\gv{c08_attention/ent_sc_1024}$ scaled (uniform: $\ln32=\gv{c08_attention/ln32}$). For one row
+	of $32$ scores at $d_k=512$ the Frobenius norm of the softmax Jacobian is
+	$\gv{c08_attention/jac_raw}$ unscaled and $\gv{c08_attention/jac_scaled}$ scaled.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.55\linewidth, height=0.36\linewidth, xmode=log, log basis x=2,
+		xlabel={$d_k$}, ylabel={mean max weight}, ymin=0, ymax=1, legend pos=outer north east]
+		\addplot+[mark=*] table[x=dk,y=max_raw] {gen/dl/data/c08_attention-sqrtdk.dat}; \addlegendentry{$\Q\K\T$}
+		\addplot+[mark=square*] table[x=dk,y=max_scaled] {gen/dl/data/c08_attention-sqrtdk.dat}; \addlegendentry{$\Q\K\T/\sqrt{d_k}$}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+\end{example}
+
+\begin{remark}
+	\trap ``We divide by $\sqrt{d_k}$ to normalise the attention weights'' (the softmax already does
+	that) or ``to reduce computation''. The reason is the \emph{variance} of the dot product: it keeps
+	the softmax out of saturation so gradients flow. It is $\sqrt{d_k}$, not $d_k$, because standard
+	deviation scales with the square root of the variance.
+\end{remark}
+
+\subsection{Masks}
+A mask sets blocked scores to $-\infty$ \emph{before} the softmax, so blocked positions get weight
+exactly $0$ and each row still sums to one.
+\begin{itemize}
+	\ii \vocab{Causal (look-ahead) mask}: query $i$ may attend only to keys $j\le i$ (strictly upper
+	triangle blocked). Needed in decoders so that position $i$ cannot see the token it is trained to
+	predict; it is what lets a whole sequence be trained in parallel with teacher forcing.
+	\ii \vocab{Padding mask}: in a batch of sequences of different lengths, padding positions are
+	blocked as keys so no real token attends to them.
+\end{itemize}
+For \cref{ex:attn3}, a causal mask and, alternatively, treating key 3 as padding give the weights
+\[
+	\A_\text{causal}=\begin{pmatrix}\gv{c08_attention/Ac}\end{pmatrix},\qquad
+	\A_\text{pad}=\begin{pmatrix}\gv{c08_attention/Ap}\end{pmatrix},
+\]
+matching PyTorch with \pt{is\_causal=True} and with an \pt{attn\_mask} respectively.
+
+\begin{remark}
+	\trap Masking \emph{after} the softmax (multiplying the weights by $0/1$) leaves rows that no longer
+	sum to one: here the row sums would be $\gv{c08_attention/Abad_rowsum}$. And the causal mask is not
+	optional at inference ``because future tokens are not there yet'': during training they are there,
+	and the model must be trained under the same constraint it will be used with.
+\end{remark}
+
+\section{Multi-head attention, with shapes}
+\prototype{$\dmodel=512$, $8$ heads of size $64$: four $512\times512$ projections, $\gv{c08_attention/mha_512}$
+parameters, and attention computed in eight $64$-dimensional subspaces in parallel.}
+
+One attention pattern per layer is limiting: a token may need to look at its syntactic head, its
+coreferent and the previous token at the same time. \vocab{Multi-head attention} runs $h$ attentions in
+parallel on learned projections of size $d_k=\dmodel/h$ and concatenates the results:
+\begin{gather*}
+	\MHA(\X)=\mathrm{Concat}(\text{head}_1,\dots,\text{head}_h)\,\Wo,\\
+	\text{head}_j=\Attn\bigl(\X\Wq^{(j)},\ \X\Wk^{(j)},\ \X\Wv^{(j)}\bigr).
+\end{gather*}
+In code all heads come from one $\dmodel\times\dmodel$ matrix per role, reshaped:
+\begin{center}
+	\small
+	\begin{tabular}{ll}
+		\toprule
+		step & shape \\
+		\midrule
+		input $\X$ & $\shp{B,T,\dmodel}$ \\
+		$\X\Wq\T$, $\X\Wk\T$, $\X\Wv\T$ & $\shp{B,T,\dmodel}$ each \\
+		split heads: reshape, transpose & $\shp{B,h,T,d_k}$ \\
+		scores $\Q\K\T/\sqrt{d_k}$ (+ mask) & $\shp{B,h,T,T}$ \\
+		softmax over the last axis, times $\V$ & $\shp{B,h,T,d_k}$ \\
+		merge heads: transpose, reshape & $\shp{B,T,\dmodel}$ \\
+		output projection $\Wo$ & $\shp{B,T,\dmodel}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\codefile[\script{c08_attention}]{gen/dl/snip/c08_attention-mha.py}
+
+The script copies the weights of a PyTorch \pt{nn.MultiheadAttention} into this function and asserts
+that outputs and per-head attention weights agree, with and without a causal mask. Parameter count:
+$4\dmodel^2+4\dmodel$ (four projections with biases), $\gv{c08_attention/mha_params}$ for $\dmodel=8$;
+$\gv{c08_attention/mha_512}$, $\gv{c08_attention/mha_768}$, $\gv{c08_attention/mha_1024}$ for
+$\dmodel=512,768,1024$ (all asserted). The count does not depend on $h$: more heads means smaller heads,
+not more parameters.
+
+\begin{remark}
+	\trap Self-attention without positional information is \emph{permutation-equivariant}: shuffle the
+	input tokens and the outputs are shuffled the same way (asserted in the script). ``The dog bit the
+	man'' and ``the man bit the dog'' would produce the same set of vectors. That is why positional
+	encodings are not optional.
+\end{remark}
+
+\section{Positional encodings}
+\prototype{Sinusoidal encodings for $\dmodel=8$: position 1 is
+$(\gv{c08_attention/pe_row1})$.}
+
+\begin{itemize}
+	\ii \vocab{Sinusoidal} (original Transformer): added to the token embeddings,
+	\[ PE_{p,2i}=\sin\bigl(p/10000^{2i/\dmodel}\bigr),\qquad PE_{p,2i+1}=\cos\bigl(p/10000^{2i/\dmodel}\bigr). \]
+	Each pair of dimensions is a clock at its own frequency, from fast (one cycle per $2\pi$ positions) to
+	very slow. For every offset $k$ there is a fixed rotation $R_k$ with $PE_{p+k}=R_k\,PE_p$ for all $p$
+	(asserted), so relative offsets are linearly accessible; no parameters, and defined for any length.
+	\ii \vocab{Learned absolute} embeddings (BERT, GPT-2): a trainable $T_\text{max}\times\dmodel$ table.
+	Flexible, but undefined beyond $T_\text{max}$.
+	\ii \vocab{RoPE} (rotary): instead of adding anything, rotate each consecutive pair of query and key
+	components by an angle proportional to the position. Then $\langle R_m\bq,R_n\bk\rangle$ depends only on
+	$m-n$: relative position enters the score directly. Used by many recent LLMs.
+	\ii \vocab{ALiBi} \cite{alibi}: no position embeddings at all; add a penalty $-m_h\abs{i-j}$ to the
+	attention scores, with a fixed slope $m_h$ per head; for 8 heads the slopes are
+	\[ \gv{c08_attention/alibi_slopes}. \]
+	Designed for extrapolation to longer sequences than seen in training.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=0.62\linewidth, height=0.42\linewidth, enlargelimits=false, axis on top,
+	xlabel={dimension}, ylabel={position}, y dir=reverse, colormap/viridis, colorbar,
+	colorbar style={width=0.25cm, font=\scriptsize}, font=\small]
+	\addplot[matrix plot*, point meta=explicit, mesh/cols=32] table[x=dim, y=pos, meta=v] {gen/dl/data/c08_attention-pe.dat};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\codefile[\script{c08_attention}]{gen/dl/snip/c08_attention-rope.py}
+
+The script checks that $\langle\mathrm{rope}(\bq,m),\mathrm{rope}(\bk,n)\rangle$ is the same
+($\gv{c08_attention/rope_dot}$) for $(m,n)=(3,1)$, $(10,8)$, $(52,50)$, and that the rotation preserves norms.
+
+\section{The Transformer block}
+\prototype{One encoder layer: $\X\gets\X+\MHA(\LN(\X))$, then $\X\gets\X+\FFN(\LN(\X))$.}
+
+\subsection{Sublayers}
+\begin{itemize}
+	\ii \textbf{Self-attention} mixes information \emph{across positions}.
+	\ii \textbf{Position-wise feed-forward network}: the same two-layer MLP applied to every position
+	independently, $\FFN(\x)=\W_2\,\phi(\W_1\x+\bb_1)+\bb_2$ with hidden size $\dff$ (typically
+	$4\dmodel$) and $\phi$ = ReLU or GELU. It mixes information \emph{across features}; most of the
+	parameters live here.
+	\ii \textbf{Residual connections} around each sublayer (gradient highway, as in ResNet) and
+	\textbf{LayerNorm} (\cref{ch:reg}).
+\end{itemize}
+The original Transformer is \vocab{post-LN}: $\X\gets\LN(\X+\mathrm{Sublayer}(\X))$. Most modern models
+are \vocab{pre-LN}: $\X\gets\X+\mathrm{Sublayer}(\LN(\X))$, with a final LayerNorm at the end of the stack.
+Pre-LN keeps an un-normalised identity path from input to output, trains more stably at depth, and is
+far less sensitive to warm-up; post-LN can reach slightly better results when it trains.
+
+\subsection{Encoder and decoder}
+\begin{center}
+\begin{tikzpicture}[node distance=0.32cm, every node/.style={font=\small}]
+	\node[blockbox, fill=gray!8] (eemb) {token embedding + positions};
+	\node[blockbox, fill=orange!15, above=of eemb] (esa) {multi-head self-attention};
+	\node[blockbox, fill=yellow!15, above=of esa] (ean) {add \& LayerNorm};
+	\node[blockbox, fill=blue!10, above=of ean] (effn) {feed-forward};
+	\node[blockbox, fill=yellow!15, above=of effn] (ean2) {add \& LayerNorm};
+	\node[draw, dashed, rounded corners, fit=(esa)(ean2), inner sep=4pt, label=left:{$N\times$}] (encbox) {};
+	\node[above=0.4cm of ean2] (encout) {encoder output (memory)};
+	\draw[flow] (eemb) -- (esa); \draw[flow] (esa) -- (ean); \draw[flow] (ean) -- (effn);
+	\draw[flow] (effn) -- (ean2); \draw[flow] (ean2) -- (encout);
+	\node[blockbox, fill=gray!8, right=2.6cm of eemb] (demb) {shifted target embedding + positions};
+	\node[blockbox, fill=orange!15, above=of demb] (dsa) {masked self-attention};
+	\node[blockbox, fill=yellow!15, above=of dsa] (dan) {add \& LayerNorm};
+	\node[blockbox, fill=red!10, above=of dan] (dca) {cross-attention (K, V from encoder)};
+	\node[blockbox, fill=yellow!15, above=of dca] (dan2) {add \& LayerNorm};
+	\node[blockbox, fill=blue!10, above=of dan2] (dffn) {feed-forward};
+	\node[blockbox, fill=yellow!15, above=of dffn] (dan3) {add \& LayerNorm};
+	\node[draw, dashed, rounded corners, fit=(dsa)(dan3), inner sep=4pt, label=right:{$N\times$}] {};
+	\node[blockbox, fill=gray!8, above=0.4cm of dan3] (lin) {linear (often tied) + softmax};
+	\draw[flow] (demb) -- (dsa); \draw[flow] (dsa) -- (dan); \draw[flow] (dan) -- (dca);
+	\draw[flow] (dca) -- (dan2); \draw[flow] (dan2) -- (dffn); \draw[flow] (dffn) -- (dan3); \draw[flow] (dan3) -- (lin);
+	\draw[flow] (encout.east) -| ($(dca.west)+(-0.5,0)$) -- (dca.west);
+\end{tikzpicture}
+\end{center}
+(Residual arrows around each sublayer are omitted; the diagram shows the post-LN ordering of the
+original paper.) The decoder has three sublayers: \emph{masked} self-attention over the target prefix,
+\vocab{cross-attention} whose queries come from the decoder and whose keys and values come from the
+encoder output, and the FFN. Cross-attention shapes: queries $\shp{B,T_t,\dmodel}$, keys and values
+$\shp{B,T_s,\dmodel}$, scores $\shp{B,h,T_t,T_s}$, output $\shp{B,T_t,\dmodel}$. The output layer
+often shares its weight matrix with the input embedding (\vocab{weight tying}).
+
+Three families use these blocks: \vocab{encoder-only} (BERT; bidirectional attention, for
+understanding tasks), \vocab{decoder-only} (GPT-style; causal self-attention only, for generation) and
+\vocab{encoder--decoder} (original Transformer, T5; for sequence-to-sequence). \Cref{ch:llm} picks this up.
+
+\section{Counting parameters and FLOPs}
+\prototype{One encoder layer with $\dmodel=512$, $\dff=2048$: $\gv{c08_attention/attn512}$ in attention
+plus $\gv{c08_attention/ffn512}$ in the FFN, $\gv{c08_attention/enc512}$ with the two LayerNorms.}
+
+\codefile[\script{c08_attention}]{gen/dl/snip/c08_attention-count.py}
+
+\begin{itemize}
+	\ii Encoder layer: $(4\dmodel^2+4\dmodel)+(2\dmodel\dff+\dff+\dmodel)+4\dmodel$. With $\dff=4\dmodel$
+	this is about $12\dmodel^2$: a third in attention, two thirds in the FFN.
+	\ii Decoder layer: an extra attention block and LayerNorm: $\gv{c08_attention/dec512}$ for $\dmodel=512$.
+	\ii Embeddings: $V\dmodel$ (plus $T_\text{max}\dmodel$ for learned positions).
+\end{itemize}
+For $\dmodel=512$ and $768$ the script asserts both layer formulas against PyTorch's
+encoder and decoder layer classes.
+
+\begin{example}[Whole models, counted]
+	Three configurations, counted by the script:
+	\begin{itemize}
+		\ii \pt{nn.Transformer(512, 8, 6, 6, 2048)} (6 encoder and 6 decoder layers, the configuration of the
+		original ``base'' model): $\gv{c08_attention/tf_body_exact}$ parameters in the stack, asserted. With a
+		shared $37{,}000$-token embedding (an illustrative vocabulary size), $\gv{c08_attention/tf_emb}$ more,
+		about $\gv{c08_attention/tf_total_shared}$ in total.
+		\ii A BERT-base-shaped encoder ($L=12$, $\dmodel=768$, $\dff=3072$, $V=30{,}522$, 512 learned positions,
+		2 segment embeddings, a pooler): $\gv{c08_attention/bert_layer}$ per layer, $\gv{c08_attention/bert_body}$
+		in the 12 layers, $\gv{c08_attention/bert_emb}$ in embeddings, $\gv{c08_attention/bert_total}$ in total.
+		\ii A GPT-2-small-shaped decoder-only model ($L=12$, $\dmodel=768$, $V=50{,}257$, 1024 positions, tied
+		output): $\gv{c08_attention/gpt_total}$, of which $\gv{c08_attention/gpt_emb_frac}\%$ is embeddings.
+	\end{itemize}
+	These are counts of the configurations as defined here, computed by the script, not quotations of
+	anyone's published figure; small differences from published numbers come from details such as biases
+	and output heads. Rule of thumb for large models: $\approx12L\dmodel^2$ ($\gv{c08_attention/twelve_d2}$ per
+	layer at $\dmodel=768$) plus embeddings.
+\end{example}
+
+\subsection{Complexity}
+Per layer and sequence of length $n$: the projections and FFN cost $O(n\dmodel^2)$; the score matrix
+$\Q\K\T$ and the product with $\V$ cost $O(n^2\dmodel)$ and need $O(n^2)$ memory per head. For
+$\dmodel=768$ (FLOPs, one layer, one sequence):
+\begin{center}
+	\small
+	\begin{tabular}{rccc}
+		\toprule
+		$n$ & attention $4n^2\dmodel$ & projections $8n\dmodel^2$ & attention probabilities, 12 heads, fp16 \\
+		\midrule
+		512 & $\gv{c08_attention/attn_flops_512}$ & $\gv{c08_attention/proj_flops_512}$ & $\gv{c08_attention/attnmat_512}$B \\
+		4{,}096 & $\gv{c08_attention/attn_flops_4096}$ & $\gv{c08_attention/proj_flops_4096}$ & $\gv{c08_attention/attnmat_4096}$B \\
+		32{,}768 & $\gv{c08_attention/attn_flops_32768}$ & $\gv{c08_attention/proj_flops_32768}$ & $\gv{c08_attention/attnmat_32768}$B \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+Attention overtakes the projections once $n>2\dmodel$. The quadratic term is the motivation for sparse,
+linear and windowed attention variants, and for FlashAttention's memory savings.
+
+\subsection{KV cache, MQA and GQA}
+A decoder generates one token at a time. Without care, step $t$ recomputes keys and values for all $t$
+previous tokens in every layer. Since those never change (causal masking), they are stored: the
+\vocab{KV cache} holds $\K$ and $\V$ for every layer, head and past position, and each new token computes
+only its own $\bq,\bk,\bv$ and attends to the cache. Memory:
+\[ 2\times L\times n_\text{kv heads}\times d_\text{head}\times T\times\text{bytes per value}\ \text{per sequence}. \]
+For an illustrative configuration with $32$ layers, $32$ heads of size $128$, fp16 and $4096$ tokens, that is
+$\gv{c08_attention/kv_per_tok}$\,MiB per token and $\gv{c08_attention/kv_bytes}$\,GiB per sequence.
+\vocab{Multi-query attention} (one shared K/V head) cuts it to $\gv{c08_attention/kv_mqa}$\,GiB;
+\vocab{grouped-query attention} with $8$ K/V heads shared by groups of query heads to
+$\gv{c08_attention/kv_gqa8}$\,GiB. The cache is why long-context serving is memory-bound.
+
+\begin{remark}
+	\trap ``The KV cache stores the attention weights'' or ``stores the queries''. It stores keys and values of
+	past tokens; queries are needed only for the current token, and attention weights are recomputed each step
+	because a new query changes them. The cache helps decoding (generation), not training, where all positions
+	are processed in parallel anyway.
+\end{remark}
+
+\subsection{FlashAttention, in concept}
+FlashAttention \cite{flashattn} computes \emph{exact} attention without ever materialising the $n\times n$
+matrix in slow GPU memory: it streams blocks of keys and values through fast on-chip memory and maintains,
+per query, a running maximum, a running softmax denominator and a running output, rescaling them when a new
+block raises the maximum (an \vocab{online softmax}); the backward pass recomputes blocks instead of storing
+them. FLOPs are unchanged; memory traffic, and so wall-clock time and memory, drop sharply.
+
+\codefile[\script{c08_attention}]{gen/dl/snip/c08_attention-online.py}
+
+The blockwise version (keys processed four at a time) equals standard attention to machine precision.
+
+\section{Transformer versus RNN and CNN}
+\prototype{Relating the first and the five-hundredth token: $499$ recurrent steps in an RNN, about
+$\log_k500$ dilated convolution layers, one attention step.}
+
+\begin{center}
+	\small
+	\begin{tabular}{lccc}
+		\toprule
+		layer type & cost per layer & sequential steps & longest path between positions \\
+		\midrule
+		self-attention & $O(n^2d)$ & $O(1)$ & $O(1)$ \\
+		recurrent & $O(nd^2)$ & $O(n)$ & $O(n)$ \\
+		convolution, kernel $k$ & $O(knd^2)$ & $O(1)$ & $O(\log_kn)$ (dilated) or $O(n/k)$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+For seq2seq, the Transformer wins on (1) \textbf{parallel training}: no sequential dependence across time
+during training, so GPUs are saturated; (2) \textbf{short paths}: any two positions interact directly, so
+long-range dependencies are learned easily and gradients do not pass through hundreds of steps; (3)
+\textbf{content-based, dynamic weights}: attention weights depend on the input, unlike a convolution's fixed
+kernel; (4) \textbf{scaling}: performance keeps improving with data and parameters. It loses on cost at very
+long $n$ and needs positional encodings and lots of data; RNNs remain attractive for streaming with constant
+memory per step.
+
+\section{Capstone: an encoder--decoder Transformer, twice}
+\prototype{Train on ``reverse this digit sequence'' (lengths 3--8, padded), reach
+$\gv{c08_capstone/acc_test}\%$ exact-match accuracy, and reproduce every logit in NumPy.}
+
+\subsection{The PyTorch model}
+Pre-LN encoder and decoder layers built from scratch (no \pt{nn.Transformer}), $\dmodel=64$, $h=4$,
+$\dff=128$, two encoder and two decoder layers, sinusoidal positions, embeddings scaled by $\sqrt{\dmodel}$ and
+shared between source, target and the output layer: $\gv{c08_capstone/n_params}$ parameters. Vocabulary: PAD,
+BOS, EOS and ten digits.
+
+\codefile[\script{c08_capstone}]{gen/dl/snip/c08_capstone-torch_model.py}
+
+Before training, the script copies weights into PyTorch's own modules and asserts agreement:
+our \pt{MHA} against \pt{nn.MultiheadAttention} (cross-attention with key padding), our encoder layer
+against \pt{nn.TransformerEncoderLayer(norm\_first=True)} and our decoder layer against
+\pt{nn.TransformerDecoderLayer(norm\_first=True)} (causal and padding masks).
+
+\subsection{Training}
+\codefile[\script{c08_capstone}]{gen/dl/snip/c08_capstone-train.py}
+AdamW with linear warm-up and cosine decay, gradient clipping at norm 1, batches of 64 random sequences,
+$\gv{c08_capstone/steps}$ steps (seconds on a CPU). The decoder input is the target shifted right (starting
+with BOS) and the loss ignores PAD positions. The loss falls from $\gv{c08_capstone/loss_first}$ to
+$\gv{c08_capstone/loss_last}$ (mean of the last 50 steps).
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.6\linewidth, height=0.34\linewidth, xlabel={step}, ylabel={loss}, ymode=log]
+	\addplot table[x=step,y=loss] {gen/dl/data/c08_capstone-loss.dat};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\subsection{Decoding and results}
+\codefile[\script{c08_capstone}]{gen/dl/snip/c08_capstone-greedy.py}
+On $1000$ fresh sequences greedy decoding gives $\gv{c08_capstone/acc_test}\%$ exact-match accuracy
+($\gv{c08_capstone/tok_acc}\%$ of tokens). Example: input \pt{\gv{c08_capstone/ex_src}}, output
+\pt{\gv{c08_capstone/ex_pred}}. The cross-attention of the last decoder layer (averaged over heads) for the
+input \pt{\gv{c08_capstone/x_src}} shows what the model learned: output position $t$ attends to input position
+$7-t$ (counting from $0$), the anti-diagonal (average weight there $\gv{c08_capstone/anti_diag}$); the last row is the EOS step.
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=0.5\linewidth, height=0.52\linewidth, enlargelimits=false, axis on top,
+	xlabel={source position}, ylabel={output position}, y dir=reverse, colormap/viridis, colorbar,
+	colorbar style={width=0.25cm, font=\scriptsize}, point meta min=0, point meta max=1, font=\small,
+	xtick={0,...,7}, ytick={0,...,8}]
+	\addplot[matrix plot*, point meta=explicit, mesh/cols=8] table[x=src, y=tgt, meta=a] {gen/dl/data/c08_capstone-xattn.dat};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\subsection{The NumPy port}
+The same forward pass in NumPy, reading the trained \pt{state\_dict}:
+\codefile[\script{c08_capstone}]{gen/dl/snip/c08_capstone-numpy_model.py}
+In float64 the NumPy logits equal PyTorch's on 50 test sequences (to $10^{-9}$), and greedy decoding in NumPy
+produces exactly the same 200 output sequences as PyTorch ($\gv{c08_capstone/np_acc200}\%$ correct). Writing the
+NumPy version is the best interview preparation in this book: every reshape, transpose and mask has to be right
+for the assertion to pass.
+
+\begin{moral}
+	Attention is a softmax-weighted average with learned queries, keys and values, scaled by $\sqrt{d_k}$ to keep
+	the softmax soft. A Transformer layer is attention (mix positions) plus an MLP (mix features), each wrapped
+	in a residual connection and LayerNorm; positions must be injected; cost is quadratic in length.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	Two queries $\bq_1=(1,0)$, $\bq_2=(0,2)$, keys $\bk_1=(1,1)$, $\bk_2=(0,1)$, values $v_1=10$, $v_2=20$,
+	$d_k=2$. Compute both attention outputs.
+	\begin{hint}Scores $\bq\T\bk/\sqrt2$, softmax per query.\end{hint}
+	\begin{sol}
+		Query 1: scores $(1,0)/\sqrt2=(0.707,0)$, weights $(\gv{c08_attention/pa_w1})$, output
+		$\gv{c08_attention/pa_o1}$. Query 2: scores $(2,2)/\sqrt2$, weights $(\gv{c08_attention/pa_w2})$,
+		output $\gv{c08_attention/pa_o2}$ (checked against PyTorch).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Give the parameter count of one multi-head self-attention block with $\dmodel=256$ and $h=4$, and of
+	the FFN with $\dff=1024$, biases included.
+	\begin{hint}$4d^2+4d$ and $2d\dff+\dff+d$.\end{hint}
+	\begin{sol}Attention $4\cdot65{,}536+1{,}024=\gv{c08_attention/pb_attn}$; FFN
+		$524{,}288+1{,}024+256=\gv{c08_attention/pb_ffn}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Scores for one query over four keys are $(8,4,0,-4)$ with $d_k=64$ but someone forgot the scaling.
+	Compare the softmax weights with and without dividing by $\sqrt{d_k}$.
+	\begin{hint}$\sqrt{64}=8$.\end{hint}
+	\begin{sol}
+		Unscaled: $\softmax(8,4,0,-4)=(\gv{c08_attention/pc_raw})$, essentially one-hot, so almost no gradient
+		reaches keys 2--4. Scaled: $\softmax(1,0.5,0,-0.5)=(\gv{c08_attention/pc_scaled})$, a soft distribution
+		that still prefers key 1.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	What are the shapes of $\Q$, $\K$, $\V$, the score tensor and the output in the cross-attention of a decoder
+	with batch $B=2$, target length $5$, source length $9$, $\dmodel=32$, $h=4$?
+	\begin{hint}Queries come from the decoder.\end{hint}
+	\begin{sol}
+		After splitting heads: $\Q$ $\shp{2,4,5,8}$, $\K$ and $\V$ $\shp{2,4,9,8}$, scores $\shp{2,4,5,9}$, per-head
+		output $\shp{2,4,5,8}$, merged output $\shp{2,5,32}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Why does a decoder-only language model need a causal mask during training but an encoder like BERT does not?
+	\begin{hint}What is each trained to predict?\end{hint}
+	\begin{sol}
+		The decoder predicts token $t+1$ from tokens $\le t$ at every position simultaneously; without the mask
+		position $t$ could read token $t+1$ and the loss would be trivial. BERT predicts masked-out tokens from
+		both sides; the information to hide is removed from the input (the mask token), so all positions may attend
+		to all others.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Estimate the KV-cache size for a model with $24$ layers, $16$ heads of size $64$, fp16, a batch of $8$
+	sequences of $2048$ tokens. How does grouped-query attention with $4$ K/V heads change it?
+	\begin{hint}$2\cdot L\cdot n_\text{kv}\cdot d_\text{head}\cdot T\cdot B\cdot2$ bytes.\end{hint}
+	\begin{sol}
+		$2\cdot24\cdot16\cdot64\cdot2048\cdot8\cdot2$ bytes $=\gv{c08_attention/pf_kv}$\,GiB. With $4$ K/V heads it
+		is a quarter, $\gv{c08_attention/pf_kv4}$\,GiB.
+	\end{sol}
+\end{problem}
