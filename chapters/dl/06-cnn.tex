@@ -1,4 +1,512 @@
 \chapter{Convolutional networks}
 \label{ch:cnn}
-\section{Convolutional networks}
-\stub{Convolutional networks}
+
+Convolutional networks are where placement OAs spend most of their deep-learning
+numerics: output shapes with padding and stride, parameter counts, ``which layer reduces
+spatial size'', ``why does a CNN have fewer parameters than a fully connected network''.
+This chapter gives one formula for each, checks every number against PyTorch, and then
+walks through the architectures an interviewer expects you to know by their key idea,
+ResNet above all.
+
+\section{Why convolution}
+\prototype{A fully connected layer from a $224\times224\times3$ image to just $1000$ hidden
+units already has $\gv{c06_cnn/fc_224}$ parameters; a $3\times3$ convolution with $16$ filters
+on a $32\times32\times3$ image has $\gv{c06_cnn/conv1_params}$.}
+
+Images have three properties a fully connected layer ignores:
+\begin{itemize}
+	\ii \textbf{Locality}: nearby pixels are strongly related, distant ones weakly. So each
+	output unit should look at a small neighbourhood (its \vocab{receptive field}), not the
+	whole image (\vocab{sparse connectivity}).
+	\ii \textbf{Stationarity}: an edge detector useful in the top-left corner is useful
+	everywhere. So the same weights are applied at every position (\vocab{weight sharing}).
+	\ii \textbf{Translation}: shifting the input should shift the feature map. Convolution is
+	\vocab{translation equivariant}: $\conv(\text{shift}(x))=\text{shift}(\conv(x))$ (up to
+	borders). Pooling then adds a little translation \emph{invariance}.
+\end{itemize}
+
+\begin{example}[Weight sharing in numbers]
+	Producing a $32\times32\times16$ feature map from a $32\times32\times3$ image: a $3\times3$
+	convolution needs $(3\cdot3\cdot3+1)\cdot16=\gv{c06_cnn/conv1_params}$ parameters. A fully
+	connected layer producing the same $16{,}384$ outputs from the $3{,}072$ inputs needs
+	$\gv{c06_cnn/fc_equiv}$, about $\gv{c06_cnn/fc_ratio}$ times more. The count of a
+	convolution does not depend on the image size at all.
+\end{example}
+
+\begin{remark}
+	\trap ``Why does a CNN have fewer parameters than a fully connected network on the same
+	input?'' The answer is \emph{weight sharing plus local connectivity}, not pooling (pooling has
+	no parameters) and not ReLU. And ``fewer parameters'' does not mean ``less computation'':
+	the shared kernel is applied at every position, so convolutions are cheap in parameters but
+	expensive in multiply--adds.
+\end{remark}
+
+\section{The convolution operation}
+\prototype{A $3\times3$ kernel slid over a $4\times4$ input without padding gives a $2\times2$
+output; the top-left entry is $\gv{c06_cnn/y00}$.}
+
+\subsection{Cross-correlation, not convolution}
+What every deep-learning library calls convolution is \vocab{cross-correlation}:
+\[ Y_{ij} = \sum_{u=0}^{k-1}\sum_{v=0}^{k-1} K_{uv}\,X_{i+u,\,j+v} \ (+\,b). \]
+Mathematical convolution flips the kernel first ($K_{k-1-u,\,k-1-v}$). Since the kernel is
+learned, the flip is irrelevant: the network simply learns the flipped kernel.
+
+\begin{center}
+\begin{tikzpicture}[x=0.6cm,y=0.6cm]
+	\fill[orange!25] (0,1) rectangle (3,4);
+	\draw[step=1, gray] (0,0) grid (4,4);
+	\foreach \r/\row in {0/{1,2,0,1},1/{0,1,3,2},2/{2,1,0,1},3/{1,0,2,3}} {
+		\foreach \v [count=\c from 0] in \row { \node[font=\footnotesize] at (\c+0.5,3.5-\r) {\v}; } }
+	\node[font=\small] at (2,-0.7) {input $X$ ($4\times4$)};
+	\node at (5,2) {$\star$};
+	\begin{scope}[shift={(6,0.5)}]
+		\draw[step=1, gray] (0,0) grid (3,3);
+		\foreach \r/\row in {0/{1,0,-1},1/{2,0,-2},2/{1,0,-1}} {
+			\foreach \v [count=\c from 0] in \row { \node[font=\footnotesize] at (\c+0.5,2.5-\r) {\v}; } }
+		\node[font=\small] at (1.5,-1.2) {kernel $K$};
+	\end{scope}
+	\node at (10,2) {$=$};
+	\begin{scope}[shift={(11,1)}]
+		\fill[orange!25] (0,1) rectangle (1,2);
+		\draw[step=1, gray] (0,0) grid (2,2);
+		\node[font=\footnotesize] at (0.5,1.5) {$\gv{c06_cnn/y00}$};
+		\node[font=\footnotesize] at (1.5,1.5) {$\gv{c06_cnn/y01}$};
+		\node[font=\footnotesize] at (0.5,0.5) {$\gv{c06_cnn/y10}$};
+		\node[font=\footnotesize] at (1.5,0.5) {$\gv{c06_cnn/y11}$};
+		\node[font=\small] at (1,-1.7) {output $Y$};
+	\end{scope}
+\end{tikzpicture}
+\end{center}
+
+\begin{example}[A $3\times3$ kernel by hand]
+	The shaded window times the kernel, non-zero kernel entries only:
+	$\gv{c06_cnn/y00_terms}=\gv{c06_cnn/y00}$. Sliding one step right and down gives the
+	output $\begin{psmallmatrix}\gv{c06_cnn/y00}&\gv{c06_cnn/y01}\\\gv{c06_cnn/y10}&\gv{c06_cnn/y11}\end{psmallmatrix}$,
+	equal to \pt{F.conv2d} and to SciPy's \pt{correlate2d}. True convolution (SciPy's
+	\pt{convolve2d}) gives $\begin{psmallmatrix}\gv{c06_cnn/yc00}&\gv{c06_cnn/yc01}\\\gv{c06_cnn/yc10}&\gv{c06_cnn/yc11}\end{psmallmatrix}$:
+	this kernel is antisymmetric left--right, so flipping it negates the answer. With padding $1$
+	the output stays $\gv{c06_cnn/pad_shape}$.
+\end{example}
+
+\codefile[\script{c06_cnn}]{gen/dl/snip/c06_cnn-xcorr.py}
+
+\subsection{Channels}
+Real layers map $C_\text{in}$ input channels to $C_\text{out}$ output channels. Each output
+channel has its own kernel of shape $C_\text{in}\times k\times k$ (it spans \emph{all} input
+channels) and one bias; the layer's weight tensor in PyTorch has shape
+$\shp{C_\text{out},C_\text{in},k,k}$:
+\[ Y_{o,i,j} = b_o + \sum_{c=1}^{C_\text{in}}\sum_{u,v} K_{o,c,u,v}\,X_{c,\,si+u,\,sj+v}. \]
+
+\section{Output shapes}
+\prototype{$32\times32\times3$ input, ten $5\times5$ filters, stride 1, no padding: output
+$28\times28\times10$, $\gv{c06_cnn/oa_params}$ parameters.}
+
+\begin{theorem}[Convolution output size]
+	For input size $n$, kernel $k$, stride $s$, padding $p$ (each side) and dilation $d$,
+	\[ n_\text{out}=\Bigl\lfloor\frac{n+2p-d(k-1)-1}{s}\Bigr\rfloor+1. \]
+	The same formula, with $p=0$ by default, holds for pooling windows.
+\end{theorem}
+The dilated kernel spans $d(k-1)+1$ pixels; the formula counts how many positions of that
+span fit in the padded input when moving $s$ pixels at a time. ``Same'' padding for odd $k$,
+$s=1$, $d=1$ is $p=(k-1)/2$.
+
+\codefile[\script{c06_cnn}]{gen/dl/snip/c06_cnn-outshape.py}
+
+\begin{example}[Ten output sizes, each asserted against \pt{nn.Conv2d}]
+	\begin{center}
+		\small
+		\begin{tabular}{rrrrrlr}
+			\toprule
+			$n$ & $k$ & $s$ & $p$ & $d$ & computation & $n_\text{out}$ \\
+			\midrule
+			\gv{c06_cnn/shape_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Rows 3 and 4 are the first layers of ResNet- and AlexNet-style networks; row 6 shows that
+	dilation $2$ with padding $2$ keeps the size; row 8 shows the floor discarding a leftover
+	column.
+\end{example}
+
+\begin{remark}
+	\trap Forgetting the floor, applying the padding once instead of on both sides, or using
+	$k$ instead of $d(k-1)+1$ for a dilated kernel are the three ways to get these wrong. The
+	channel count of the output is the number of filters, never the input channel count.
+\end{remark}
+
+\section{Parameters and FLOPs}
+\prototype{A $3\times3$ convolution from $16$ to $32$ channels has $(3\cdot3\cdot16+1)\cdot32$
+parameters, whatever the image size.}
+
+\begin{proposition}[Counting a convolution]
+	A convolution with $C_\text{in}$ input and $C_\text{out}$ output channels and a $k\times k$ kernel
+	has $(k^2C_\text{in}+1)\,C_\text{out}$ parameters, and producing an $H_\text{out}\times W_\text{out}$
+	map costs $k^2C_\text{in}C_\text{out}H_\text{out}W_\text{out}$ multiply--accumulates (MACs), i.e.\
+	about twice that in FLOPs.
+\end{proposition}
+For the OA layer above: $760$ parameters and
+$5\cdot5\cdot3\cdot10\cdot28\cdot28=\gv{c06_cnn/oa_macs}$ MACs. Papers and tools disagree on
+whether ``FLOPs'' means MACs or $2\times$MACs; say which you mean.
+
+\begin{example}[A small CNN, layer by layer]
+	\label{ex:smallcnn}
+	\codefile[\script{c06_cnn}]{gen/dl/snip/c06_cnn-smallcnn.py}
+	For a $32\times32\times3$ input:
+	\begin{center}
+		\small
+		\begin{tabular}{llrr}
+			\toprule
+			layer & output & parameters & MACs \\
+			\midrule
+			\gv{c06_cnn/cnn_rows}
+			\midrule
+			total & & $\gv{c06_cnn/cnn_params}$ & $\gv{c06_cnn/cnn_macs}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Every shape and parameter count is asserted against PyTorch. Observe the pattern of a CNN:
+	spatial size shrinks, channels grow; the parameters concentrate in the late, wide layers,
+	the computation in the early, large-resolution ones. Global average pooling before the
+	classifier replaces what would otherwise be a $4\cdot4\cdot64\to10$ linear layer.
+\end{example}
+
+\section{Receptive field}
+\prototype{Two stacked $3\times3$ convolutions see a $\gv{c06_cnn/rf_two3}\times\gv{c06_cnn/rf_two3}$
+patch with $\gv{c06_cnn/rf_par_two3}C^2$ weights; one $5\times5$ needs $\gv{c06_cnn/rf_par_5}C^2$.}
+
+The \vocab{receptive field} of a unit is the set of input pixels that can affect it. With
+$r_0=1$ and \vocab{jump} $j_0=1$ (distance in input pixels between adjacent units),
+\[ r_l=r_{l-1}+(k_l-1)\,d_l\,j_{l-1},\qquad j_l=j_{l-1}\,s_l. \]
+
+\codefile[\script{c06_cnn}]{gen/dl/snip/c06_cnn-rf.py}
+
+\begin{example}[Receptive fields, formula against a gradient probe]
+	The script builds each stack, backpropagates from one central output unit and measures the
+	width of the region of non-zero input gradient:
+	\begin{center}
+		\small
+		\begin{tabular}{lc}
+			\toprule
+			stack & receptive field \\
+			\midrule
+			$3\times3$, $3\times3$ & $\gv{c06_cnn/rf_two3}$ \\
+			$3\times3$ three times & $\gv{c06_cnn/rf_three3}$ \\
+			$3\times3$, max-pool $2$ (stride 2), $3\times3$ & $\gv{c06_cnn/rf_pool}$ \\
+			$3\times3$ stride 2, three times & $\gv{c06_cnn/rf_s2}$ \\
+			$3\times3$ with dilations $1,2,4$ & $\gv{c06_cnn/rf_dil}$ \\
+			VGG-style: conv, conv, pool, conv, conv, pool, conv, conv, conv & $\gv{c06_cnn/rf_vggblock}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+\end{example}
+This is the VGG argument: three $3\times3$ layers see $7\times7$ with
+$\gv{c06_cnn/rf_par_three3}C^2$ weights instead of $\gv{c06_cnn/rf_par_7}C^2$, and insert two
+extra non-linearities. Strides and pooling grow the receptive field geometrically, dilation
+grows it without losing resolution (used in segmentation).
+
+\begin{remark}
+	\trap The theoretical receptive field overstates what a unit actually uses: the gradient is
+	concentrated near the centre and falls off toward the edges, so the \emph{effective}
+	receptive field is considerably smaller.
+\end{remark}
+
+\section{Pooling, 1x1 and depthwise convolutions}
+\prototype{Max-pooling $2\times2$ halves height and width, has $\gv{c06_cnn/pool_params}$
+parameters, and sends the gradient only to the four winners.}
+
+\subsection{Pooling}
+\vocab{Max pooling} outputs the maximum of each window, \vocab{average pooling} the mean.
+With $2\times2$ windows and stride 2:
+\[
+	X=\begin{pmatrix}1&3&2&1\\4&2&0&1\\5&1&2&7\\0&2&3&4\end{pmatrix}\!,\quad
+	\text{max}=\begin{pmatrix}\gv{c06_cnn/mp00}&\gv{c06_cnn/mp01}\\\gv{c06_cnn/mp10}&\gv{c06_cnn/mp11}\end{pmatrix}\!,\quad
+	\text{avg}=\begin{pmatrix}\gv{c06_cnn/ap00}&\gv{c06_cnn/ap01}\\\gv{c06_cnn/ap10}&\gv{c06_cnn/ap11}\end{pmatrix}\!,\quad
+	\pd{\textstyle\sum\text{max}}{X}=\begin{pmatrix}\gv{c06_cnn/mp_grad}\end{pmatrix}\!.
+\]
+The last matrix is PyTorch's gradient of the summed max-pool output: the max routes the gradient
+to the arg-max of each window, as in \cref{ch:backprop}. \vocab{Global average pooling} averages each
+channel over the whole map, giving one number per channel, and makes the network accept any input
+size.
+
+\begin{remark}
+	\trap ``Which layer reduces the spatial size of the feature map?'' Pooling with stride $>1$, or a
+	convolution with stride $>1$ (or without padding). Not ReLU, not BatchNorm, not dropout, and not a
+	$1\times1$ convolution with stride 1, which changes only the number of channels. And ``pooling has
+	learnable parameters'' is false: max and average pooling have none.
+\end{remark}
+
+\subsection{1x1 convolutions}
+A $1\times1$ convolution is a fully connected layer applied independently at each pixel, mixing
+channels: $C_\text{in}C_\text{out}+C_\text{out}$ parameters. Uses: reducing channels before an
+expensive $3\times3$ (\vocab{bottleneck}), increasing them after, and adding non-linearity cheaply.
+A ResNet-style bottleneck $256\to64$ ($1\times1$), $64\to64$ ($3\times3$), $64\to256$ ($1\times1$) has
+$\gv{c06_cnn/bott_p}$ weights, against $\gv{c06_cnn/two33_p}$ for two $3\times3$ layers at width $256$.
+
+\subsection{Depthwise-separable and grouped convolutions}
+A \vocab{depthwise} convolution applies one $k\times k$ filter per input channel (no channel mixing,
+\pt{groups=C\_in}); a \vocab{pointwise} $1\times1$ convolution then mixes channels. Together they
+replace a standard convolution (MobileNet):
+\begin{center}
+	\small
+	\begin{tabular}{lr}
+		\toprule
+		$3\times3$, $256\to256$ (no bias) & weights \\
+		\midrule
+		standard & $\gv{c06_cnn/std_p}$ \\
+		depthwise $3\times3$ & $\gv{c06_cnn/dw_p}$ \\
+		pointwise $1\times1$ & $\gv{c06_cnn/pw_p}$ \\
+		depthwise-separable total & $\gv{c06_cnn/sep_p}$ \\
+		grouped, $4$ groups & $\gv{c06_cnn/g4_p}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+The ratio is $\frac{k^2C_\text{in}+C_\text{in}C_\text{out}}{k^2C_\text{in}C_\text{out}}=\frac1{C_\text{out}}+\frac1{k^2}
+=\gv{c06_cnn/sep_ratio_formula}$, the same for MACs. A grouped convolution with $g$ groups divides the
+weights by $g$.
+
+\subsection{Transposed convolution}
+A \vocab{transposed convolution} (sometimes misnamed deconvolution) upsamples: each input value
+scatters a scaled copy of the kernel into the output, overlaps adding up. Its output size is
+\[ n_\text{out}=(n-1)s-2p+d(k-1)+p_\text{out}+1, \]
+so $k=4$, $s=2$, $p=1$ doubles $4$ to $\gv{c06_cnn/tc_4_4_2_1}$, and $k=s=2$ doubles $16$ to
+$\gv{c06_cnn/tc_16_2_2_0}$. Input $\begin{psmallmatrix}1&2\\3&4\end{psmallmatrix}$ with kernel
+$\begin{psmallmatrix}1&1\\1&0\end{psmallmatrix}$ and stride 1 gives
+$\begin{psmallmatrix}\gv{c06_cnn/tc_rows}\end{psmallmatrix}$, as \pt{F.conv\_transpose2d} does. The name
+is exact: it is multiplication by the transpose of the convolution's matrix, i.e.\ the backward pass of
+a convolution with respect to its input (the script checks
+$\langle\conv(x),y\rangle=\langle x,\conv^\top(y)\rangle$). When $k$ is not divisible by $s$, the overlaps
+are uneven and produce \vocab{checkerboard artefacts}; resize-then-convolve avoids them.
+
+\section{Architectures worth knowing}
+\prototype{ResNet's identity shortcut: $\h_{l+1}=\h_l+F(\h_l)$.}
+
+\begin{itemize}
+	\ii \textbf{LeNet} (1990s): conv--pool--conv--pool--FC for digits; the template.
+	\ii \textbf{AlexNet} (2012): a much larger LeNet trained on GPUs with ReLU, dropout and data
+	augmentation; started the deep-learning era in vision.
+	\ii \textbf{VGG}: only $3\times3$ convolutions in stages separated by $2\times2$ max pools. Our
+	16-layer configuration (13 convolutions plus three FC layers, built in \script{c06_cnn}) has
+	$\gv{c06_cnn/vgg_total}$ parameters, of which $\gv{c06_cnn/vgg_fc_frac}\%$ sit in the FC head (the
+	first FC layer alone, $7\cdot7\cdot512\to4096$, has $\gv{c06_cnn/vgg_fc1}$) and only
+	$\gv{c06_cnn/vgg_conv}$ in the convolutions. That imbalance is why later networks use global
+	average pooling.
+	\ii \textbf{Inception} (GoogLeNet): parallel $1\times1$, $3\times3$, $5\times5$ and pooling branches
+	concatenated along channels, with $1\times1$ bottlenecks to keep the cost down; multi-scale features
+	in one block.
+	\ii \textbf{ResNet} \cite{resnet}: residual blocks, below. Our 18-layer configuration (basic blocks
+	$[2,2,2,2]$, widths $64$--$512$, BN, 1000-way head) counts $\gv{c06_cnn/r18_total}$ parameters.
+	\ii \textbf{DenseNet}: each layer receives the concatenation of all previous feature maps in its
+	block; strong feature reuse, few parameters, more memory.
+	\ii \textbf{MobileNet}: depthwise-separable convolutions (and in later versions inverted residual
+	bottlenecks) for phones.
+	\ii \textbf{EfficientNet}: scales depth, width and input resolution together with one compound
+	coefficient instead of growing one of them alone.
+\end{itemize}
+
+\subsection{ResNet: the degradation problem}
+Adding layers to a plain network beyond a point makes \emph{training} error worse, not just test
+error. That is not overfitting (overfitting lowers training error); it is an optimisation failure,
+since a deeper net could always copy the shallower one and set the extra layers to the identity, yet
+gradient descent does not find that solution. ResNet makes the identity the default: a block computes
+$\h+F(\h)$, so it only has to learn the residual $F$, and $F=0$ is easy to reach.
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.5cm]
+	\node (in) {$\h_l$};
+	\node[op, right=0.8cm of in] (c1) {conv--BN--ReLU};
+	\node[op, right=0.5cm of c1] (c2) {conv--BN};
+	\node[op, circle, right=0.6cm of c2] (add) {$+$};
+	\node[op, right=0.5cm of add] (r) {ReLU};
+	\node[right=0.5cm of r] (outn) {$\h_{l+1}$};
+	\draw[flow] (in) -- (c1); \draw[flow] (c1) -- (c2); \draw[flow] (c2) -- (add);
+	\draw[flow] (add) -- (r); \draw[flow] (r) -- (outn);
+	\draw[flow] ($(in.east)+(0.25,0)$) -- ++(0,0.9) -| node[pos=0.25, above, font=\scriptsize] {identity shortcut} (add);
+	\draw[decorate, decoration={brace, amplitude=4pt, mirror}] ($(c1.south west)+(0,-0.15)$) -- ($(c2.south east)+(0,-0.15)$)
+		node[midway, below=4pt, font=\scriptsize] {residual $F(\h_l)$};
+\end{tikzpicture}
+\end{center}
+
+Gradient flow: $\partial\h_{l+1}/\partial\h_l=\I+\partial F/\partial\h_l$, so the backward product over
+blocks always contains the identity path (Problem 3E): the gradient from the loss reaches early layers
+undiminished, even when every $\partial F/\partial\h$ is small. When the shape changes (stride 2, more
+channels) the shortcut becomes a $1\times1$ convolution with stride 2. A basic block at width $64$ has
+$2\cdot9\cdot64^2+4\cdot64=\gv{c06_cnn/basic_p}$ parameters (two convolutions without bias, two BNs).
+
+\codefile[\script{c06_resnet}]{gen/dl/snip/c06_resnet-resblock.py}
+
+\begin{example}[Degradation, reproduced on a small scale]
+	MLPs of width 32 with BatchNorm, the same data (a 2-D regression), Adam, 300 steps; the only
+	difference between a plain and a residual net is the ``\pt{+ h}''. Full-data training MSE at the
+	end, and the gradient norm reaching the first layer at step 1:
+	\begin{center}
+		\small
+		\begin{tabular}{lcccc}
+			\toprule
+			blocks & plain MSE & residual MSE & plain $\norm{\nabla\W^{(1)}}$ & residual $\norm{\nabla\W^{(1)}}$ \\
+			\midrule
+			4 & $\gv{c06_resnet/final_plain4}$ & $\gv{c06_resnet/final_res4}$ & $\gv{c06_resnet/g0_plain4}$ & $\gv{c06_resnet/g0_res4}$ \\
+			16 & $\gv{c06_resnet/final_plain16}$ & $\gv{c06_resnet/final_res16}$ & $\gv{c06_resnet/g0_plain16}$ & $\gv{c06_resnet/g0_res16}$ \\
+			64 & $\gv{c06_resnet/final_plain64}$ & $\gv{c06_resnet/final_res64}$ & $\gv{c06_resnet/g0_plain64}$ & $\gv{c06_resnet/g0_res64}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.62\linewidth, height=0.38\linewidth, xlabel={step},
+		ylabel={training MSE}, ymode=log, legend pos=outer north east, legend style={font=\scriptsize}]
+		\addplot table[x=step,y=plain4] {gen/dl/data/c06_resnet-curves.dat}; \addlegendentry{plain, 4}
+		\addplot table[x=step,y=plain64] {gen/dl/data/c06_resnet-curves.dat}; \addlegendentry{plain, 64}
+		\addplot table[x=step,y=res4] {gen/dl/data/c06_resnet-curves.dat}; \addlegendentry{residual, 4}
+		\addplot table[x=step,y=res64] {gen/dl/data/c06_resnet-curves.dat}; \addlegendentry{residual, 64}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	The 64-block plain network trains far worse than the 4-block one even though it contains it as a
+	special case; with BatchNorm its first-layer gradient at initialisation is enormous rather than tiny,
+	another face of the same ill-conditioning. The residual version of the same depth trains. In this
+	short run the deep residual net does not beat the shallow one; making very deep nets
+	\emph{better}, not merely trainable, takes the scale and the tricks of the full recipe.
+\end{example}
+
+\begin{remark}
+	\trap ``ResNet solves overfitting'' or ``ResNet works because it has more parameters''. The shortcut
+	adds no parameters (identity) and addresses an optimisation problem: degradation of training accuracy
+	with depth, tied to poor gradient flow.
+\end{remark}
+
+\section{Transfer learning and fine-tuning}
+\prototype{Take a network pretrained on a large image dataset, replace its last layer with a 5-class
+head, and train on 2{,}000 labelled images of your own.}
+
+Features learned on a large dataset transfer: early layers detect edges and textures, middle layers
+parts, late layers task-specific concepts. Two regimes:
+\begin{itemize}
+	\ii \vocab{Feature extraction}: freeze the pretrained backbone (\pt{requires\_grad=False}), train only
+	a new head. Fast, needs little data, cannot adapt the features.
+	\ii \vocab{Fine-tuning}: initialise from the pretrained weights and continue training some or all
+	layers on the new task, usually with a learning rate $10$--$100\times$ smaller than from scratch (often
+	smaller still for early layers), so the useful features are adjusted rather than destroyed.
+\end{itemize}
+\begin{center}
+	\small
+	\begin{tabular}{lll}
+		\toprule
+		& similar to pretraining data & different \\
+		\midrule
+		small dataset & feature extraction (train head) & features from earlier layers + head \\
+		large dataset & fine-tune most or all layers & fine-tune all (pretraining still helps init) \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\begin{remark}
+	\trap ``Fine-tuning means training only the last layer.'' That is feature extraction (linear probing).
+	Fine-tuning updates pretrained weights. Two practical traps: preprocess inputs exactly as in
+	pretraining (same normalisation statistics and resolution), and with frozen BatchNorm layers keep them
+	in \pt{eval()} mode, or their running statistics drift to the new data even though their weights are
+	frozen.
+\end{remark}
+
+\section{Detection and segmentation, in one section}
+\prototype{Two $4\times4$ boxes offset by $(2,2)$ overlap in $\gv{c06_cnn/iou_inter}$ pixels out of
+$\gv{c06_cnn/iou_union}$: IoU $\gv{c06_cnn/iou_ab}$.}
+
+\vocab{Object detection} outputs boxes with class labels and scores. Its evaluation unit is
+\vocab{intersection over union}, $\mathrm{IoU}(A,B)=\abs{A\cap B}/\abs{A\cup B}$; a detection counts as
+correct if IoU with a ground-truth box exceeds a threshold (often $0.5$), and \vocab{mAP} averages the
+area under precision--recall curves over classes (and, in some benchmarks, over IoU thresholds).
+
+\codefile[\script{c06_cnn}]{gen/dl/snip/c06_cnn-iou_nms.py}
+
+Detectors propose many overlapping boxes per object; \vocab{non-maximum suppression} keeps the
+highest-scoring box and deletes others that overlap it by more than a threshold. With six boxes (two
+clusters of near-duplicates plus one isolated box, pairwise IoUs within a cluster of
+$\gv{c06_cnn/iou_12}$, $\gv{c06_cnn/iou_14}$ and $\gv{c06_cnn/iou_35}$) NMS at $0.5$ keeps boxes
+$\gv{c06_cnn/nms_keep}$, matching an independent vectorised implementation.
+
+\begin{itemize}
+	\ii \textbf{Two-stage} (R-CNN family): propose regions, then classify and refine each. R-CNN ran a CNN
+	per proposal; Fast R-CNN shares one feature map and pools each region from it; Faster R-CNN learns the
+	proposals with a region proposal network over \vocab{anchors} (reference boxes of several scales and
+	aspect ratios at every position, from which offsets are regressed).
+	\ii \textbf{One-stage} (YOLO, SSD, RetinaNet): predict class scores and box offsets densely over a grid
+	or anchors in one pass; faster, historically less accurate on small objects; focal loss
+	(\cref{ch:activations}) was introduced for the extreme foreground--background imbalance this creates.
+	\ii \textbf{Semantic segmentation} labels every pixel. \vocab{Fully convolutional networks} replace FC
+	layers by convolutions and upsample; \vocab{U-Net} \cite{unet} is an encoder--decoder whose skip
+	connections concatenate high-resolution encoder features into the decoder to recover fine boundaries.
+	Instance segmentation (e.g.\ Mask R-CNN) adds a mask head per detected box.
+\end{itemize}
+
+\begin{moral}
+	Shapes: $\lfloor(n+2p-d(k-1)-1)/s\rfloor+1$. Parameters: $(k^2C_\text{in}+1)C_\text{out}$. Weight
+	sharing explains the small counts; stride and pooling shrink space; residual shortcuts make depth
+	trainable.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	An input of $64\times64\times3$ passes through: conv $3\times3$, 32 filters, stride 1, padding 1;
+	max-pool $2\times2$ stride 2; conv $5\times5$, 64 filters, stride 2, padding 2. Give the output shape
+	and the number of parameters after each layer.
+	\begin{hint}Apply the formula layer by layer; pooling has no parameters.\end{hint}
+	\begin{sol}
+		$\gv{c06_cnn/pa_shape0}$ with $(27+1)\cdot32=\gv{c06_cnn/pa_par0}$ parameters;
+		$\gv{c06_cnn/pa_shape1}$ with $\gv{c06_cnn/pa_par1}$; $\lfloor(32+4-5)/2\rfloor+1=16$, so
+		$\gv{c06_cnn/pa_shape2}$ with $(25\cdot32+1)\cdot64=\gv{c06_cnn/pa_par2}$ (all checked in
+		PyTorch).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A $7\times7$ input is convolved with a $3\times3$ kernel with stride 3 and no padding. What is the output
+	size, and how many input pixels are never used?
+	\begin{hint}$\lfloor(7-3)/3\rfloor+1$.\end{hint}
+	\begin{sol}
+		$\lfloor4/3\rfloor+1=\gv{c06_cnn/pb_out}$, so $2\times2$. The windows cover rows/columns $0$--$2$ and
+		$3$--$5$; row and column $6$ are never used: $7+7-1=\gv{c06_cnn/pb_unused}$ pixels are ignored.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Compute the receptive field of: conv $3\times3$ (s1), conv $3\times3$ (s2), conv $3\times3$ (s1), max-pool
+	$2\times2$ (s2), conv $3\times3$ (s1).
+	\begin{hint}Track $r$ and $j$.\end{hint}
+	\begin{sol}
+		$(r,j)$: start $(1,1)$; $(3,1)$; $(5,2)$; $(9,2)$; pool: $r=9+1\cdot2=11$, $j=4$; last conv:
+		$r=11+2\cdot4=\gv{c06_cnn/pc_rf}$. Receptive field $\gv{c06_cnn/pc_rf}\times\gv{c06_cnn/pc_rf}$
+		(confirmed by the gradient probe).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many parameters does a depthwise-separable convolution $3\times3$, $128\to256$ have (with biases on
+	both parts), and how does that compare with a standard $3\times3$ convolution?
+	\begin{hint}Depthwise: $9\cdot128+128$. Pointwise: $128\cdot256+256$.\end{hint}
+	\begin{sol}
+		Depthwise $\gv{c06_cnn/pd_dw}$, pointwise $\gv{c06_cnn/pd_pw}$, total $\gv{c06_cnn/pd_tot}$.
+		Standard: $(9\cdot128+1)\cdot256=\gv{c06_cnn/pd_std}$, about $\gv{c06_cnn/pd_ratio}\times$ more.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A plain 56-layer CNN has higher \emph{training} error than a 20-layer one. A colleague suggests dropout.
+	Respond.
+	\begin{hint}Is this overfitting?\end{hint}
+	\begin{sol}
+		Higher training error is not overfitting, so a regulariser such as dropout will make it worse. This is
+		the degradation problem: the deeper plain net is harder to optimise. Use residual connections (and
+		BatchNorm, proper initialisation); the deeper residual net should then match or beat the shallower one.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Box $A=(0,0,10,10)$ and box $B=(5,0,15,10)$ (corners $x_1,y_1,x_2,y_2$). Compute their IoU. Does NMS with
+	threshold $0.5$ suppress the lower-scoring one?
+	\begin{hint}Intersection is a $5\times10$ strip.\end{hint}
+	\begin{sol}
+		Intersection $50$, union $100+100-50=150$, IoU $=1/3\approx\gv{c06_cnn/pf_iou}$. Below $0.5$, so both
+		boxes survive.
+	\end{sol}
+\end{problem}

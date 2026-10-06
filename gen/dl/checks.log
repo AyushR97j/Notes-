@@ -143,4 +143,57 @@
 [check] c05_regularise: ridge lambda=3e+01 vs sklearn: ours=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] ref=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] max|diff|=1.39e-17 -> OK
 [check] c05_regularise: ridge lambda=1e+02 vs sklearn: ours=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] ref=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] max|diff|=1.04e-17 -> OK
 [check] c04_optim: problem: clip (6,-8,0) by norm 5: ours=[ 3. -4.  0.] ref=[ 3. -4.  0.] max|diff|=4.00e-07 -> OK
+[check] c06_cnn: hand cross-correlation vs torch conv2d: ours=[-3. -1.  0. -4.] ref=[-3. -1.  0. -4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: hand cross-correlation vs scipy correlate2d: ours=[-3. -1.  0. -4.] ref=[-3. -1.  0. -4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: true convolution = cross-correlation with flipped kernel: ours=[3. 1. 0. 4.] ref=[3. 1. 0. 4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: padding 1 vs torch: ours=[-5. -1.  1.  3. -5. -3.] ref=[-5. -1.  1.  3. -5. -3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=32 k=5 s=1 p=0 d=1: ours=[28.] ref=[28.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=32 k=3 s=1 p=1 d=1: ours=[32.] ref=[32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=224 k=7 s=2 p=3 d=1: ours=[112.] ref=[112.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=227 k=11 s=4 p=0 d=1: ours=[55.] ref=[55.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=28 k=3 s=2 p=1 d=1: ours=[14.] ref=[14.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=64 k=3 s=1 p=2 d=2: ours=[64.] ref=[64.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=7 k=3 s=2 p=0 d=1: ours=[3.] ref=[3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=10 k=4 s=3 p=1 d=1: ours=[3.] ref=[3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=56 k=1 s=1 p=0 d=1: ours=[56.] ref=[56.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=112 k=3 s=2 p=1 d=1: ours=[56.] ref=[56.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: 32x32x3 -> 5x5x3 x10 params: ours=[760.] ref=[760.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[448.] ref=[448.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[16. 32. 32.] ref=[16. 32. 32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d output shape: ours=[16. 16. 16.] ref=[16. 16. 16.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[4640.] ref=[4640.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[32. 16. 16.] ref=[32. 16. 16.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d output shape: ours=[32.  8.  8.] ref=[32.  8.  8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[18496.] ref=[18496.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[64.  4.  4.] ref=[64.  4.  4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: AdaptiveAvgPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: AdaptiveAvgPool2d output shape: ours=[64.  1.  1.] ref=[64.  1.  1.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Linear params formula vs torch: ours=[650.] ref=[650.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: small CNN total params vs torch: ours=[24234.] ref=[24234.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field two3: formula vs gradient probe: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field three3: formula vs gradient probe: ours=[7.] ref=[7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field pool: formula vs gradient probe: ours=[8.] ref=[8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field s2: formula vs gradient probe: ours=[15.] ref=[15.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field dil: formula vs gradient probe: ours=[15.] ref=[15.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field vggblock: formula vs gradient probe: ours=[40.] ref=[40.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: max-pool 2x2 vs torch: ours=[4. 2. 5. 7.] ref=[4. 2. 5. 7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: avg-pool 2x2 vs torch: ours=[2.5 1.  2.  4. ] ref=[2.5 1.  2.  4. ] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: standard 3x3 params: ours=[589824.] ref=[589824.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: depthwise params: ours=[2304.] ref=[2304.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: pointwise params: ours=[65536.] ref=[65536.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: depthwise-separable output shape = standard: ours=[  1. 256.   8.   8.] ref=[  1. 256.   8.   8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=4 k=4 s=2 p=1: ours=[8.] ref=[8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=7 k=3 s=2 p=1: ours=[13.] ref=[13.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=16 k=2 s=2 p=0: ours=[32.] ref=[32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=5 k=3 s=1 p=1: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv by scattering vs torch: ours=[1. 3. 2. 4. 9. 4.] ref=[1. 3. 2. 4. 9. 4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: <conv(x), y> = <x, conv_transpose(y)>: ours=[14.531618] ref=[14.531618] max|diff|=1.78e-15 -> OK
 [check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: VGG-16 config: feature map 7x7x512 at 224: ours=[  1. 512.   7.   7.] ref=[  1. 512.   7.   7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: ResNet-18 config output shape: ours=[   1. 1000.] ref=[   1. 1000.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: IoU vs pixel counting: ours=[0.142857] ref=[0.142857] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: NMS vs vectorised reference: ours=[0. 2. 5.] ref=[0. 2. 5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: problem A conv2 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: problem C receptive field: ours=[19.] ref=[19.] max|diff|=0.00e+00 -> OK
