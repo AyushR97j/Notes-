@@ -1,4 +1,4 @@
-RESUME HERE: ch14 done; next = ch15 Data prep and feature engineering (★, ~7 pages).
+RESUME HERE: ch15 done; next = ch16 Optimisation (~4 pages).
 
 # Classical Machine Learning — progress log
 
@@ -57,7 +57,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
 - [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
 - [x] 14 Statistics (c14_stats.py, c14_problems.py)
-- [ ] 15 Data prep ★
+- [x] 15 Data prep ★ (c15_dataprep.py incl. SMOTE + target-encoding leakage; c15_problems.py)
 - [ ] 16 Optimisation
 - [ ] 17 Implement it
 - [ ] 18 Rapid-fire (80–100)
