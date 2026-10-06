@@ -79,3 +79,22 @@
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=16): ours=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] ref=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] max|diff|=1.78e-15 -> OK
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=32): ours=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] ref=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] max|diff|=2.11e-15 -> OK
 [check] c01_perceptron: ReLU net == piecewise-linear interp (n=64): ours=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] ref=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] max|diff|=2.61e-15 -> OK
+[check] c04_optim: GD contraction factor (kappa-1)/(kappa+1): ours=[0.818182] ref=[0.818182] max|diff|=0.00e+00 -> OK
+[check] c04_optim: heavy-ball rate (sqrt k - 1)/(sqrt k + 1): ours=[0.522478] ref=[0.522491] max|diff|=1.37e-05 -> OK
+[check] c04_optim: SGD: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] max|diff|=1.11e-16 -> OK
+[check] c04_optim: SGD momentum: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] max|diff|=1.80e-16 -> OK
+[check] c04_optim: Nesterov: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.124607] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.124607] max|diff|=2.22e-16 -> OK
+[check] c04_optim: SGD + weight decay: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.32108 ] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.32108 ] max|diff|=3.33e-16 -> OK
+[check] c04_optim: AdaGrad: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.040525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.040525] max|diff|=1.11e-16 -> OK
+[check] c04_optim: RMSProp: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.440525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.440525] max|diff|=1.11e-16 -> OK
+[check] c04_optim: Adam: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] max|diff|=1.67e-16 -> OK
+[check] c04_optim: Adam + L2: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] max|diff|=4.44e-16 -> OK
+[check] c04_optim: AdamW: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.487823] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.487823] max|diff|=2.22e-16 -> OK
+[check] c04_optim: hand Adam two steps vs torch: ours=[0.998043 1.000634] ref=[0.998043 1.000634] max|diff|=0.00e+00 -> OK
+[check] c04_optim: step decay vs StepLR: ours=[1. 1. 1. 1. 1. 1.] ref=[1. 1. 1. 1. 1. 1.] max|diff|=0.00e+00 -> OK
+[check] c04_optim: cosine vs CosineAnnealingLR: ours=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] ref=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] max|diff|=0.00e+00 -> OK
+[check] c04_optim: one-cycle vs OneCycleLR: ours=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] ref=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] max|diff|=0.00e+00 -> OK
+[check] c04_optim: minibatch-gradient variance scales like 1/B (slope): ours=[-1.000769] ref=[-1.] max|diff|=7.69e-04 -> OK
+[check] c04_optim: clip by norm vs torch: ours=[0.6 0.8] ref=[0.6 0.8] max|diff|=1.60e-07 -> OK
+[check] c04_optim: clip by value vs torch: ours=[1. 1.] ref=[1. 1.] max|diff|=0.00e+00 -> OK
+[check] c04_optim: problem: clip (6,-8,0) by norm 5: ours=[ 3. -4.  0.] ref=[ 3. -4.  0.] max|diff|=4.00e-07 -> OK
