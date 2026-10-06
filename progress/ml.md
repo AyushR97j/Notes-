@@ -1,4 +1,4 @@
-RESUME HERE: ch18 done (97 items); next = ch19 Problems (>=60) with code/ml/c19_problems.py, then preface, read-through.
+RESUME HERE: ch19 done (67 problems, 142 total); next = preface (00-preface.tex), then read-through (pdftotext grep, overfull, visual spot checks), fix list, final build, DONE.
 
 # Classical Machine Learning — progress log
 
@@ -61,7 +61,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 16 Optimisation (c16_optim.py, c16_problems.py)
 - [x] 17 Implement it (c17_implement.py: 11 implementations asserted vs sklearn + 7 in earlier chapters)
 - [x] 18 Rapid-fire (97 items)
-- [ ] 19 Problems (≥60)
+- [x] 19 Problems (67 in ch19; 142 problems in the book; numbers from c19_problems.py)
 - [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
 
 ## Log
