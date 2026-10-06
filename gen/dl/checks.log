@@ -98,9 +98,6 @@
 [check] c04_optim: step decay vs StepLR: ours=[1. 1. 1. 1. 1. 1.] ref=[1. 1. 1. 1. 1. 1.] max|diff|=0.00e+00 -> OK
 [check] c04_optim: cosine vs CosineAnnealingLR: ours=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] ref=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] max|diff|=0.00e+00 -> OK
 [check] c04_optim: one-cycle vs OneCycleLR: ours=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] ref=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] max|diff|=0.00e+00 -> OK
-[check] c04_optim: minibatch-gradient variance scales like 1/B (slope): ours=[-1.000769] ref=[-1.] max|diff|=7.69e-04 -> OK
-[check] c04_optim: clip by norm vs torch: ours=[0.6 0.8] ref=[0.6 0.8] max|diff|=1.60e-07 -> OK
-[check] c04_optim: clip by value vs torch: ours=[1. 1.] ref=[1. 1.] max|diff|=0.00e+00 -> OK
 [check] c05_init_norm: E[relu(z)^2] = Var(z)/2: ours=[2.002487] ref=[2.] max|diff|=2.49e-03 -> OK
 [check] c05_init_norm: BN forward (train) vs torch: ours=[-1.069043 -1.13809  -0.534522 -0.069045  0.        1.      ] ref=[-1.069043e+00 -1.138090e+00 -5.345217e-01 -6.904495e-02 -1.110223e-16
   1.000000e+00] max|diff|=2.22e-16 -> OK
@@ -117,6 +114,9 @@
 [check] c05_init_norm: GroupNorm vs torch: ours=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] ref=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] max|diff|=4.44e-16 -> OK
 [check] c05_init_norm: GroupNorm(G=C) = InstanceNorm: ours=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] ref=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] max|diff|=4.44e-16 -> OK
 [check] c05_init_norm: GroupNorm(G=1) = LayerNorm over (C,H,W): ours=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] ref=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] max|diff|=8.88e-16 -> OK
+[check] c04_optim: minibatch-gradient variance scales like 1/B (slope): ours=[-1.000769] ref=[-1.] max|diff|=7.69e-04 -> OK
+[check] c04_optim: clip by norm vs torch: ours=[0.6 0.8] ref=[0.6 0.8] max|diff|=1.60e-07 -> OK
+[check] c04_optim: clip by value vs torch: ours=[1. 1.] ref=[1. 1.] max|diff|=0.00e+00 -> OK
 [check] c05_regularise: inverted dropout preserves the mean: ours=[2.0024  3.9996  5.9874  8.00008] ref=[2. 4. 6. 8.] max|diff|=1.26e-02 -> OK
 [check] c05_regularise: dropout at inference is identity: ours=[2. 4. 6. 8.] ref=[2. 4. 6. 8.] max|diff|=0.00e+00 -> OK
 [check] c05_regularise: torch dropout scales kept units by 1/(1-p): ours=[2.] ref=[2.] max|diff|=0.00e+00 -> OK
@@ -190,13 +190,13 @@
 [check] c06_cnn: transposed conv out n=5 k=3 s=1 p=1: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: transposed conv by scattering vs torch: ours=[1. 3. 2. 4. 9. 4.] ref=[1. 3. 2. 4. 9. 4.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: <conv(x), y> = <x, conv_transpose(y)>: ours=[14.531618] ref=[14.531618] max|diff|=1.78e-15 -> OK
-[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: VGG-16 config: feature map 7x7x512 at 224: ours=[  1. 512.   7.   7.] ref=[  1. 512.   7.   7.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: ResNet-18 config output shape: ours=[   1. 1000.] ref=[   1. 1000.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: IoU vs pixel counting: ours=[0.142857] ref=[0.142857] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: NMS vs vectorised reference: ours=[0. 2. 5.] ref=[0. 2. 5.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem A conv2 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
 [check] c06_cnn: problem C receptive field: ours=[19.] ref=[19.] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
 [check] c07_rnn: scalar RNN unrolled by hand vs nn.RNN: ours=[ 0.462117  0.550915 -0.059199] ref=[ 0.462117  0.550915 -0.059199] max|diff|=2.22e-16 -> OK
 [check] c07_rnn: dh3/dh1 by chain rule vs autograd: ours=[0.444193] ref=[0.444193] max|diff|=1.11e-16 -> OK
 [check] c07_rnn: rnn D=10 H=20 params: ours=[640.] ref=[640.] max|diff|=0.00e+00 -> OK
@@ -219,9 +219,6 @@
 [check] c08_attention: 3-token attention vs F.scaled_dot_product_attention: ours=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] ref=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
 [check] c08_attention: causal attention vs is_causal=True: ours=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] ref=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
 [check] c08_attention: padding-masked attention vs attn_mask: ours=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] ref=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] max|diff|=4.44e-16 -> OK
-[check] c08_capstone: our MHA (cross, key padding) vs nn.MultiheadAttention: ours=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] ref=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] max|diff|=0.00e+00 -> OK
-[check] c08_capstone: our pre-LN encoder layer vs nn.TransformerEncoderLayer(norm_first=True): ours=[ 0.909841 -0.820358  0.08486   1.345751 -1.570617 -1.669031] ref=[ 0.90984  -0.820358  0.08486   1.345751 -1.570617 -1.669031] max|diff|=2.38e-07 -> OK
-[check] c08_capstone: our pre-LN decoder layer vs nn.TransformerDecoderLayer(norm_first=True): ours=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] ref=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] max|diff|=3.58e-07 -> OK
 [check] c08_attention: Var(q.k) grows linearly in d_k (log-log slope): ours=[0.993558] ref=[1.] max|diff|=6.44e-03 -> OK
 [check] c08_attention: NumPy MHA vs nn.MultiheadAttention (output): ours=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] ref=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] max|diff|=1.67e-16 -> OK
 [check] c08_attention: NumPy MHA vs nn.MultiheadAttention (weights): ours=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] ref=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] max|diff|=5.55e-17 -> OK
@@ -237,6 +234,9 @@
 [check] c08_attention: decoder layer d=512: ours=[4204032.] ref=[4204032.] max|diff|=0.00e+00 -> OK
 [check] c08_attention: encoder layer d=768: ours=[7087872.] ref=[7087872.] max|diff|=0.00e+00 -> OK
 [check] c08_attention: decoder layer d=768: ours=[9451776.] ref=[9451776.] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: our MHA (cross, key padding) vs nn.MultiheadAttention: ours=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] ref=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: our pre-LN encoder layer vs nn.TransformerEncoderLayer(norm_first=True): ours=[ 0.909841 -0.820358  0.08486   1.345751 -1.570617 -1.669031] ref=[ 0.90984  -0.820358  0.08486   1.345751 -1.570617 -1.669031] max|diff|=2.38e-07 -> OK
+[check] c08_capstone: our pre-LN decoder layer vs nn.TransformerDecoderLayer(norm_first=True): ours=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] ref=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] max|diff|=3.58e-07 -> OK
 [check] c08_attention: nn.Transformer(512, 8, 6+6, 2048) body: ours=[44140544.] ref=[44140544.] max|diff|=0.00e+00 -> OK
 [check] c08_attention: 12-layer d=768 encoder stack: ours=[85054464.] ref=[85054464.] max|diff|=0.00e+00 -> OK
 [check] c08_attention: blockwise online-softmax attention == standard: ours=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] ref=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] max|diff|=4.44e-16 -> OK
@@ -277,22 +277,19 @@
 [check] c10_generative: ViT patch tokens: ours=[  1. 196. 768.] ref=[  1. 196. 768.] max|diff|=0.00e+00 -> OK
 [check] c10_generative: ViT patch embedding params: ours=[590592.] ref=[590592.] max|diff|=0.00e+00 -> OK
 [check] c10_generative: problem A KL vs torch: ours=[0.806853] ref=[0.806853] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: eval mode is deterministic: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: without zero_grad the second backward doubles the gradient: ours=[-10.371587  -0.331078  -0.617689] ref=[-10.371587  -0.331078  -0.617689] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: accumulating 4 micro-batches of 8 (loss/4) == one batch of 32: ours=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] ref=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] max|diff|=2.98e-08 -> OK
+[check] c11_pytorch: resume from checkpoint == uninterrupted training: ours=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] ref=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: same seed -> identical initial weights: ours=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] ref=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN layer is permutation-equivariant: ours=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] ref=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN matrix form == per-node message passing: ours=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] ref=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] max|diff|=0.00e+00 -> OK
 [check] c08_capstone: NumPy Transformer forward vs PyTorch (trained weights, 50 sequences): ours=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] ref=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] max|diff|=1.20e-14 -> OK
 [check] c08_capstone: NumPy greedy decoding == PyTorch greedy decoding (200 sequences): ours=[ 1.  9.  4.  4. 10.  6.] ref=[ 1.  9.  4.  4. 10.  6.] max|diff|=0.00e+00 -> OK
-[check] c10_generative: linear autoencoder reconstruction error -> PCA error: ours=[0.007049] ref=[0.007049] max|diff|=3.83e-10 -> OK
-[check] c10_generative: decoder column space = top-k principal subspace: ours=[1. 1. 1.] ref=[1. 1. 1.] max|diff|=5.24e-12 -> OK
-[check] c10_generative: Gaussian KL closed form vs torch.distributions: ours=[0.818147] ref=[0.818147] max|diff|=0.00e+00 -> OK
-[check] c10_generative: 8-dim KL vs torch: ours=[3.923135] ref=[3.923135] max|diff|=0.00e+00 -> OK
-[check] c10_generative: reparameterised MC gradient wrt mu ~ 2 mu: ours=[1.998782] ref=[2.] max|diff|=1.22e-03 -> OK
-[check] c10_generative: reparameterised MC gradient wrt sigma ~ 2 sigma: ours=[0.998201] ref=[1.] max|diff|=1.80e-03 -> OK
-[check] c10_generative: V(D*, G) = -log 4 + 2 JSD: ours=[-0.943953] ref=[-0.943953] max|diff|=5.23e-13 -> OK
-[check] c10_generative: 300 noising steps: mean matches sqrt(abar) x0: ours=[1.262132] ref=[1.259237] max|diff|=2.89e-03 -> OK
-[check] c10_generative: 300 noising steps: variance matches 1 - abar: ours=[0.601811] ref=[0.60358] max|diff|=1.77e-03 -> OK
-[check] c10_generative: CLIP loss by hand vs F.cross_entropy form: ours=[0.008325] ref=[0.008325] max|diff|=2.08e-16 -> OK
-[check] c10_generative: SGNS loss vs torch: ours=[2.743125] ref=[2.743125] max|diff|=4.44e-16 -> OK
-[check] c10_generative: SGNS grad wrt centre vector vs autograd: ours=[ 0.326494 -0.335395  0.234273  0.102524  0.024437] ref=[ 0.326494 -0.335395  0.234273  0.102524  0.024437] max|diff|=1.39e-17 -> OK
-[check] c10_generative: SGNS grad wrt context vector vs autograd: ours=[-0.015986 -0.011332  0.057176 -0.081188  0.20962 ] ref=[-0.015986 -0.011332  0.057176 -0.081188  0.20962 ] max|diff|=0.00e+00 -> OK
-[check] c10_generative: SGNS grad wrt negatives vs autograd: ours=[ 0.013511  0.009578 -0.048323  0.068616 -0.177161  0.012837] ref=[ 0.013511  0.009578 -0.048323  0.068616 -0.177161  0.012837] max|diff|=2.78e-17 -> OK
-[check] c10_generative: ViT patch tokens: ours=[  1. 196. 768.] ref=[  1. 196. 768.] max|diff|=0.00e+00 -> OK
-[check] c10_generative: ViT patch embedding params: ours=[590592.] ref=[590592.] max|diff|=0.00e+00 -> OK
-[check] c10_generative: problem A KL vs torch: ours=[0.806853] ref=[0.806853] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: eval mode is deterministic: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: without zero_grad the second backward doubles the gradient: ours=[-10.371587  -0.331078  -0.617689] ref=[-10.371587  -0.331078  -0.617689] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: accumulating 4 micro-batches of 8 (loss/4) == one batch of 32: ours=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] ref=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] max|diff|=2.98e-08 -> OK
+[check] c11_pytorch: resume from checkpoint == uninterrupted training: ours=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] ref=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: same seed -> identical initial weights: ours=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] ref=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN layer is permutation-equivariant: ours=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] ref=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN matrix form == per-node message passing: ours=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] ref=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] max|diff|=0.00e+00 -> OK

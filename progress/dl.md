@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-10 done; next = chapter 11-pytorch (code/dl/c11_*.py), then 12..14, preface. Full build >2 min: use long timeouts.
+RESUME HERE: chapters 01-11 done; next = chapter 12-implement (code/dl/c12_implement.py), then 13 rapid-fire, 14 problems, preface. Full build >2 min.
 
 # Deep Learning — progress log
 
@@ -54,7 +54,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 08 Attention and Transformer ★ (+ capstone)
 - [x] 09 LLMs
 - [x] 10 Generative and representation learning
-- [ ] 11 Practice and PyTorch
+- [x] 11 Practice and PyTorch
 - [ ] 12 Implement it
 - [ ] 13 Rapid-fire (80–100)
 - [ ] 14 Problems (≥60)
