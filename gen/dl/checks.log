@@ -1,3 +1,26 @@
+[check] c03_backprop: graph grads vs autograd: ours=[3. 3. 1.] ref=[3. 3. 1.] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 loss: ours=[0.709913] ref=[0.709913] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 dW1: ours=[-0.063183 -0.031592  0.073959  0.036979] ref=[-0.063183 -0.031592  0.073959  0.036979] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 db1: ours=[-0.063183  0.073959] ref=[-0.063183  0.073959] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 dW2: ours=[-0.273183 -0.298185] ref=[-0.273183 -0.298185] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 db2: ours=[-0.508313] ref=[-0.508313] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: MLP loss vs torch: ours=[1.092424] ref=[1.092424] max|diff|=2.22e-16 -> OK
+[check] c03_backprop: MLP dW1 vs autograd: ours=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] ref=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP db1 vs autograd: ours=[-0.040935  0.009656  0.038731  0.023918 -0.0176   -0.080173] ref=[-0.040935  0.009656  0.038731  0.023918 -0.0176   -0.080173] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP dW2 vs autograd: ours=[-0.004066  0.007696 -0.017964 -0.008911  0.037541 -0.005099] ref=[-0.004066  0.007696 -0.017964 -0.008911  0.037541 -0.005099] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP db2 vs autograd: ours=[-1.275767e-02 -1.814585e-02 -7.884562e-05 -3.593290e-02 -3.461187e-02
+ -9.913554e-03] ref=[-1.275767e-02 -1.814585e-02 -7.884562e-05 -3.593290e-02 -3.461187e-02
+ -9.913554e-03] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP dW3 vs autograd: ours=[-0.037743 -0.018575 -0.019019 -0.002418 -0.020083 -0.014152] ref=[-0.037743 -0.018575 -0.019019 -0.002418 -0.020083 -0.014152] max|diff|=1.73e-17 -> OK
+[check] c03_backprop: MLP db3 vs autograd: ours=[ 0.018596  0.031116 -0.049712] ref=[ 0.018596  0.031116 -0.049712] max|diff|=2.08e-17 -> OK
+[check] c03_backprop: numerical vs analytic dW1: ours=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] ref=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] max|diff|=1.51e-11 -> OK
+[check] c03_backprop: mini-autograd loss: ours=[1.074884] ref=[1.074884] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: mini-autograd grad 0: ours=[-0.036629 -0.004911 -0.064657 -0.025008  0.000756  0.07263 ] ref=[-0.036629 -0.004911 -0.064657 -0.025008  0.000756  0.07263 ] max|diff|=3.82e-17 -> OK
+[check] c03_backprop: mini-autograd grad 1: ours=[-0.031191  0.002565  0.050367  0.016385 -0.011658 -0.085346] ref=[-0.031191  0.002565  0.050367  0.016385 -0.011658 -0.085346] max|diff|=3.47e-17 -> OK
+[check] c03_backprop: mini-autograd grad 2: ours=[-0.005504  0.000736  0.002581  0.009744 -0.0224    0.000175] ref=[-0.005504  0.000736  0.002581  0.009744 -0.0224    0.000175] max|diff|=2.36e-17 -> OK
+[check] c03_backprop: mini-autograd grad 3: ours=[-0.026124  0.010296  0.002127  0.027144 -0.050798  0.007384] ref=[-0.026124  0.010296  0.002127  0.027144 -0.050798  0.007384] max|diff|=3.47e-17 -> OK
+[check] c03_backprop: mini-autograd grad 4: ours=[-0.013959  0.025795 -0.011836 -0.020722  0.013828  0.006893] ref=[-0.013959  0.025795 -0.011836 -0.020722  0.013828  0.006893] max|diff|=2.08e-17 -> OK
+[check] c03_backprop: mini-autograd grad 5: ours=[ 0.02112   0.046948 -0.068069] ref=[ 0.02112   0.046948 -0.068069] max|diff|=2.43e-17 -> OK
 [check] c02_activations: sigmoid vs torch: ours=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] ref=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] max|diff|=1.11e-16 -> OK
 [check] c02_activations: d sigmoid vs autograd: ours=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] ref=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] max|diff|=5.55e-17 -> OK
 [check] c02_activations: tanh vs torch: ours=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] ref=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] max|diff|=1.11e-16 -> OK

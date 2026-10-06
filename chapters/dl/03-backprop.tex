@@ -1,4 +1,443 @@
 \chapter{Backpropagation}
 \label{ch:backprop}
-\section{Backpropagation}
-\stub{Backpropagation}
+
+Backpropagation \cite{rumelhart} is the chain rule applied to a computation graph
+in the order that makes it cheap: from the loss backwards, reusing every
+intermediate product once. Interviews ask you to derive it for an MLP in matrix
+form, to run one step by hand on a tiny network, and increasingly to write the
+autograd engine itself. This chapter does all three, then uses the same algebra to
+explain why gradients vanish or explode with depth.
+
+\section{Computation graphs and the chain rule}
+\prototype{$f=(x+y)\,z$ at $x=2$, $y=-1$, $z=3$: forward gives $q=x+y=1$,
+$f=3$; backward gives $\partial f/\partial x=\partial f/\partial y=z=3$ and
+$\partial f/\partial z=q=1$.}
+
+A \vocab{computation graph} is a directed acyclic graph whose nodes are elementary
+operations and whose edges carry values. To differentiate a scalar output $f$ with
+respect to every node, define the \vocab{adjoint} $\bar v = \partial f/\partial v$.
+For a node $v$ that feeds nodes $u_1,\dots,u_m$,
+\[ \bar v = \sum_{j=1}^m \bar u_j\,\pd{u_j}{v}. \]
+Each node needs only its \vocab{local gradient} $\partial u/\partial v$; adjoints
+arrive from above, are multiplied by the local gradient, and are \emph{summed} over
+all paths (fan-out).
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.6cm and 2.2cm]
+	\node[inneuron] (x) {$x$};
+	\node[inneuron, below=0.9cm of x] (y) {$y$};
+	\node[inneuron, below=0.9cm of y] (z) {$z$};
+	\node[op, right=2.2cm of $(x)!0.5!(y)$] (plus) {$+$};
+	\node[op, right=2.4cm of plus] (times) {$\times$};
+	\node[right=1.6cm of times] (f) {$f$};
+	\draw[flow] (x) -- node[above, font=\scriptsize, ForestGreen!70!black] {$2$} node[below, font=\scriptsize, red!70!black] {$3$} (plus);
+	\draw[flow] (y) -- node[above, font=\scriptsize, ForestGreen!70!black] {$-1$} node[below, font=\scriptsize, red!70!black] {$3$} (plus);
+	\draw[flow] (plus) -- node[above, font=\scriptsize, ForestGreen!70!black] {$q=\gv{c03_backprop/g_q}$} node[below, font=\scriptsize, red!70!black] {$\bar q=z=3$} (times);
+	\draw[flow] (z) -| node[pos=0.25, above, font=\scriptsize, ForestGreen!70!black] {$3$} node[pos=0.25, below, font=\scriptsize, red!70!black] {$\bar z=q=\gv{c03_backprop/g_dfdz}$} (times);
+	\draw[flow] (times) -- node[above, font=\scriptsize, ForestGreen!70!black] {$\gv{c03_backprop/g_f}$} node[below, font=\scriptsize, red!70!black] {$1$} (f);
+\end{tikzpicture}
+\end{center}
+Green numbers are forward values, red are adjoints. The add node \emph{routes} its
+incoming gradient unchanged to both inputs; the multiply node \emph{swaps}: each input
+receives the upstream gradient times the other input. A max node routes the whole
+gradient to the winning input and zero to the rest (that is how max-pooling
+backpropagates, \cref{ch:cnn}).
+
+\subsection{Forward mode versus reverse mode}
+For $f:\RR^n\to\RR^m$ the chain rule can be evaluated input-to-output
+(\vocab{forward mode}: one pass per input direction, computing a Jacobian--vector
+product $J\vv$) or output-to-input (\vocab{reverse mode}: one pass per output,
+computing a vector--Jacobian product $\uu\T J$). A loss has $m=1$ and $n$ in the
+millions or billions, so reverse mode gets the entire gradient for the cost of about one
+extra forward pass, while forward mode would need $n$ passes. Backpropagation is
+reverse-mode automatic differentiation specialised to neural networks.
+
+\begin{remark}
+	\trap Backprop is not numerical differentiation and not symbolic
+	differentiation. Numerical differences cost one pass per parameter and are
+	inexact; symbolic expressions blow up in size. Reverse mode is exact up to floating
+	point and costs a small constant times the forward pass, but it must
+	\emph{store} the forward activations, which is why training needs far more memory
+	than inference.
+\end{remark}
+
+\section{Backpropagation for an MLP, in matrix form}
+\prototype{For a ReLU MLP with softmax output, $\bdelta^{(L)}=\bm p-\y$ and each
+layer sends $\bdelta^{(l)}=(\W^{(l+1)\top}\bdelta^{(l+1)})\had\relu'(\z^{(l)})$ back.}
+
+Use the notation of \cref{ch:perceptron}: $\z^{(l)}=\W^{(l)}\h^{(l-1)}+\bb^{(l)}$,
+$\h^{(l)}=\phi(\z^{(l)})$, $\h^{(0)}=\x$, loss $\Loss$ on the output logits
+$\z^{(L)}$. Define the \vocab{error signal} $\bdelta^{(l)}=\partial\Loss/\partial\z^{(l)}$.
+
+\begin{theorem}[Backpropagation equations]
+	For one example,
+	\begin{align*}
+		\bdelta^{(L)} &= \pd{\Loss}{\z^{(L)}} \quad(\text{$=\softmax(\z^{(L)})-\y$ for softmax + CE}),\\
+		\bdelta^{(l)} &= \bigl(\W^{(l+1)\top}\bdelta^{(l+1)}\bigr)\had\phi'\bigl(\z^{(l)}\bigr), \qquad l=L-1,\dots,1,\\
+		\pd{\Loss}{\W^{(l)}} &= \bdelta^{(l)}\,\h^{(l-1)\top}, \qquad
+		\pd{\Loss}{\bb^{(l)}} = \bdelta^{(l)}.
+	\end{align*}
+\end{theorem}
+\begin{proof}
+	$z^{(l+1)}_j=\sum_i W^{(l+1)}_{ji}\phi(z^{(l)}_i)+b_j$, so
+	$\partial z^{(l+1)}_j/\partial z^{(l)}_i = W^{(l+1)}_{ji}\phi'(z^{(l)}_i)$. The chain rule
+	summed over all $j$ gives
+	$\delta^{(l)}_i=\phi'(z^{(l)}_i)\sum_j W^{(l+1)}_{ji}\delta^{(l+1)}_j$, the second line.
+	Since $z^{(l)}_j$ depends on $W^{(l)}_{ji}$ only through the term $W^{(l)}_{ji}h^{(l-1)}_i$,
+	$\partial\Loss/\partial W^{(l)}_{ji}=\delta^{(l)}_jh^{(l-1)}_i$, an outer product; the
+	bias has local gradient $1$.
+\end{proof}
+
+With a batch stored row-wise ($\Hm^{(l)}\in\RR^{B\times n_l}$, $\Delta^{(l)}\in\RR^{B\times n_l}$,
+loss averaged over the batch) the same equations read
+\[
+	\Delta^{(l)} = \bigl(\Delta^{(l+1)}\W^{(l+1)}\bigr)\had\phi'(\mathbf Z^{(l)}),\qquad
+	\pd{\Loss}{\W^{(l)}} = \Delta^{(l)\top}\Hm^{(l-1)},\qquad
+	\pd{\Loss}{\bb^{(l)}} = \Delta^{(l)\top}\one,
+\]
+with $\Delta^{(L)}=(\bm P-\Y)/B$. \emph{Check the shapes}: $\Delta^{(l)\top}\Hm^{(l-1)}$ is
+$\shp{n_l,B}\shp{B,n_{l-1}}=\shp{n_l,n_{l-1}}$, the shape of $\W^{(l)}$. Shape-matching is
+the fastest way to rederive these formulas under pressure: there is usually only one
+way to multiply the available matrices into the required shape.
+
+\codefile[\script{c03_backprop}]{gen/dl/snip/c03_backprop-mlp_backprop.py}
+
+The script runs this on a $5\to8\to6\to3$ network with a batch of 16 and asserts that
+the loss and all six gradient arrays equal PyTorch's autograd.
+
+\begin{center}
+	\small
+	\begin{tabular}{lll}
+		\toprule
+		layer, forward & local gradient & backward rule \\
+		\midrule
+		$\z=\W\h+\bb$ & $\partial\z/\partial\h=\W$ & $\bar\h=\W\T\bar\z$, $\bar\W=\bar\z\h\T$, $\bar\bb=\bar\z$ \\
+		$\h=\phi(\z)$ elementwise & $\diag\phi'(\z)$ & $\bar\z=\bar\h\had\phi'(\z)$ \\
+		$\h=\relu(\z)$ & $\ind{z>0}$ & $\bar\z=\bar\h\had\ind{\z>0}$ \\
+		$s=\sigma(z)$ & $s(1-s)$ & $\bar z=\bar s\,s(1-s)$ \\
+		$\Loss=\CE(\softmax(\z),\y)$ & & $\bar\z=\bm p-\y$ \\
+		$\Loss=\frac12\norm{\byhat-\y}^2$ & & $\bar{\byhat}=\byhat-\y$ \\
+		$\mathbf C=\A\B$ & & $\bar\A=\bar{\mathbf C}\B\T$, $\bar\B=\A\T\bar{\mathbf C}$ \\
+		$u=\max(a,b)$ & & winner gets $\bar u$, loser $0$ \\
+		$u=a+b$, $u=ab$ & & route; swap \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\begin{moral}
+	Backprop is: one forward pass storing $\z^{(l)}$ and $\h^{(l)}$, then for each layer
+	from the top, an outer product for the weight gradient and a transposed
+	matrix product, masked by $\phi'$, to pass the error down.
+\end{moral}
+
+\section{A complete forward and backward pass by hand}
+\prototype{A 2-2-1 network with sigmoid hidden units, a sigmoid output and binary
+cross-entropy, one SGD step with $\eta=0.5$.}
+
+\begin{center}
+\begin{tikzpicture}[x=1.25cm,y=1.1cm]
+	\node[inneuron] (x1) at (0,1) {$x_1$};
+	\node[inneuron] (x2) at (0,-1) {$x_2$};
+	\node[hidneuron] (h1) at (3,1) {$h_1$};
+	\node[hidneuron] (h2) at (3,-1) {$h_2$};
+	\node[outneuron] (o) at (6,0) {$\hat y$};
+	\draw[flow] (x1) -- node[above, font=\scriptsize] {$0.2$} (h1);
+	\draw[flow] (x2) -- node[pos=0.2, below, font=\scriptsize] {$-0.3$} (h1);
+	\draw[flow] (x1) -- node[pos=0.2, above, font=\scriptsize] {$0.4$} (h2);
+	\draw[flow] (x2) -- node[below, font=\scriptsize] {$0.1$} (h2);
+	\draw[flow] (h1) -- node[above, font=\scriptsize] {$0.5$} (o);
+	\draw[flow] (h2) -- node[below, font=\scriptsize] {$-0.6$} (o);
+	\node[font=\scriptsize, above=1mm of h1] {$b=0.1$};
+	\node[font=\scriptsize, below=1mm of h2] {$b=-0.1$};
+	\node[font=\scriptsize, above=1mm of o] {$b=0.05$};
+	\node[font=\scriptsize, left=1mm of x1] {$1.0$};
+	\node[font=\scriptsize, left=1mm of x2] {$0.5$};
+	\node[font=\scriptsize, right=1mm of o] {target $y=1$};
+\end{tikzpicture}
+\end{center}
+
+\begin{example}[Forward pass]
+	\label{ex:221fwd}
+	$\x=(1,0.5)$, $\W^{(1)}=\begin{psmallmatrix}0.2&-0.3\\0.4&0.1\end{psmallmatrix}$,
+	$\bb^{(1)}=(0.1,-0.1)$, $\w^{(2)}=(0.5,-0.6)$, $b^{(2)}=0.05$, target $y=1$.
+	\begin{align*}
+		\z^{(1)} &= \W^{(1)}\x+\bb^{(1)} = (\gv{c03_backprop/z1_0},\ \gv{c03_backprop/z1_1}), &
+		\h &= \sigma(\z^{(1)}) = (\gv{c03_backprop/h1_0},\ \gv{c03_backprop/h1_1}),\\
+		z^{(2)} &= \w^{(2)\top}\h+b^{(2)} = \gv{c03_backprop/z2}, &
+		\hat y &= \sigma(z^{(2)}) = \gv{c03_backprop/yhat},\\
+		\Loss &= -\ln\hat y = \gv{c03_backprop/L}.
+	\end{align*}
+\end{example}
+
+\begin{example}[Backward pass and update]
+	\label{ex:221bwd}
+	Output layer: sigmoid + BCE gives $\delta^{(2)}=\hat y-y=\gv{c03_backprop/d2}$, so
+	$\partial\Loss/\partial\w^{(2)}=\delta^{(2)}\h=(\gv{c03_backprop/gW2_0},\ \gv{c03_backprop/gW2_1})$
+	and $\partial\Loss/\partial b^{(2)}=\gv{c03_backprop/d2}$.
+
+	Hidden layer: $\w^{(2)}\delta^{(2)}=(\gv{c03_backprop/w2d2_0},\ \gv{c03_backprop/w2d2_1})$,
+	times $\sigma'(\z^{(1)})=\h\had(1-\h)=(\gv{c03_backprop/sp_0},\ \gv{c03_backprop/sp_1})$
+	gives $\bdelta^{(1)}=(\gv{c03_backprop/d1_0},\ \gv{c03_backprop/d1_1})$, and
+	\[
+		\pd{\Loss}{\W^{(1)}}=\bdelta^{(1)}\x\T=
+		\begin{pmatrix}\gv{c03_backprop/gW1_00}&\gv{c03_backprop/gW1_01}\\
+		\gv{c03_backprop/gW1_10}&\gv{c03_backprop/gW1_11}\end{pmatrix},\qquad
+		\pd{\Loss}{\bb^{(1)}}=(\gv{c03_backprop/gb1_0},\ \gv{c03_backprop/gb1_1}).
+	\]
+	SGD with $\eta=0.5$:
+	$\W^{(1)}\gets\begin{psmallmatrix}\gv{c03_backprop/W1n_00}&\gv{c03_backprop/W1n_01}\\
+	\gv{c03_backprop/W1n_10}&\gv{c03_backprop/W1n_11}\end{psmallmatrix}$,
+	$\bb^{(1)}\gets(\gv{c03_backprop/b1n_0},\gv{c03_backprop/b1n_1})$,
+	$\w^{(2)}\gets(\gv{c03_backprop/W2n_0},\gv{c03_backprop/W2n_1})$,
+	$b^{(2)}\gets\gv{c03_backprop/b2n}$. The loss on the same example drops from
+	$\gv{c03_backprop/L}$ to $\gv{c03_backprop/Lnew}$. Every gradient matches
+	\pt{loss.backward()} in PyTorch.
+\end{example}
+
+\codefile[\script{c03_backprop}]{gen/dl/snip/c03_backprop-net221.py}
+
+Two things to notice. The hidden unit with the \emph{negative} outgoing weight gets a
+positive $\delta$: increasing its activation would lower $\hat y$, so its weights are
+pushed down. And the update to $\W^{(1)}$ is an outer product, rank one: one example
+moves the first layer only along the direction of its own input $\x$.
+
+\begin{remark}
+	\trap With MSE $\frac12(\hat y-y)^2$ instead of BCE the output error picks up an extra
+	factor: $\delta^{(2)}=(\hat y-y)\,\hat y(1-\hat y)$. Forgetting which loss the question
+	uses is the most common way to get this OA wrong; the clean $\hat y-y$ is specific
+	to sigmoid + BCE (and softmax + CE).
+\end{remark}
+
+\section{Gradient checking}
+\prototype{Compare the analytic $\partial\Loss/\partial\W^{(1)}$ with
+$(\Loss(\theta+h\be_i)-\Loss(\theta-h\be_i))/2h$; a relative error near $10^{-9}$ means
+the backward pass is right.}
+
+\codefile[\script{c03_backprop}]{gen/dl/snip/c03_backprop-gradcheck.py}
+
+The centred difference has truncation error $O(h^2)$, the one-sided difference
+$O(h)$; both suffer round-off error $O(\epsilon_{\text{mach}}/h)$. So the error is
+U-shaped in $h$:
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.62\linewidth, height=0.4\linewidth, xmode=log, ymode=log,
+	x dir=reverse, xlabel={step $h$}, ylabel={relative error}, legend pos=north west]
+	\addplot+[mark=*, mark size=1.2pt] table[x=h,y=fwd] {gen/dl/data/c03_backprop-gradcheck.dat}; \addlegendentry{one-sided}
+	\addplot+[mark=square*, mark size=1.2pt] table[x=h,y=cen] {gen/dl/data/c03_backprop-gradcheck.dat}; \addlegendentry{centred}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+In double precision the centred difference is best near $h\approx\gv{c03_backprop/gc_best_h_cen}$
+(error $\gv{c03_backprop/gc_best_cen}$), the one-sided near
+$h\approx\gv{c03_backprop/gc_best_h_fwd}$ (error $\gv{c03_backprop/gc_best_fwd}$). With
+$h=10^{-5}$ the full check on $\W^{(1)}$ gives relative error
+$\gv{c03_backprop/gc_relerr}$. Plant a bug, dropping the ReLU mask in the backward pass, and
+the relative error jumps to $\gv{c03_backprop/gc_bug_relerr}$.
+
+\begin{remark}
+	\trap Gradient checks in \pt{float32} fail spuriously: round-off is then about
+	$10^{-7}/h$, so use \pt{float64} for the check. Also turn off dropout and anything
+	random (the two loss evaluations must see the same mask), and avoid points where
+	ReLUs sit exactly at their kink.
+\end{remark}
+
+\section{Reverse-mode autograd from scratch}
+\prototype{A \pt{Tensor} class that records parents and a backward closure; calling
+\pt{loss.backward()} visits the graph in reverse topological order.}
+
+The whole of an autograd engine is three ideas: each operation returns a new node that
+remembers its inputs and a function mapping the output's gradient to the inputs'
+gradients; a topological sort; and accumulation (\pt{+=}) for nodes used more than once.
+Broadcasting needs one more line: the gradient of a broadcast input is summed over the
+broadcast dimensions.
+
+\codefile[\script{c03_backprop}]{gen/dl/snip/c03_backprop-autograd.py}
+
+That is $\gv{c03_backprop/autograd_lines}$ non-blank lines. The script builds a
+ReLU--$\tanh$ network with a broadcast bias and a term that uses $\h$ twice
+($\h\had\h$) plus a broadcast scalar, and asserts that the loss and the gradients of all six parameter
+arrays equal PyTorch's.
+
+\begin{ques}
+	Why does \pt{backward} initialise the output's gradient to one, and what would
+	\pt{loss.backward()} mean in PyTorch if \pt{loss} were a vector?
+\end{ques}
+
+\section{Vanishing and exploding gradients}
+\prototype{In a 30-layer sigmoid MLP, the gradient reaching the first layer is
+$\gv{c03_backprop/vg_ratio_sig}$ times the one at the last layer.}
+
+\subsection{The product of Jacobians}
+Unrolling the recursion,
+\[
+	\pd{\Loss}{\h^{(l)}} = \Bigl(\prod_{k=l+1}^{L} \W^{(k)\top}\diag\phi'(\z^{(k)})\Bigr)\pd{\Loss}{\h^{(L)}},
+\]
+with the factor for $k=l+1$ on the left. The norm of a product of $L-l$ random matrices behaves roughly like $\rho^{L-l}$ for
+some per-layer gain $\rho$. If $\rho<1$ the gradient \vocab{vanishes} exponentially
+with depth; if $\rho>1$ it \vocab{explodes}. With sigmoids, $\phi'\le\frac14$ forces
+$\rho$ well below one unless the weights are large, and large weights saturate the
+sigmoids, making $\phi'$ even smaller.
+
+\begin{example}[Gradient norm through depth]
+	A 30-layer, width-64 network on Gaussian inputs, no biases, gradient of a random linear
+	readout. Ratio of the gradient norm at layer 1 to that at layer 30:
+	\begin{center}
+		\small
+		\begin{tabular}{llc}
+			\toprule
+			activation & weight init (std) & $\norm{\bar\h^{(1)}}/\norm{\bar\h^{(30)}}$ \\
+			\midrule
+			sigmoid & $\sqrt{1/n}$ & $\gv{c03_backprop/vg_ratio_sig}$ \\
+			$\tanh$ & $\sqrt{1/n}$ & $\gv{c03_backprop/vg_ratio_tanh}$ \\
+			ReLU & $\sqrt{2/n}$ (He) & $\gv{c03_backprop/vg_ratio_relu}$ \\
+			ReLU & $1.5\sqrt{2/n}$ & $\gv{c03_backprop/vg_ratio_relubig}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.66\linewidth, height=0.42\linewidth,
+		xlabel={layer $l$}, ylabel={$\log_{10}\norm{\bar\h^{(l)}}/\norm{\bar\h^{(30)}}$},
+		legend pos=outer north east, legend style={font=\scriptsize}]
+		\addplot table[x=layer,y=sig] {gen/dl/data/c03_backprop-vanish.dat}; \addlegendentry{sigmoid}
+		\addplot table[x=layer,y=tanh] {gen/dl/data/c03_backprop-vanish.dat}; \addlegendentry{tanh}
+		\addplot table[x=layer,y=relu] {gen/dl/data/c03_backprop-vanish.dat}; \addlegendentry{ReLU, He}
+		\addplot table[x=layer,y=relubig] {gen/dl/data/c03_backprop-vanish.dat}; \addlegendentry{ReLU, $1.5\times$He}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	A $1.5\times$ too large initial scale per layer compounds to five orders of magnitude
+	over 30 layers: initialisation is not a detail (\cref{ch:reg}).
+\end{example}
+
+The fixes, each covered later: activations with $\phi'=1$ on the active side (ReLU
+family); variance-preserving initialisation (Xavier, He); normalisation layers
+(BatchNorm, LayerNorm); residual connections, which add an identity term to every
+Jacobian so the product cannot collapse (ResNet, \cref{ch:cnn}); gating in LSTMs
+(\cref{ch:rnn}); and gradient clipping for the exploding case (\cref{ch:optim}).
+
+\begin{remark}
+	\trap Vanishing gradients slow down learning in the \emph{early} layers (those
+	closest to the input), not the late ones. The last layers train fine; the network
+	then behaves like a shallow model on top of nearly random features.
+\end{remark}
+
+\subsection{Dying ReLUs}
+A ReLU unit with $z<0$ for every input outputs $0$ and passes back $0$, so its incoming
+weights never change again: it is \vocab{dead}. Two ways to kill units, both simulated in
+\script{c03_backprop}: a large learning-rate step that throws biases far negative, and
+a bad initialisation. Training a width-200 ReLU layer on a regression task for 300 SGD
+steps:
+\begin{center}
+	\small
+	\begin{tabular}{ccc}
+		\toprule
+		learning rate & dead units & final training MSE \\
+		\midrule
+		$0.01$ & $\gv{c03_backprop/dead_001}\%$ & $\gv{c03_backprop/deadloss_001}$ \\
+		$0.1$ & $\gv{c03_backprop/dead_01}\%$ & $\gv{c03_backprop/deadloss_01}$ \\
+		$0.2$ & $\gv{c03_backprop/dead_02}\%$ & $\gv{c03_backprop/deadloss_02}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+Initialising all biases at $-3$ leaves $\gv{c03_backprop/dead_bias}\%$ of units dead before
+training starts. Remedies: a smaller learning rate or warm-up, leaky ReLU/ELU/GELU, He
+initialisation with zero biases, normalisation before the ReLU.
+
+\section{What backprop costs}
+\prototype{A $784\to256\to128\to10$ MLP: $\gv{c03_backprop/macs_fwd}$ multiply--adds per
+example forward, about three times that per training step.}
+
+A dense layer with $n_\text{in}$ inputs and $n_\text{out}$ outputs costs
+$n_\text{in}n_\text{out}$ multiply--accumulates (\vocab{MACs}), i.e.\
+$2n_\text{in}n_\text{out}$ FLOPs, per example. The backward pass needs two products of the
+same size, $\bar\h=\W\T\bar\z$ and $\bar\W=\bar\z\h\T$, so a training step costs about
+$3\times$ the forward pass: for the MNIST MLP, $\gv{c03_backprop/flops_fwd}$ FLOPs forward
+and about $\gv{c03_backprop/flops_train}$ per example per step. (The first layer's
+$\bar\h=\W\T\bar\z$ can be skipped since nobody needs $\partial\Loss/\partial\x$.)
+
+Memory is the other bill: every $\z^{(l)}$ or $\h^{(l)}$ needed by a backward rule is
+kept from the forward pass, so activation memory grows with depth $\times$ batch size
+$\times$ width. \vocab{Gradient checkpointing} stores only some layers' activations and
+recomputes the rest during the backward pass, trading about one extra forward pass for
+memory that grows like $\sqrt{L}$ instead of $L$.
+
+\section\problemhead
+
+\begin{problem}\onechili
+	For $f=\max(x,y)\cdot z$ at $x=1$, $y=4$, $z=-2$, give $\partial f/\partial x$,
+	$\partial f/\partial y$, $\partial f/\partial z$.
+	\begin{hint}Max routes, multiply swaps.\end{hint}
+	\begin{sol}
+		$m=\max(1,4)=4$, $f=-8$. $\bar m=z=-2$; the max routes it to the winner, so
+		$\partial f/\partial y=-2$, $\partial f/\partial x=0$; $\partial f/\partial z=m=4$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A linear layer maps a batch $\X\in\RR^{32\times100}$ to $\X\W\T+\bb$ with
+	$\W\in\RR^{50\times100}$. What are the shapes of $\partial\Loss/\partial\W$,
+	$\partial\Loss/\partial\bb$ and $\partial\Loss/\partial\X$, and which products give them?
+	\begin{hint}Every gradient has the shape of the thing it differentiates.\end{hint}
+	\begin{sol}
+		With $\Delta=\partial\Loss/\partial\mathbf Z\in\RR^{32\times50}$:
+		$\partial\Loss/\partial\W=\Delta\T\X$, shape $\shp{50,100}$;
+		$\partial\Loss/\partial\bb=\Delta\T\one$, shape $\shp{50}$ (sum over the batch);
+		$\partial\Loss/\partial\X=\Delta\W$, shape $\shp{32,100}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Redo \cref{ex:221bwd} with the loss $\frac12(\hat y-y)^2$: give $\delta^{(2)}$ symbolically
+	and say whether the hidden-layer updates get larger or smaller than with BCE.
+	\begin{hint}$\delta^{(2)}$ gains a factor $\hat y(1-\hat y)\le\frac14$.\end{hint}
+	\begin{sol}
+		$\delta^{(2)}=(\hat y-y)\hat y(1-\hat y)$. With $\hat y=\gv{c03_backprop/yhat}$ the factor
+		is $\gv{c03_backprop/mse_factor}$, so $\delta^{(2)}=\gv{c03_backprop/mse_d2}$ and every
+		gradient in the network is about four times smaller than with BCE; the updates shrink by
+		the same factor (for a fixed $\eta$). Far from the target the factor is much smaller still.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Show that if all weights of an MLP are initialised to the same constant (and all biases
+	equal), every hidden unit in a layer stays identical throughout training. Do the output
+	units stay identical too?
+	\begin{hint}Look at $\bdelta^{(l)}$ and $\partial\Loss/\partial\W^{(l)}$ row by row.\end{hint}
+	\begin{sol}
+		By induction: if all rows of $\W^{(l)}$ are equal and all $b^{(l)}_j$ are equal, all units of
+		layer $l$ have the same $z$, the same $h$, and (because the outgoing weights from each are also
+		equal) the same $\delta$. The gradient row $j$ is $\delta_j\h^{(l-1)\top}$, the same for every
+		$j$, so the rows stay equal after the update. This is \vocab{symmetry}; random
+		initialisation breaks it. The output units are distinguished by their targets, so their
+		$\delta$s differ and the \emph{rows} of the output matrix become different. But within each
+		row the entries for different hidden units stay equal (they are $\delta_j h_i$ with equal
+		$h_i$), so every hidden unit keeps seeing the same combination of output errors and the
+		hidden-layer symmetry persists.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Explain, with the product-of-Jacobians formula, why a residual block
+	$\h^{(l+1)}=\h^{(l)}+F(\h^{(l)})$ helps gradients reach early layers.
+	\begin{hint}Differentiate: $\partial\h^{(l+1)}/\partial\h^{(l)}=\I+\partial F/\partial\h^{(l)}$.\end{hint}
+	\begin{sol}
+		The backward product becomes $\prod_k(\I+J_k)$. Expanding, it contains the identity term, so
+		$\partial\Loss/\partial\h^{(l)}$ includes $\partial\Loss/\partial\h^{(L)}$ unchanged plus
+		corrections: even if every $J_k$ is small, the gradient does not shrink exponentially.
+		Without the skip the product is $\prod_kJ_k$, which does.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Training loss stays exactly constant from the first step in a ReLU network. Give two
+	causes related to this chapter and a check for each.
+	\begin{hint}Where can the gradient be identically zero?\end{hint}
+	\begin{sol}
+		(i) All units dead (huge negative biases, or a huge first learning-rate step): check the
+		fraction of zero activations per layer. (ii) The graph is cut: a \pt{.detach()},
+		\pt{.numpy()} round trip or \pt{torch.no\_grad()} in the forward pass, or the optimiser
+		was given the wrong parameters: check that \pt{p.grad} is non-zero after
+		\pt{loss.backward()}. (A learning rate of zero is the third, non-backprop cause.)
+	\end{sol}
+\end{problem}
