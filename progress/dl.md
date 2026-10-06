@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-09 done; next = chapter 10-generative (script code/dl/c10_generative.py written), then 11..14, preface. Full build >2 min: use long timeouts.
+RESUME HERE: chapters 01-10 done; next = chapter 11-pytorch (code/dl/c11_*.py), then 12..14, preface. Full build >2 min: use long timeouts.
 
 # Deep Learning — progress log
 
@@ -53,7 +53,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 07 RNNs ★
 - [x] 08 Attention and Transformer ★ (+ capstone)
 - [x] 09 LLMs
-- [ ] 10 Generative and representation learning
+- [x] 10 Generative and representation learning
 - [ ] 11 Practice and PyTorch
 - [ ] 12 Implement it
 - [ ] 13 Rapid-fire (80–100)

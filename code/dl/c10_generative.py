@@ -144,3 +144,10 @@ out.check("ViT patch embedding params", sum(p.numel() for p in patch.parameters(
 out.val("vit_tokens", n_tok); out.val("vit_patch_params", thousands(P_ * P_ * C_ * dm + dm))
 out.val("vit_patch_dim", P_ * P_ * C_)
 out.val("vit_tokens_8", (H_ // 8) ** 2)
+
+# ------------------------------------------------------------ problem values
+out.val("pa1", kl_gauss_std(0.0, math.log(4.0)), 4); out.val("pa2", kl_gauss_std(2.0, 0.0), 1)
+out.check("problem A KL vs torch", kl_gauss_std(0.0, math.log(4.0)),
+          torch.distributions.kl_divergence(torch.distributions.Normal(0.0, 2.0), torch.distributions.Normal(0.0, 1.0)).item())
+out.val("pd_patches", (224 // 14) ** 2); out.val("pd_tokens", (224 // 14) ** 2 + 1)
+out.val("pe_noise", math.sqrt(0.75), 3); out.val("pe_snr", "1/3")
