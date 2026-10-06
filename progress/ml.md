@@ -1,4 +1,4 @@
-RESUME HERE: ch10 done; next = ch11 Unsupervised (k-means, hierarchical, DBSCAN, GMM-EM, PCA, ICA/t-SNE/UMAP, isolation forest, Apriori).
+RESUME HERE: ch11 done; next = ch12 Semi-/self-supervised (aim 5 pages). Page budget: keep ch12-17 tight (target total ≤180).
 
 # Classical Machine Learning — progress log
 
@@ -53,7 +53,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 08 SVM ★ (c08_svm.py: hand hard margin, dual QP, primal QP, kernels, SVR; c08_problems.py)
 - [x] 09 Trees ★ (c09_trees.py, c09_problems.py)
 - [x] 10 Ensembles ★ (c10_bagging.py, c10_boosting.py: AdaBoost/GBM/XGBoost checked vs libraries; c10_problems.py)
-- [ ] 11 Unsupervised ★
+- [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
 - [ ] 12 Semi-/self-supervised
 - [ ] 13 Evaluation ★
 - [ ] 14 Statistics
