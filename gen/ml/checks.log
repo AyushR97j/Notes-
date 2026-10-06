@@ -1,0 +1,20 @@
+[check] c02_maths: L2 norm via numpy.linalg: ours=[13.] ref=[13.] max|diff|=0.00e+00 -> OK
+[check] c02_maths: singular values^2 = eigenvalues of A^T A: ours=[18.  4.] ref=[18.  4.] max|diff|=3.55e-15 -> OK
+[check] c02_maths: Eckart-Young: ||A-A1||_F = sigma_2: ours=[2.] ref=[2.] max|diff|=2.22e-16 -> OK
+[check] c02_maths: hat matrix idempotent H^2 = H: ours=[ 0.833333  0.333333 -0.166667  0.333333  0.333333  0.333333] ref=[ 0.833333  0.333333 -0.166667  0.333333  0.333333  0.333333] max|diff|=1.11e-16 -> OK
+[check] c02_maths: grad x^T A x = (A + A^T) x: ours=[-1.683094  1.304384  0.466628  1.567029] ref=[-1.683093  1.304384  0.466627  1.567029] max|diff|=7.33e-07 -> OK
+[check] c02_maths: grad ||Ax-b||^2 = 2 A^T (Ax-b): ours=[4.093402 4.569527 4.04111  1.200487] ref=[4.093408 4.569529 4.041114 1.200488] max|diff|=6.20e-06 -> OK
+[check] c02_maths: grad log det M = M^{-T}: ours=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] ref=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] max|diff|=5.48e-10 -> OK
+[check] c02_maths: P(disease | +) simulation vs Bayes: ours=[0.087235] ref=[0.087558] max|diff|=3.23e-04 -> OK
+[check] c02_maths: Pearson r numpy vs scipy: ours=[0.919239] ref=[0.919239] max|diff|=1.11e-16 -> OK
+[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
+[check] c02_maths: Bernoulli MLE numeric vs h/n: ours=[0.7] ref=[0.7] max|diff|=3.72e-07 -> OK
+[check] c02_maths: Beta-Bernoulli MAP numeric vs closed form: ours=[0.642857] ref=[0.642857] max|diff|=9.18e-08 -> OK
+[check] c02_maths: scipy norm.fit sigma^2 = MLE (ddof=0): ours=[3.2] ref=[3.2] max|diff|=4.44e-16 -> OK
+[check] c02_maths: max xy s.t. x+y=10 at (5,5): ours=[5. 5.] ref=[5. 5.] max|diff|=1.78e-15 -> OK
+[check] c02_maths: max-entropy p (SLSQP vs exponential-family closed form): ours=[0.116172 0.267656 0.616172] ref=[0.116204 0.267592 0.616204] max|diff|=6.40e-05 -> OK
+[check] c02_maths: KKT: argmin (x-2)^2 s.t. x<=1: ours=[1.] ref=[1.] max|diff|=2.66e-15 -> OK
+[check] c02_maths: KL(p||q) vs scipy.stats.entropy: ours=[0.071928] ref=[0.071928] max|diff|=6.94e-17 -> OK
+[check] c02_maths: H(p) vs scipy.stats.entropy: ours=[1.5] ref=[1.5] max|diff|=0.00e+00 -> OK
+[check] c02_maths: log-sum-exp shift trick vs scipy: ours=[1002.407606] ref=[1002.407606] max|diff|=0.00e+00 -> OK
+[check] c01_setup: E[max of 50 val accuracies] simulation vs exact: ours=[0.61193] ref=[0.612007] max|diff|=7.71e-05 -> OK

@@ -1,0 +1,81 @@
+\documentclass[11pt,twoside=semi,openright,numbers=noenddot,titlepage=false]{scrbook}
+\newcommand{\booktitle}{Classical Machine Learning}
+\newcommand{\bookshort}{Classical ML}
+\newcommand{\bookauthor}{Philospher}
+\newcommand{\bookid}{ml}
+
+\input{latex/preamble}
+\input{latex/ml-macros}
+\addbibresource{latex/refs-ml.bib}
+\input{gen/ml/all}
+
+\title{Classical Machine Learning}
+\subtitle{A Napkin-style companion for campus placements:\\
+	derivations, hand numerics, traps, and code that checks itself}
+\author{\bookauthor}
+\date{Built \today}
+
+\begin{document}
+\frontmatter
+\maketitle
+\include{chapters/ml/00-preface}
+
+\cleardoublepage
+\newcounter{temppage}
+\setcounter{temppage}{\value{page}}
+\mainmatter
+\setcounter{page}{\value{temppage}}
+\tableofcontents
+
+\Opensolutionfile{\bookid-hints}
+\Opensolutionfile{\bookid-solns}
+
+\part{Foundations}
+\parttoc
+\include{chapters/ml/01-setup}
+\include{chapters/ml/02-maths}
+
+\part{Supervised Learning}
+\parttoc
+\include{chapters/ml/03-linreg}
+\include{chapters/ml/04-biasvar}
+\include{chapters/ml/05-logistic}
+\include{chapters/ml/06-generative}
+\include{chapters/ml/07-knn}
+\include{chapters/ml/08-svm}
+\include{chapters/ml/09-trees}
+\include{chapters/ml/10-ensembles}
+
+\part{Learning Without (Enough) Labels}
+\parttoc
+\include{chapters/ml/11-unsupervised}
+\include{chapters/ml/12-semisup}
+
+\part{Doing It Properly}
+\parttoc
+\include{chapters/ml/13-evaluation}
+\include{chapters/ml/14-statistics}
+\include{chapters/ml/15-dataprep}
+\include{chapters/ml/16-optimisation}
+
+\part{Interview Mode}
+\parttoc
+\include{chapters/ml/17-implement}
+\include{chapters/ml/18-rapidfire}
+\include{chapters/ml/19-problems}
+
+\Closesolutionfile{\bookid-hints}
+\Closesolutionfile{\bookid-solns}
+
+\part{Backmatter}
+\appendix
+\chapter{Hints to problems}
+\label{app:hints}
+\printanswers{\bookid-hints.out}
+
+\chapter{Solutions to problems}
+\label{app:sols}
+\printanswers{\bookid-solns.out}
+
+\printbibliography[heading=bibintoc]
+\end{document}

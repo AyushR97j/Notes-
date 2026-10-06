@@ -1,0 +1,2 @@
+[check] t01_demo: slope: ours=[0.6] ref=[0.6] max|diff|=0.00e+00 -> OK
+[check] t01_demo: intercept: ours=[2.2] ref=[2.2] max|diff|=0.00e+00 -> OK
