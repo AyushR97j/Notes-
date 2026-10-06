@@ -1,23 +1,329 @@
 \chapter{Evaluation and Model Selection}
 \label{ch:eval}
+Most failed ML projects do not fail at modelling; they fail at measurement --- the wrong metric, a leaky
+split, a test set consulted twenty times. Interviewers know this, so expect: precision and recall from a
+confusion matrix in one minute, ROC AUC by hand, ``accuracy is 97\%, is the model good?'', and ``how did
+you choose the hyper-parameters without fooling yourself?''
+
 \section{The confusion matrix}
-\stub{The confusion matrix}
+\prototype{1000 transactions, 60 frauds; the model flags 50, of which 40 are fraud.}
+
+\begin{center}
+	\begin{tabular}{cc|cc}
+		& & \multicolumn{2}{c}{predicted} \\
+		& & positive & negative \\ \hline
+		\multirow{2}{*}{actual} & positive & TP $=40$ & FN $=20$ \\
+		& negative & FP $=10$ & TN $=930$
+	\end{tabular}
+\end{center}
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l l c >{\raggedright\arraybackslash}X}
+		\toprule
+		metric & formula & value & question it answers \\ \midrule
+		accuracy & $\frac{TP+TN}{\text{all}}$ & \gv{c13_eval/acc} & fraction correct \\
+		precision (PPV) & $\frac{TP}{TP+FP}$ & \gv{c13_eval/P} & of the flagged, how many are fraud? \\
+		recall (sensitivity, TPR) & $\frac{TP}{TP+FN}$ & \gv{c13_eval/R} & of the frauds, how many did we catch? \\
+		specificity (TNR) & $\frac{TN}{TN+FP}$ & \gv{c13_eval/spec} & of the genuine, how many passed? \\
+		FPR & $\frac{FP}{FP+TN}$ & \gv{c13_eval/fpr} & false-alarm rate \\
+		F1 & $\frac{2PR}{P+R}$ & \gv{c13_eval/F1} & harmonic mean of $P$ and $R$ \\
+		$F_\beta$ & $\frac{(1+\beta^2)PR}{\beta^2P+R}$ & $F_2=\gv{c13_eval/F2}$ & recall weighted $\beta$ times as much \\
+		balanced accuracy & $\frac{TPR+TNR}{2}$ & \gv{c13_eval/bal} & accuracy with equal class weight \\
+		MCC & $\frac{TP\cdot TN-FP\cdot FN}{\sqrt{\cdots}}$ & \gv{c13_eval/mcc} & correlation of predictions and labels \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+(All values checked against \code{sklearn.metrics}; $F_{0.5}=\gv{c13_eval/F05}$ favours precision.)
+A model predicting ``not fraud'' for everyone scores accuracy $\gv{c13_eval/always0_acc}$ --- almost as
+good --- with recall $0$. With imbalanced classes accuracy is nearly meaningless.
+
+\begin{remark}
+	\trap Which to optimise is a business decision: recall when misses are expensive (cancer screening, fraud),
+	precision when false alarms are expensive (spam filtering into a hidden folder, recommending a loan
+	rejection). Precision depends on the prevalence; recall and specificity do not. A model with the same
+	TPR/FPR deployed where fraud is ten times rarer has much lower precision (recall the base-rate example of
+	\Cref{ch:maths}).
+\end{remark}
+
+\subsection{Macro, micro, weighted}
+For $K$ classes compute per-class precision/recall/F1 one-vs-rest, then average:
+\vocab{macro} (plain mean: every class equal), \vocab{weighted} (mean weighted by class support),
+\vocab{micro} (pool all TP/FP/FN first: for single-label multiclass, micro-F1 $=$ accuracy).
+\begin{example}[Three classes]
+	Confusion matrix (rows true) $\begin{psmallmatrix}50&3&2\\10&25&5\\2&3&10\end{psmallmatrix}$. Per-class
+	F1: $(\gv{c13_eval/mc_f1})$. Macro-F1 $=\gv{c13_eval/macro}$, weighted $=\gv{c13_eval/weighted}$,
+	micro $=$ accuracy $=85/110=\gv{c13_eval/micro}$. The small third class drags macro-F1 down; use macro when
+	minority classes matter.
+\end{example}
 
 \section{ROC and PR curves}
-\stub{ROC and PR curves}
+\prototype{Eight scored examples, swept threshold by threshold.}
+
+A scoring classifier gives a curve, not a point. Sweeping the threshold from high to low traces the
+\vocab{ROC curve} (TPR against FPR) and the \vocab{precision--recall curve}.
+\begin{example}[ROC by hand]
+	Scores $0.95,0.85,0.80,0.70,0.55,0.45,0.40,0.20$ with labels $1,1,0,1,0,1,0,0$ (4 positives, 4 negatives).
+	Predicting positive for score $\ge t$:
+	\begin{center}
+		\small
+		\begin{tabular}{ccccc}
+			\toprule
+			threshold $t$ & label at $t$ & TPR & FPR & precision \\ \midrule
+			\gv{c13_eval/roc_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Each positive moves the curve up by $1/4$, each negative right by $1/4$. Area by trapezoids:
+	$\gv{c13_eval/auc}$. Average precision (mean of the precision at each positive's rank) $=
+		(1+1+0.75+0.667)/4=\gv{c13_eval/ap}$. Both match scikit-learn.
+\end{example}
+
+\begin{theorem}[AUC is a ranking probability]
+	$\AUC=\Prob(\text{score of a random positive}>\text{score of a random negative})$, counting ties as
+	$\frac12$ (the normalised Mann--Whitney $U$ statistic).
+\end{theorem}
+Above, $\gv{c13_eval/auc_pairs}$ of the $\gv{c13_eval/n_pairs}$ positive--negative pairs are correctly ordered:
+$13/16=0.8125$. Consequences: AUC is threshold-free and invariant to any monotone transformation of the
+scores (so it says nothing about calibration); $0.5$ is random ranking; below $0.5$ means the ranking is
+inverted.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
+				width=0.46\linewidth, height=0.42\linewidth, xmin=0, xmax=1, ymin=0, ymax=1.02,
+				grid=major, grid style={gray!20}, axis lines=left, ticklabel style={font=\scriptsize},
+				title style={font=\small}]
+			\nextgroupplot[title={ROC (AUC $\gv{c13_eval/imb_auc}$)}, xlabel={FPR}, ylabel={TPR}]
+			\addplot[blue!80!black, thick] table[x=fpr,y=tpr] {gen/ml/data/c13_eval-roc_imb.dat};
+			\addplot[gray, dashed, domain=0:1] {x};
+			\addplot[red!80!black, thick, mark=*, mark size=1pt] table[x=fpr,y=tpr] {gen/ml/data/c13_eval-roc_hand.dat};
+			\nextgroupplot[title={PR (AP $\gv{c13_eval/imb_ap}$)}, xlabel={recall}, ylabel={precision}]
+			\addplot[blue!80!black, thick] table[x=rec,y=prec] {gen/ml/data/c13_eval-pr_imb.dat};
+			\addplot[gray, dashed, domain=0:1] {\gv{c13_eval/imb_base}};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Blue: a logistic regression on data with 1\% positives. The ROC curve looks excellent; the PR
+		curve shows that at most recalls the majority of flagged cases are false alarms (dashed: precision of
+		random guessing, the prevalence). Red: the eight-point hand example.}
+	\label{fig:roc-pr}
+\end{figure}
+
+\begin{remark}
+	\trap ``AUC 0.9, so the model is great.'' With 1\% positives, the same model has average precision
+	$\gv{c13_eval/imb_ap}$: FPR is tiny relative to the huge negative class, but in absolute numbers those false
+	positives swamp the true ones. For rare positives, report PR-AUC (average precision) and precision at the
+	operating recall.
+\end{remark}
 
 \section{Regression and probabilistic metrics}
-\stub{Regression and probabilistic metrics}
+\prototype{Five house-price predictions scored five ways.}
+For $y=(3,5,2.5,7,10)$ and $\hat y=(2.5,5,4,8,9)$: MAE $=\gv{c13_eval/mae}$, MSE $=\gv{c13_eval/mse}$, RMSE
+$=\gv{c13_eval/rmse}$ (same units as $y$), MAPE $=\gv{c13_eval/mape}\%$, $R^2=\gv{c13_eval/r2}$. MSE punishes
+large errors (and is minimised by the mean), MAE treats all errors linearly (minimised by the median), MAPE is
+undefined at $y=0$ and penalises over-prediction of small values asymmetrically; RMSLE suits targets spanning
+orders of magnitude.
+
+Probabilistic classifiers should also be judged as probabilities. \vocab{Log-loss} $-\frac1n\sum\log\hat p_{y_i}$
+and the \vocab{Brier score} $\frac1n\sum(\hat p_i-y_i)^2$ are \emph{proper} scoring rules: they are minimised in
+expectation by the true probabilities. On the imbalanced data the logistic model has log-loss
+$\gv{c13_eval/imb_ll}$ versus $\gv{c13_eval/imb_ll_const}$ for always predicting the base rate.
 
 \section{Cross-validation}
-\stub{Cross-validation}
+\prototype{Five folds, each used once for validation; but what if the rows are days?}
+
+\vocab{$k$-fold CV}: split into $k$ folds, train on $k-1$, validate on the remaining one, average. $k=5$ or $10$
+is the usual compromise: \vocab{leave-one-out} ($k=n$) is nearly unbiased but has high variance and costs $n$
+fits (except for models with closed-form LOO, like linear smoothers). Variants:
+\begin{itemize}
+	\ii \textbf{Stratified} $k$-fold keeps class proportions in each fold (default for classification).
+	\ii \textbf{Group} $k$-fold keeps all rows of a group (patient, user) in one fold.
+	\ii \textbf{Time-series} (forward-chaining) splits train on the past and validate on the future, with an
+	optional gap.
+	\ii \textbf{Repeated} CV averages over several random partitions to reduce variance.
+\end{itemize}
+
+\begin{example}[Shuffled CV on a time series]
+	A trending series, random-forest regressor on the time index. Shuffled 5-fold CV reports MAE
+	$\gv{c13_eval/ts_random}$: each validation day is surrounded by training days, so the model interpolates.
+	Forward-chaining CV reports $\gv{c13_eval/ts_forward}$: the model must extrapolate the trend, which a forest
+	cannot do. The second number is what production will see.
+\end{example}
 
 \section{Leakage}
-\stub{Leakage}
+\prototype{5000 pure-noise features, 60 rows, ``92\% cross-validated accuracy''.}
+\vocab{Leakage} is information in training that will not be available at prediction time. A catalogue:
+\begin{enumerate}
+	\ii \textbf{Preprocessing on all data before splitting}: scaling, imputation, PCA, feature selection,
+	target encoding, SMOTE.
+	\ii \textbf{Target leakage}: a feature computed after the outcome (``refund issued'' to predict fraud; ``days
+	in hospital'' to predict admission).
+	\ii \textbf{Temporal leakage}: random splits of time-ordered data; features using future aggregates.
+	\ii \textbf{Group leakage}: the same entity in train and test.
+	\ii \textbf{Duplicates} or near-duplicates across the split.
+	\ii \textbf{Tuning on the test set} (\Cref{ch:setup}).
+\end{enumerate}
+\begin{example}[Feature selection outside the loop]
+	60 rows, 5000 features of pure noise, random labels. Selecting the 20 features most correlated with the
+	labels on \emph{all} the data and then cross-validating a logistic regression gives accuracy
+	$\gv{c13_eval/leak_acc}$. Putting the selection inside a \code{Pipeline}, refitted within each fold, gives
+	$\gv{c13_eval/proper_acc}$ --- chance, the truth.
+\end{example}
+
+\begin{remark}
+	\trap ``My validation score is much better than expected'' is a leakage alarm, not a celebration. The
+	standard defence is a \code{Pipeline} (every fitted transform lives inside the CV loop) plus a split that
+	mirrors deployment (by time, by group).
+\end{remark}
 
 \section{AIC, BIC and hyper-parameter search}
-\stub{AIC, BIC and hyper-parameter search}
+\prototype{Choose a polynomial degree for 60 points without a validation set.}
+
+\subsection{Information criteria}
+With $\hat L$ the maximised likelihood, $k$ the number of free parameters and $n$ the sample size:
+\[ \mathrm{AIC}=2k-2\ln\hat L,\qquad \mathrm{BIC}=k\ln n-2\ln\hat L. \]
+Lower is better. Both penalise parameters; BIC's penalty $\ln n$ exceeds AIC's $2$ once $n\ge8$, so BIC picks
+smaller models. AIC \cite{akaike1974} estimates expected predictive (KL) loss; BIC \cite{schwarz1978}
+approximates the log marginal likelihood and is \emph{consistent} (picks the true model as $n\to\infty$ if it is
+among the candidates).
+\begin{example}[Degree selection]
+	Data from a cubic plus noise, $n=60$ ($\ln n=\gv{c13_eval/ln_n}$); Gaussian likelihood with $\hat\sigma^2=\RSS/n$,
+	$k=$ degree $+2$:
+	\begin{center}
+		\small
+		\begin{tabular}{rcccc}
+			\toprule
+			degree & $k$ & $\ln\hat L$ & AIC & BIC \\ \midrule
+			\gv{c13_eval/ic_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Both choose degree $\gv{c13_eval/aic_best}$; past it, $\ln\hat L$ creeps up but not by enough to pay for
+	the extra parameters, and BIC's penalty grows faster. scikit-learn's \code{GaussianMixture.bic} equals
+	$-2\ln\hat L+k\ln n$ with $k=$ means $+$ covariances $+$ free weights, as the script checks.
+\end{example}
+
+\begin{remark}
+	\trap ``Lower BIC means a more accurate model.'' BIC compares models \emph{fitted to the same data} by a
+	likelihood-based trade-off; it is not an accuracy, and comparing BIC across different datasets or
+	different likelihood definitions is meaningless. ``AIC and BIC need a validation set'' --- no, that is their
+	point.
+\end{remark}
+
+\subsection{Search and nested CV}
+\vocab{Grid search} tries every combination; \vocab{random search} samples configurations and, with the same
+budget, explores more values of the parameters that matter; \vocab{Bayesian optimisation} fits a surrogate of
+score versus hyper-parameters and picks promising points; successive halving / Hyperband stop bad
+configurations early. Whatever the search, its best CV score is optimistically biased (the selection-optimism of
+\Cref{ch:setup}). \vocab{Nested CV} wraps the whole search in an outer CV loop to estimate the performance of
+the \emph{procedure}.
+\begin{example}[Optimism of the inner score]
+	An RBF-SVM tuned over a $6\times6$ grid on 120 noisy rows, averaged over six independent training sets: the
+	best inner CV accuracy averages $\gv{c13_eval/gs_best}$, nested CV estimates $\gv{c13_eval/nested}$, and the
+	tuned models score $\gv{c13_eval/holdout}$ on 10\,000 fresh rows. Nested CV told the truth; the grid's own
+	best score did not.
+\end{example}
 
 \section{Calibration}
-\stub{Calibration}
+\prototype{Of the e-mails a model scores at 0.8, are 80\% spam?}
+A classifier is \vocab{calibrated} if, among examples given probability $p$, a fraction $p$ are positive. Check
+with a \vocab{reliability diagram} (bin predictions, plot observed frequency against mean prediction) or the
+\vocab{expected calibration error} $\sum_b\frac{n_b}n\abs{\text{acc}_b-\text{conf}_b}$. Logistic regression is
+usually well calibrated; naive Bayes (over-confident, \Cref{ch:generative}), SVM scores, boosted trees and
+modern deep nets often are not. Fix on held-out data with \vocab{Platt scaling} (a sigmoid on the scores) or
+\vocab{isotonic regression} (a monotone step function; needs more data).
 
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.5\linewidth, height=0.46\linewidth, xmin=0, xmax=1, ymin=0, ymax=1,
+				xlabel={mean predicted probability}, ylabel={observed fraction positive}, legend pos=north west,
+				legend style={font=\scriptsize}]
+			\addplot[gray, dashed, domain=0:1] {x};
+			\addplot[red!80!black, thick, mark=*, mark size=1.2pt] table[x=mp,y=fr] {gen/ml/data/c13_eval-rel_nb.dat};
+			\addplot[blue!80!black, thick, mark=square*, mark size=1.2pt] table[x=mp,y=fr] {gen/ml/data/c13_eval-rel_cal.dat};
+			\legend{perfect, Gaussian NB, NB + isotonic}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Naive Bayes on correlated features pushes probabilities to the extremes (ECE
+		$\gv{c13_eval/ece_nb}$, Brier $\gv{c13_eval/brier_nb}$). Isotonic calibration fixes it (ECE
+		$\gv{c13_eval/ece_cal}$, Brier $\gv{c13_eval/brier_cal}$) while leaving AUC unchanged
+		($\gv{c13_eval/auc_nb}$ vs $\gv{c13_eval/auc_cal}$).}
+	\label{fig:calibration}
+\end{figure}
+
+\begin{moral}
+	Pick the metric from the cost of each error, the split from how the model will be deployed, and never let a
+	number you report have helped choose the model.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Metrics from a confusion matrix]
+	\onechili
+	A COVID test on 500 people: TP $=45$, FN $=5$, FP $=30$, TN $=420$. Compute accuracy, precision, recall,
+	specificity and F1.
+	\begin{hint}
+		Precision uses the predicted-positive column; recall the actual-positive row.
+	\end{hint}
+	\begin{sol}
+		Accuracy $\gv{c13_problems/p13a_acc}$, precision $45/75=\gv{c13_problems/p13a_p}$, recall $45/50=
+			\gv{c13_problems/p13a_r}$, specificity $420/450=\gv{c13_problems/p13a_s}$, F1 $=\gv{c13_problems/p13a_f1}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[AUC by counting]
+	\onechili
+	Positives score $0.9, 0.6, 0.4$; negatives score $0.7, 0.3$. Compute the ROC AUC.
+	\begin{hint}
+		Count the six positive--negative pairs ordered correctly.
+	\end{hint}
+	\begin{sol}
+		Pairs: $(0.9,0.7)$ $\checkmark$, $(0.9,0.3)$ $\checkmark$, $(0.6,0.7)$ $\times$, $(0.6,0.3)$ $\checkmark$, $(0.4,0.7)$ $\times$, $(0.4,0.3)$ $\checkmark$:
+		$4/6=\gv{c13_problems/p13b_auc}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Precision at a new prevalence]
+	\twochili
+	A classifier has TPR $0.9$ and FPR $0.05$. What is its precision when 10\% of cases are positive? When
+	0.5\% are?
+	\begin{hint}
+		Precision $=\frac{\text{TPR}\cdot\pi}{\text{TPR}\cdot\pi+\text{FPR}(1-\pi)}$.
+	\end{hint}
+	\begin{sol}
+		$\pi=0.1$: $0.09/(0.09+0.045)=\gv{c13_problems/p13c_1}$. $\pi=0.005$: $0.0045/(0.0045+0.04975)=
+			\gv{c13_problems/p13c_2}$. Same ROC point, precision collapses: base rates matter.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[BIC comparison]
+	\twochili
+	Two models on $n=100$ points: model A has 3 parameters and $\ln\hat L=-120$; model B has 6 parameters and
+	$\ln\hat L=-114$. Which does AIC prefer? BIC?
+	\begin{hint}
+		$\ln100\approx4.605$.
+	\end{hint}
+	\begin{sol}
+		AIC: A $=246$, B $=240$: B. BIC: A $=\gv{c13_problems/p13d_ba}$, B $=\gv{c13_problems/p13d_bb}$: A. Six
+		units of log-likelihood buy three extra parameters under AIC's penalty of 2 each, but not under BIC's
+		$\ln n\approx4.6$ each.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Spot the leak]
+	\twochili
+	A churn model uses: tenure, plan type, number of support calls in the last 30 days, ``account closure
+	reason'', average monthly bill, and the customer's churn probability from last quarter's model. Train/test
+	split is random over customer-months. List the problems.
+	\begin{hint}
+		Ask, for each feature, when it becomes known; then ask whether rows are independent.
+	\end{hint}
+	\begin{sol}
+		``Account closure reason'' exists only after churn: target leakage. Last quarter's model score may encode the
+		label if that model was trained on overlapping outcomes. Support calls in the last 30 days must be computed
+		strictly before the prediction date. Random splits over customer-months put the same customer in train and
+		test (group leakage) and mix future months into training (temporal leakage): split by time, and evaluate on
+		customers or months not seen in training.
+	\end{sol}
+\end{problem}

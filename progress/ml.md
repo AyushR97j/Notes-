@@ -1,4 +1,4 @@
-RESUME HERE: ch12 done; next = ch13 Evaluation and model selection (★, ~8 pages).
+RESUME HERE: ch13 done; next = ch14 Statistics interviewers ask (~6 pages, scipy.stats).
 
 # Classical Machine Learning — progress log
 
@@ -55,7 +55,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 10 Ensembles ★ (c10_bagging.py, c10_boosting.py: AdaBoost/GBM/XGBoost checked vs libraries; c10_problems.py)
 - [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
 - [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
-- [ ] 13 Evaluation ★
+- [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
 - [ ] 14 Statistics
 - [ ] 15 Data prep ★
 - [ ] 16 Optimisation
