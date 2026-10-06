@@ -1,4 +1,4 @@
-RESUME HERE: ch11 done; next = ch12 Semi-/self-supervised (aim 5 pages). Page budget: keep ch12-17 tight (target total ≤180).
+RESUME HERE: ch12 done; next = ch13 Evaluation and model selection (★, ~8 pages).
 
 # Classical Machine Learning — progress log
 
@@ -54,7 +54,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 09 Trees ★ (c09_trees.py, c09_problems.py)
 - [x] 10 Ensembles ★ (c10_bagging.py, c10_boosting.py: AdaBoost/GBM/XGBoost checked vs libraries; c10_problems.py)
 - [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
-- [ ] 12 Semi-/self-supervised
+- [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
 - [ ] 13 Evaluation ★
 - [ ] 14 Statistics
 - [ ] 15 Data prep ★

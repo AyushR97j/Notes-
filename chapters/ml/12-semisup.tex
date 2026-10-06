@@ -1,20 +1,153 @@
 \chapter{Semi- and Self-Supervised Learning}
 \label{ch:semisup}
+Labels are expensive; raw data are cheap. Placement interviews at product companies increasingly ask
+``you have 1000 labelled and a million unlabelled examples --- what do you do?'' The honest answer
+starts with the assumptions that make unlabelled data useful, and with the fact that it can hurt.
+
 \section{Assumptions}
-\stub{Assumptions}
+\prototype{Two half-moons, six labelled points, six hundred unlabelled ones.}
+Unlabelled points tell you about $p(\x)$. They help predict $y$ only if $p(\x)$ carries information about
+$p(y\mid\x)$. Three standard ways of saying so:
+\begin{itemize}
+	\ii \vocab{Smoothness}: points close in a high-density region should share a label.
+	\ii \vocab{Cluster} (low-density separation): the decision boundary should pass through low-density
+	regions, so each cluster tends to be one class.
+	\ii \vocab{Manifold}: data lie near a low-dimensional manifold, and distances \emph{along} it are the
+	meaningful ones.
+\end{itemize}
+When these hold, unlabelled data reshape the boundary; when they fail, they mislead it.
 
 \section{Self-training}
-\stub{Self-training}
+\prototype{Train on the labelled set, label the unlabelled points you are most sure of, retrain, repeat.}
+\vocab{Self-training} (pseudo-labelling): fit a model on labelled data; predict the unlabelled data; add
+predictions above a confidence threshold as \vocab{pseudo-labels}; refit; repeat. It is simple and
+model-agnostic (scikit-learn's \code{SelfTrainingClassifier}). The failure mode is
+\vocab{confirmation bias}: early mistakes become training labels and are reinforced, especially when the
+initial model is poor or poorly calibrated. Mitigations: high thresholds, class-balanced selection,
+re-labelling every round (not freezing pseudo-labels), and the teacher--student variants below.
 
 \section{Co-training and label propagation}
-\stub{Co-training and label propagation}
+\prototype{A web page described by its text and, independently, by the anchor text of links pointing to it.}
+
+\vocab{Co-training} \cite{cotraining} needs two \emph{views} of each example, each sufficient on its own and
+conditionally independent given the label. Two classifiers, one per view, label unlabelled examples for each
+other: an example confidently labelled by the text model teaches the link model, which sees it differently.
+
+\vocab{Label propagation} builds a graph with edge weights $W_{ij}=\exp(-\gamma\norm{\x_i-\x_j}^2)$ and lets
+labels flow along it. With labelled nodes clamped, the fixed point is the \emph{harmonic} solution: every
+unlabelled node's label distribution is the weighted average of its neighbours',
+\[ \bm F_u=(\mathbf D_{uu}-\W_{uu})\inv\W_{ul}\Y_l,\qquad \mathbf D=\diag\Bigl(\sum_jW_{ij}\Bigr). \]
+\codefile[code/ml/c12\_semisup.py: label propagation in closed form]{gen/ml/snip/c12_semisup-harmonic.py}
+On 120 moon points with four labels this matches the iterative \code{LabelPropagation} of
+scikit-learn to $10^{-4}$ and labels $\gv{c12_semisup/lp_acc}$ of the points correctly. \vocab{Label spreading} adds a
+regularisation $\alpha$ that lets clamped labels be partly overwritten, which tolerates label noise.
 
 \section{Consistency regularisation}
-\stub{Consistency regularisation}
+\prototype{An image and its slightly cropped, recoloured copy should get the same prediction.}
+Modern semi-supervised deep learning adds an unsupervised loss that penalises a model whose predictions
+change under perturbations of an \emph{unlabelled} input --- a direct implementation of the smoothness
+assumption. Examples: the $\Pi$-model (two stochastic passes should agree), Mean Teacher (a student matches
+an exponential moving average of its own weights), and FixMatch (pseudo-label a weakly augmented view only if
+confident, train the strongly augmented view to predict it). The total loss is supervised cross-entropy
+plus $\lambda\times$ consistency loss, with $\lambda$ ramped up as the model improves.
 
 \section{When unlabelled data hurts}
-\stub{When unlabelled data hurts}
+\prototype{One cloud of points whose labels flip across a line through its densest region.}
+
+\begin{example}[Helps and hurts, measured]
+	Six labelled points (three per class), 594 unlabelled, mean test accuracy over 20 random draws:
+	\begin{center}
+		\small
+		\begin{tabular}{p{0.3\linewidth}cccc}
+			\toprule
+			data & LR & RBF-SVM & self-training & label spreading \\
+			& \multicolumn{2}{c}{(6 labels only)} & \multicolumn{2}{c}{(6 labels + 594 unlabelled)} \\ \midrule
+			\gv{c12_semisup/ss_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	On two moons the classes are separated by a low-density gap and label spreading lifts accuracy from
+	$\gv{c12_semisup/moon_sup}$ to $\gv{c12_semisup/moon_spread}$. On the second dataset the clusters run
+	along $x_1$ but the label depends on the sign of $x_2$: the cluster assumption is false, and label
+	spreading ($\gv{c12_semisup/cloud_spread}$) loses to a plain logistic regression trained on the six
+	labelled points ($\gv{c12_semisup/cloud_lr}$), whose linear bias happens to be right. Self-training with an
+	RBF-SVM made things worse in \emph{both} cases ($\gv{c12_semisup/moon_self}$ on moons): with six labels the
+	first model is weak, and its confident mistakes are fed back as truth.
+\end{example}
+
+\begin{remark}
+	\trap ``More data never hurts.'' More \emph{labelled} data from the same distribution essentially never
+	hurts; \emph{unlabelled} data can, when the method's assumption about $p(\x)$ and $p(y\mid\x)$ is wrong,
+	or through confirmation bias. Always compare against the supervised baseline on a labelled validation
+	set --- which, with few labels, should be cross-validated.
+\end{remark}
 
 \section{Contrastive learning in one page}
-\stub{Contrastive learning in one page}
+\prototype{Two augmented views of the same image should be closer to each other than to any other image in
+	the batch.}
+Self-supervised \vocab{contrastive learning} learns an encoder $f$ without labels: for each example build
+two views (augmentations); embeddings of the same example are \emph{positives}, all other pairs in the batch
+are \emph{negatives}. The \vocab{InfoNCE} loss for anchor $i$ with positive $i^+$ is
+\[ \ell_i=-\log\frac{\exp(\mathrm{sim}(\z_i,\z_{i^+})/\tau)}{\sum_j\exp(\mathrm{sim}(\z_i,\z_j)/\tau)}, \]
+a softmax cross-entropy whose ``correct class'' is the positive; $\mathrm{sim}$ is cosine similarity and
+$\tau$ a temperature (small $\tau$ sharpens the distribution and focuses on hard negatives).
 
+\begin{example}[InfoNCE on three items]
+	Normalised view-1 and view-2 embeddings for three items give, at $\tau=0.5$, the similarity matrix
+	$\begin{psmallmatrix}\gv{c12_semisup/nce_S}\end{psmallmatrix}$ (rows: anchors; diagonal: positives).
+	Row 1's softmax puts $\gv{c12_semisup/nce_p00}$ on its positive; the mean loss over the three rows is
+	$\gv{c12_semisup/nce_loss}$, identical to \code{torch.nn.functional.cross_entropy} applied to the matrix
+	with targets $(0,1,2)$.
+\end{example}
+After pre-training, a linear classifier on the frozen embeddings (``linear probe'') or light fine-tuning needs
+far fewer labels. What the augmentations leave unchanged is what the representation learns to ignore, so
+augmentation design \emph{is} the inductive bias. The same recipe pairs images with captions in
+image--text models; see \otherbook{Deep Learning} for SimCLR- and CLIP-style training.
+
+\begin{moral}
+	Unlabelled data help only through an assumption linking $p(\x)$ to $p(y\mid\x)$; check it against a
+	supervised baseline, and beware of a model grading its own homework.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Pick the method]
+	\twochili
+	For each scenario name the assumption you rely on and a method: (a) 200 labelled and 50\,000 unlabelled
+	product photos; (b) a citation graph with 1\% of papers labelled by field; (c) e-mails described by body
+	text and by sender metadata.
+	\begin{hint}
+		Graphs suggest propagation; two views suggest co-training.
+	\end{hint}
+	\begin{sol}
+		(a) Smoothness and cluster assumptions: consistency regularisation (FixMatch-style), or
+		self-supervised pre-training followed by a linear probe. (b) Homophily (linked papers share fields, a graph version of smoothness): label
+		propagation or a graph neural network. (c) Two roughly independent views: co-training.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Harmonic label]
+	\onechili
+	An unlabelled node is connected to labelled neighbours with weights $2$ (class A), $1$ (class A) and $3$
+	(class B) and to nothing else. After label propagation, what is its probability of class A?
+	\begin{hint}
+		It takes the weighted average of its neighbours' label distributions.
+	\end{hint}
+	\begin{sol}
+		$(2+1)/(2+1+3)=0.5$: a tie, despite having more A-neighbours, because the single B-edge is strong.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[InfoNCE temperature]
+	\twochili
+	An anchor has cosine similarity $0.8$ with its positive and $0.5$ with each of 3 negatives. Compute the
+	InfoNCE loss at $\tau=1$ and $\tau=0.1$. Which temperature makes the loss more sensitive to the negatives?
+	\begin{hint}
+		Loss $=-\log\frac{e^{0.8/\tau}}{e^{0.8/\tau}+3e^{0.5/\tau}}$.
+	\end{hint}
+	\begin{sol}
+		$\tau=1$: $\gv{c12_problems/p12c_1}$. $\tau=0.1$: $\gv{c12_problems/p12c_01}$. A small temperature turns a
+		0.3 similarity gap into a large logit gap, so the loss approaches $0$ when the positive wins clearly and
+		grows quickly when a negative comes close: low $\tau$ concentrates the gradient on hard negatives.
+	\end{sol}
+\end{problem}
