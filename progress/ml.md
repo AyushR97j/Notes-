@@ -1,4 +1,4 @@
-RESUME HERE: ch04 done; next = ch05 Logistic regression and GLMs.
+RESUME HERE: ch05 done; next = ch06 Generative classifiers (aim ~7 pages).
 
 # Classical Machine Learning — progress log
 
@@ -47,7 +47,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
 - [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
 - [x] 04 Bias–variance and regularisation ★ (c04_biasvar.py, c04_problems.py)
-- [ ] 05 Logistic regression ★
+- [x] 05 Logistic regression ★ (c05_logistic.py, c05_problems.py)
 - [ ] 06 Generative classifiers
 - [ ] 07 kNN
 - [ ] 08 SVM ★

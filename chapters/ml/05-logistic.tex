@@ -1,20 +1,407 @@
 \chapter{Logistic Regression and GLMs}
 \label{ch:logistic}
+Logistic regression is the most-asked classifier in Indian placement interviews, because it is
+simultaneously a linear model, a probabilistic model, a one-neuron neural network and the
+baseline every production team actually ships first. You should be able to derive its loss from
+likelihood, its gradient in one line, its Newton step, and explain why it is not trained with MSE.
+
 \section{From odds to the sigmoid}
-\stub{From odds to the sigmoid}
+\prototype{A loan model with $z=-3+0.8\cdot\text{income}+1.2\cdot\text{has\_job}$; an applicant with
+	income $2$ and a job.}
 
-\section{Log-loss from MLE}
-\stub{Log-loss from MLE}
+We want $\Prob(y=1\mid\x)\in(0,1)$ from a linear score $z=\w\T\x+b\in\RR$. Linear regression on
+$0/1$ targets produces values outside $[0,1]$ and is dragged around by far-away points. Instead
+model the \vocab{log-odds} (\vocab{logit}) as linear:
+\[ \log\frac{p}{1-p}=\w\T\x+b\qquad\Longleftrightarrow\qquad
+	p=\sigma(\w\T\x+b),\quad \sigma(z)=\frac{1}{1+e^{-z}}. \]
+The \vocab{sigmoid} squashes $\RR$ to $(0,1)$ with $\sigma(0)=\gv{c05_logistic/sig_0}$,
+$\sigma(2)=\gv{c05_logistic/sig_2}$, $\sigma(-2)=\gv{c05_logistic/sig_m2}=1-\sigma(2)$,
+$\sigma(4)=\gv{c05_logistic/sig_4}$. Two identities used constantly:
+\[ \sigma(-z)=1-\sigma(z),\qquad \sigma'(z)=\sigma(z)\bigl(1-\sigma(z)\bigr)\le\tfrac14. \]
 
-\section{Newton and IRLS}
-\stub{Newton and IRLS}
+\begin{example}[Score an applicant]
+	$z=-3+0.8\cdot2+1.2\cdot1=\gv{c05_logistic/app_z}$, so $p=\sigma(-0.2)=\gv{c05_logistic/app_p}$
+	and the odds are $e^{-0.2}=\gv{c05_logistic/app_odds}$. With threshold $0.5$ the applicant is
+	predicted ``no''.
+\end{example}
+
+\subsection{Reading coefficients}
+A unit increase in $x_j$ adds $w_j$ to the log-odds, i.e.\ \emph{multiplies the odds} by $e^{w_j}$
+(the \vocab{odds ratio}). $w=0.7$ roughly doubles the odds ($e^{0.7}=\gv{c05_logistic/or_07}$);
+$w=-0.5$ multiplies them by $\gv{c05_logistic/or_m05}$. The effect on the \emph{probability} is not
+constant: it is largest near $p=0.5$ and tiny near $0$ or $1$, because of the factor $p(1-p)$.
+
+\begin{remark}
+	\trap ``Logistic regression is a regression algorithm because of its name.'' It is a
+	classifier; it regresses the log-odds. And its decision boundary $\{\x:\w\T\x+b=0\}$ is a
+	\emph{hyperplane}: logistic regression is a linear classifier, despite the non-linear sigmoid.
+	The sigmoid is monotone, so thresholding $\sigma(z)$ at $0.5$ is thresholding $z$ at $0$.
+\end{remark}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.62\linewidth, height=0.45\linewidth, xlabel=$x_1$, ylabel=$x_2$,
+				xmin=\gv{c05_logistic/fig_xmin}, xmax=\gv{c05_logistic/fig_xmax},
+				ymin=\gv{c05_logistic/fig_ymin}, ymax=\gv{c05_logistic/fig_ymax},
+				legend pos=outer north east, legend style={font=\scriptsize}, restrict y to domain=-30:30]
+			\addplot[only marks, mark=o, blue!70!black] table[x=x,y=y] {gen/ml/data/c05_logistic-pts0.dat};
+			\addplot[only marks, mark=+, red!80!black, thick] table[x=x,y=y] {gen/ml/data/c05_logistic-pts1.dat};
+			\addplot[black, very thick] table[x=x,y=y] {gen/ml/data/c05_logistic-p50.dat};
+			\addplot[gray, dashed] table[x=x,y=y] {gen/ml/data/c05_logistic-p10.dat};
+			\addplot[gray, dashed] table[x=x,y=y] {gen/ml/data/c05_logistic-p90.dat};
+			\legend{$y=0$, $y=1$, $p=0.5$, {$p=0.1$, $0.9$}}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{A fitted logistic regression: the contours of $p$ are parallel lines, and the
+		decision boundary is the $p=0.5$ line.}
+	\label{fig:logreg-boundary}
+\end{figure}
+
+\section{Log-loss from maximum likelihood}
+\prototype{Four points on a line, one gradient step from $\w=\zero$.}
+
+With $p_i=\sigma(\w\T\x_i)$ (absorb $b$ into $\w$ with a ones feature), each label is
+$\Ber(p_i)$, so $\Prob(y_i\mid\x_i)=p_i^{y_i}(1-p_i)^{1-y_i}$. The negative log-likelihood, averaged,
+is the \vocab{log-loss} (\vocab{binary cross-entropy}):
+\[ J(\w)=-\frac1n\sum_{i=1}^n\Bigl[y_i\log p_i+(1-y_i)\log(1-p_i)\Bigr]. \]
+With labels $y\in\{-1,+1\}$ the same loss reads $\frac1n\sum\log(1+e^{-y_i\w\T\x_i})$, the logistic
+surrogate of \Cref{fig:surrogates}.
+
+\begin{theorem}[The gradient]
+	\begin{gather*}
+		\nabla J(\w)=\frac1n\sum_i(p_i-y_i)\,\x_i=\frac1n\X\T(\bm p-\y),\\
+		\nabla^2J=\frac1n\X\T\mathbf S\X,\qquad \mathbf S=\diag\bigl(p_i(1-p_i)\bigr).
+	\end{gather*}
+\end{theorem}
+\begin{proof}
+	For one example, $\partial/\partial z$ of $-[y\log\sigma(z)+(1-y)\log(1-\sigma(z))]$ is
+	$-y(1-\sigma)+(1-y)\sigma=\sigma-y$ using $\sigma'=\sigma(1-\sigma)$; then the chain rule with
+	$\partial z/\partial\w=\x$. Differentiating $(\sigma(z)-y)\x$ once more gives
+	$\sigma(1-\sigma)\x\x\T$.
+\end{proof}
+The Hessian is PSD, so $J$ is \emph{convex}: gradient descent cannot get stuck in a bad local
+minimum. Note the gradient has exactly the same form ``(prediction $-$ target) $\times$ input'' as
+linear regression; this is the hallmark of the canonical link in a GLM (\S\ref{sec:glm}), and the
+same $(\hat y-y)$ reappears for softmax with cross-entropy in neural networks.
+
+\begin{example}[One step by hand]
+	Points $x=(0.5,1.5,2.5,3.5)$ with labels $(0,0,1,1)$, features $(1,x)$, start at $\w=\zero$.
+	All $p_i=0.5$, so the loss is $\log2=\gv{c05_logistic/h_loss0}$. Errors $p-y=(0.5,0.5,-0.5,-0.5)$
+	give gradient $\frac14\X\T(\bm p-\y)=(\gv{c05_logistic/h_g})$. With learning rate $1$,
+	$\w_1=(\gv{c05_logistic/h_w1})$, new probabilities $(\gv{c05_logistic/h_p1})$ and loss
+	$\gv{c05_logistic/h_loss1}$ (matches \texttt{sklearn.metrics.log\_loss}; the gradient formula is
+	also checked against finite differences).
+\end{example}
+
+\subsection{Separable data and why we regularise}
+If a hyperplane separates the classes perfectly, scaling $\w$ up pushes every $p_i$ towards its
+label and the loss towards $0$, so the MLE does not exist: $\norm{\w}\to\infty$. On four separable
+points, gradient descent's $\norm{\w}$ after $10,100,1000,10^4$ steps is
+$(\gv{c05_logistic/sep_norms})$ --- growing like $\log t$ forever, with ever more over-confident
+probabilities. An $\ell_2$ penalty fixes it: scikit-learn's default \texttt{C=1} (that is,
+$\lambda=1/C$) gives slope $\gv{c05_logistic/sep_C1}$; \texttt{C}$=10^4$ gives
+$\gv{c05_logistic/sep_C10000}$.
+
+\begin{remark}
+	\trap In scikit-learn \texttt{LogisticRegression} is \emph{regularised by default} (\texttt{C=1.0},
+	$\ell_2$), and \texttt{C} is the \emph{inverse} of the regularisation strength: larger \texttt{C}
+	means weaker regularisation. Comparing its coefficients to a textbook MLE without noticing this
+	is a classic interview slip.
+\end{remark}
+
+\section{Newton's method and IRLS}
+\prototype{Six Newton steps reach the maximum likelihood to machine precision; gradient descent
+	needs about two hundred.}
+
+Newton's update is $\w\leftarrow\w-\Hm\inv\nabla J=\w-(\X\T\mathbf S\X)\inv\X\T(\bm p-\y)$.
+Rearranging, $\w_{\text{new}}=(\X\T\mathbf S\X)\inv\X\T\mathbf S\bm z$ with
+$\bm z=\X\w+\mathbf S\inv(\y-\bm p)$: each Newton step is a \emph{weighted least-squares} fit to a
+``working response'' $\bm z$, hence \vocab{iteratively reweighted least squares} (IRLS). Points with
+$p_i$ near $0.5$ get the largest weight $p_i(1-p_i)$.
+\codefile[code/ml/c05\_logistic.py: Newton / IRLS]{gen/ml/snip/c05_logistic-irls.py}
+
+\begin{example}[Quadratic convergence]
+	On 300 points with three features, the negative log-likelihood after each Newton step:
+	\begin{center}
+		\small
+		\begin{tabular}{rl}
+			\toprule
+			step & NLL \\ \midrule
+			\gv{c05_logistic/nt_hist} \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	The weights $(\gv{c05_logistic/nt_w})$ agree with \texttt{LogisticRegression(C=np.inf)} to
+	$10^{-5}$. Plain gradient descent (step $0.5$) needs $\gv{c05_logistic/gd_iters}$ iterations to
+	reach the same NLL within $10^{-6}$. Newton costs $O(nd^2+d^3)$ per step, so it wins for small
+	$d$; for large $d$ use L-BFGS (scikit-learn's default solver) or stochastic methods
+	(\Cref{ch:optim}).
+\end{example}
 
 \section{Softmax regression and multiclass}
-\stub{Softmax regression and multiclass}
+\prototype{Three iris species from four measurements.}
+
+\subsection{Softmax}
+For $K$ classes, keep one weight vector per class and set
+\[ \Prob(y=k\mid\x)=\softmax(\bm z)_k=\frac{e^{z_k}}{\sum_je^{z_j}},\qquad z_k=\w_k\T\x. \]
+The loss is the categorical cross-entropy $-\frac1n\sum_i\log p_{i,y_i}$, and the gradient with
+respect to the weight matrix is $\frac1n\X\T(\mathbf P-\Y)$ where $\Y$ is one-hot: the same
+``prediction minus target'' form. Softmax is invariant to adding a constant to all logits, so the
+parametrisation has one redundant class; with $K=2$ softmax reduces exactly to the sigmoid of
+$z_1-z_0$. Implementations subtract $\max_k z_k$ before exponentiating (\Cref{ch:maths}).
+\codefile[code/ml/c05\_logistic.py: softmax regression]{gen/ml/snip/c05_logistic-softmax.py}
+On standardised iris with $\lambda=0.1$ these probabilities match scikit-learn's multinomial
+\texttt{LogisticRegression} (with \texttt{C}$=1/(n\lambda)$) to $2\times10^{-4}$; training accuracy
+$\gv{c05_logistic/iris_acc}$.
+
+\subsection{One-vs-rest and one-vs-one}
+Binary-only learners (classical SVMs, perceptrons) are extended by:
+\begin{itemize}
+	\ii \vocab{One-vs-rest} (OvR): $K$ classifiers, class $k$ against all others; predict the
+	most confident. Each sees all $n$ points; classes are imbalanced inside each problem.
+	\ii \vocab{One-vs-one} (OvO): $\binom K2=K(K-1)/2$ classifiers, one per pair, each trained on
+	two classes only; predict by majority vote. For $K=10$ that is $\gv{c05_logistic/ovo_10}$
+	classifiers, each on about $2n/K$ points.
+\end{itemize}
+On iris ($K=3$, so OvR and OvO both train $\gv{c05_logistic/ovr_n}$ models) training accuracies are
+$\gv{c05_logistic/ovr_acc}$ (OvR) and $\gv{c05_logistic/ovo_acc}$ (OvO). Softmax regression needs
+neither: it is natively multiclass and its probabilities are coherent.
+
+\begin{remark}
+	\trap Multi\emph{label} is not multi\emph{class}. If an article can be both ``sports'' and
+	``business'', use $K$ independent sigmoids with binary cross-entropy, not a softmax (which forces
+	the probabilities to compete and sum to one).
+\end{remark}
+
+\section{Why not MSE for classification?}
+\prototype{The model is confidently wrong ($z=-5$ for a positive): how hard does each loss push?}
+
+Three reasons, in the order interviewers like:
+\begin{enumerate}
+	\ii \textbf{Vanishing gradient when confidently wrong.} With $p=\sigma(z)$ and $y=1$, the
+	cross-entropy gradient in $z$ is $p-1$; the MSE gradient is $2(p-1)p(1-p)$. At $z=-5$ these are
+	$\gv{c05_logistic/ce_grad}$ versus $\gv{c05_logistic/mse_grad}$: MSE barely moves a badly
+	wrong prediction, because the sigmoid's slope multiplies in.
+	\ii \textbf{Non-convexity.} $(1-\sigma(z))^2$ is not convex in $z$ (its second derivative
+	changes sign), so MSE$\circ$sigmoid can have flat regions and poor local optima in $\w$; log-loss
+	is convex.
+	\ii \textbf{Wrong likelihood.} MSE is the Gaussian log-likelihood; labels are Bernoulli. Log-loss
+	is a proper scoring rule that heavily penalises confident mistakes ($-\log p\to\infty$ as
+	$p\to0$), which is what produces calibrated probabilities.
+\end{enumerate}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
+				width=0.48\linewidth, height=0.38\linewidth, grid=major, grid style={gray!20},
+				axis lines=left, xlabel={logit $z$ (true label $y=1$)},
+				legend style={draw=none, fill=none, font=\scriptsize}]
+			\nextgroupplot[ylabel={loss}, ymax=5, legend pos=north east]
+			\addplot[blue!80!black, thick] table[x=z,y=ce] {gen/ml/data/c05_logistic-msece.dat};
+			\addplot[red!80!black, thick, dashed] table[x=z,y=mse] {gen/ml/data/c05_logistic-msece.dat};
+			\legend{log-loss, $(1-\sigma(z))^2$}
+			\nextgroupplot[ylabel={$\abs{\partial\text{loss}/\partial z}$}, legend pos=north east]
+			\addplot[blue!80!black, thick] table[x=z,y=gce] {gen/ml/data/c05_logistic-msece.dat};
+			\addplot[red!80!black, thick, dashed] table[x=z,y=gmse] {gen/ml/data/c05_logistic-msece.dat};
+			\legend{log-loss, MSE}
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{For a positive example, log-loss keeps a gradient near 1 when the model is badly
+		wrong ($z\ll0$); MSE's gradient dies there.}
+	\label{fig:mse-vs-ce}
+\end{figure}
 
 \section{Imbalance and thresholds}
-\stub{Imbalance and thresholds}
+\prototype{5\% positives: a model that never predicts ``positive'' is 95\% accurate.}
+
+Logistic regression estimates probabilities; the \emph{decision} is a separate step. With costs
+$c_{\text{FN}}$ for missing a positive and $c_{\text{FP}}$ for a false alarm, predict positive when
+$p\,c_{\text{FN}}>(1-p)\,c_{\text{FP}}$, i.e.\ threshold
+$t=c_{\text{FP}}/(c_{\text{FP}}+c_{\text{FN}})$. The default $0.5$ assumes equal costs.
+
+\begin{example}[Threshold versus class weights]
+	Synthetic data, $\gv{c05_logistic/imb_pos}$ positives in the test set:
+	\begin{center}
+		\small
+		\begin{tabular}{lccc}
+			\toprule
+			model & accuracy & precision & recall \\ \midrule
+			\gv{c05_logistic/imb_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Lowering the threshold and using \texttt{class\_weight="balanced"} both trade precision for
+	recall; ``always predict 0'' has near-top accuracy and zero recall. Choose the operating point
+	from the business cost, using precision--recall curves (\Cref{ch:eval}).
+\end{example}
+
+\begin{remark}
+	\trap ``With imbalanced data, always oversample.'' Re-weighting or resampling changes the
+	model's probabilities (they no longer estimate the true $\Prob(y=1\mid\x)$) and is often
+	equivalent to moving the threshold. First try: keep the model, pick the threshold on validation
+	data, report PR-AUC rather than accuracy. Resampling must happen \emph{inside} the training fold
+	only (\Cref{ch:dataprep}).
+\end{remark}
+
+\section{Generalised linear models}
+\label{sec:glm}
+\prototype{Counts of app crashes per day modelled with $\log\E[y]=\w\T\x$.}
+
+A \vocab{generalised linear model} has three parts: a distribution for $y$ from the exponential
+family, a linear predictor $\eta=\w\T\x$, and a \vocab{link} $g$ with $g(\E[y\mid\x])=\eta$.
+\begin{center}
+	\small
+	\begin{tabular}{llll}
+		\toprule
+		model & distribution & link $g(\mu)$ & typical target \\ \midrule
+		linear regression & Gaussian & identity $\mu$ & real values \\
+		logistic regression & Bernoulli & logit $\log\frac{\mu}{1-\mu}$ & binary \\
+		Poisson regression & Poisson & $\log\mu$ & counts \\
+		softmax regression & categorical & multinomial logit & $K$ classes \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+With the canonical link, the gradient of the negative log-likelihood is always
+$\X\T(\bm\mu-\y)$ and Newton's method is IRLS. A Poisson regression fitted by our 6-line Newton loop
+gives $(\gv{c05_logistic/pois_w})$, identical to scikit-learn's \texttt{PoissonRegressor}.
 
 \section{The perceptron and XOR}
-\stub{The perceptron and XOR}
+\prototype{AND is learnable by one neuron; XOR is not.}
 
+The \vocab{perceptron} (Rosenblatt) predicts $\sign(\w\T\x)$ and, on each mistake
+($y_i\w\T\x_i\le0$), updates $\w\leftarrow\w+y_i\x_i$. It is stochastic (sub)gradient descent on the
+loss $\max(0,-y\w\T\x)$, a hinge with the margin set to zero.
+\codefile[code/ml/c05\_logistic.py: perceptron]{gen/ml/snip/c05_logistic-perceptron.py}
+
+\begin{theorem}[Perceptron convergence (Novikoff)]
+	If the data are linearly separable with margin $\gamma$ by a unit vector $\w^\star$
+	($y_i\w^{\star\top}\x_i\ge\gamma$) and $\norm{\x_i}\le R$, the perceptron makes at most
+	$(R/\gamma)^2$ mistakes, whatever the order of examples.
+\end{theorem}
+\begin{proof}
+	Each mistake increases $\w\T\w^\star$ by at least $\gamma$ and increases $\norm{\w}^2$ by at most
+	$R^2$ (because $y_i\w\T\x_i\le0$ on a mistake). After $M$ mistakes,
+	$M\gamma\le\w\T\w^\star\le\norm{\w}\le R\sqrt M$, so $M\le R^2/\gamma^2$.
+\end{proof}
+
+\begin{example}[AND converges, XOR cycles]
+	Inputs $(x_1,x_2)\in\{0,1\}^2$ with a bias feature, labels $\pm1$. For AND, mistakes per epoch
+	are $(\gv{c05_logistic/and_m})$ and the final weights (bias first) are $(\gv{c05_logistic/and_w})$:
+	predict 1 iff $3x_1+2x_2>4$. For XOR the perceptron never has an error-free epoch in 50 epochs;
+	scikit-learn's \texttt{Perceptron} ends at accuracy $\gv{c05_logistic/xor_sk_acc}$, and a brute-force
+	search over all lines shows no linear classifier exceeds $\gv{c05_logistic/xor_best_lin}$.
+\end{example}
+
+Why no line works: the line would need $w_0<0$ (for $(0,0)\mapsto-1$), $w_0+w_1>0$ and
+$w_0+w_2>0$ (for the two $+1$ points), and $w_0+w_1+w_2<0$. Adding the middle two gives
+$2w_0+w_1+w_2>0$, i.e.\ $w_0+w_1+w_2>-w_0>0$, a contradiction.
+
+Two ways out, both interview staples. Add a feature: with $x_1x_2$ appended the perceptron
+converges to $(\gv{c05_logistic/xor2_w})$, i.e.\ predict 1 iff $2x_1+2x_2-5x_1x_2>1$ --- a
+linear classifier in a lifted space (the idea behind kernels, \Cref{ch:svm}). Or add a hidden layer:
+XOR $=$ (OR) AND NOT (AND), two neurons feeding a third, the opening example of
+\otherbook{Deep Learning}.
+
+\begin{remark}
+	\trap ``A single-layer perceptron can learn any Boolean function.'' Only linearly separable ones
+	(AND, OR, NAND, NOR, NOT), not XOR or XNOR. And ``the perceptron converges on any data'' is false:
+	on non-separable data it never stops changing; use the averaged perceptron or logistic
+	regression.
+\end{remark}
+
+\begin{moral}
+	Logistic regression = linear score + sigmoid + Bernoulli likelihood: convex loss, gradient
+	$(p-y)\x$, linear boundary, probabilities you threshold by cost.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Neuron output and log-loss]
+	\onechili
+	A logistic model has $w=(0.5,-1.0)$, $b=0.25$. For $\x=(2,1)$ with true label $1$, compute
+	$z$, $p$, the predicted class at threshold $0.5$, and the log-loss (natural log).
+	\begin{hint}
+		$z=0.5\cdot2-1\cdot1+0.25$.
+	\end{hint}
+	\begin{sol}
+		$z=\gv{c05_problems/p5a_z}$, $p=\sigma(0.25)=\gv{c05_problems/p5a_p}$, class 1,
+		loss $-\ln p=\gv{c05_problems/p5a_loss}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Odds ratio]
+	\onechili
+	In a churn model the coefficient on ``number of complaints'' is $0.4$. A customer with 2
+	complaints has churn probability $0.2$. What is the probability with 5 complaints, other
+	features equal?
+	\begin{hint}
+		Work in odds: multiply by $e^{0.4\cdot3}$.
+	\end{hint}
+	\begin{sol}
+		Odds $0.2/0.8=0.25$; times $e^{1.2}=\gv{c05_problems/p5b_or}$ gives
+		$\gv{c05_problems/p5b_odds}$; probability $\gv{c05_problems/p5b_p}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Gradient step]
+	\twochili
+	One feature plus intercept, $\w=(0,1)$ (intercept first). Data: $x=1,y=0$ and $x=-1,y=1$.
+	Compute the average log-loss gradient and the weights after one step with $\eta=0.5$.
+	\begin{hint}
+		$p=\sigma(x)$ for both points; gradient $\frac1n\sum(p_i-y_i)(1,x_i)$.
+	\end{hint}
+	\begin{sol}
+		$p_1=\sigma(1)=\gv{c05_problems/p5c_p1}$, $p_2=\sigma(-1)=\gv{c05_problems/p5c_p2}$. Errors
+		$p-y=(\gv{c05_problems/p5c_e1},\gv{c05_problems/p5c_e2})$. Gradient
+		$=(\gv{c05_problems/p5c_g0},\gv{c05_problems/p5c_g1})$; new weights
+		$(\gv{c05_problems/p5c_w0},\gv{c05_problems/p5c_w1})$. The slope decreases: the model was
+		getting both points wrong.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Which statements are true?]
+	\onechili
+	(a) Logistic regression's decision boundary is linear in the features.
+	(b) Log-loss for logistic regression is convex in the weights.
+	(c) Logistic regression requires features to be normally distributed.
+	(d) With perfectly separable data and no regularisation, the weights diverge.
+	(e) Doubling every feature value halves the fitted coefficients (no regularisation).
+	\begin{hint}
+		Only one of these is false.
+	\end{hint}
+	\begin{sol}
+		(a), (b), (d), (e) are true; (c) is false --- there is no distributional assumption on
+		$\x$. (e) holds because only $\w\T\x$ matters; with regularisation it fails.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Softmax gradient]
+	\twochili
+	Show that for $p=\softmax(\bm z)$ and one-hot $\y$, $\partial(-\sum_k y_k\log p_k)/\partial z_j=p_j-y_j$.
+	\begin{hint}
+		$\partial\log p_k/\partial z_j=\ind{k=j}-p_j$.
+	\end{hint}
+	\begin{sol}
+		$\log p_k=z_k-\log\sum_ie^{z_i}$, so $\partial\log p_k/\partial z_j=\ind{k=j}-p_j$. Then
+		$-\sum_ky_k(\ind{k=j}-p_j)=-y_j+p_j\sum_ky_k=p_j-y_j$ since $\sum_ky_k=1$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Cost-based threshold]
+	\twochili
+	Missing a fraudulent transaction costs Rs 5000; blocking a genuine one costs Rs 100 in
+	customer friction. Above what fraud probability should a transaction be blocked? Suppose
+	instead the model was trained on 1\% fraud with balanced class weights
+	(\texttt{class\_weight="balanced"}). Can you use this threshold directly?
+	\begin{hint}
+		$t=c_{\text{FP}}/(c_{\text{FP}}+c_{\text{FN}})$; re-weighting distorts probabilities.
+	\end{hint}
+	\begin{sol}
+		$t=100/5100=\gv{c05_problems/p5f_t}$. No: balanced weights inflate predicted fraud
+		probabilities (roughly, the model behaves as if the prior were 50\%), so the scores are not
+		calibrated probabilities. Either train unweighted and use $t$, or recalibrate the weighted
+		model on validation data (\Cref{ch:eval}) before applying a cost threshold.
+	\end{sol}
+\end{problem}

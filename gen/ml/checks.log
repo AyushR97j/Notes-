@@ -17,8 +17,8 @@
 [check] c03_linreg: QR solution vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.33e-15 -> OK
 [check] c03_linreg: lstsq vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.11e-15 -> OK
 [check] c03_linreg: cond(X^T X) = cond(X)^2: ours=[13.062676] ref=[13.062676] max|diff|=4.23e-07 -> OK
-[check] c03_linreg: GD after 500 steps vs closed form: ours=[1.799714 0.800079] ref=[1.8 0.8] max|diff|=2.86e-04 -> OK
 [check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
+[check] c03_linreg: GD after 500 steps vs closed form: ours=[1.799714 0.800079] ref=[1.8 0.8] max|diff|=2.86e-04 -> OK
 [check] c02_maths: Bernoulli MLE numeric vs h/n: ours=[0.7] ref=[0.7] max|diff|=3.72e-07 -> OK
 [check] c02_maths: Beta-Bernoulli MAP numeric vs closed form: ours=[0.642857] ref=[0.642857] max|diff|=9.18e-08 -> OK
 [check] c02_maths: scipy norm.fit sigma^2 = MLE (ddof=0): ours=[3.2] ref=[3.2] max|diff|=4.44e-16 -> OK
@@ -35,6 +35,16 @@
 [check] c04_problems: ridge 1-D, lambda=3: ours=[0.6] ref=[0.6] max|diff|=1.11e-16 -> OK
 [check] c04_problems: lasso 1-D, threshold 1: ours=[1.4] ref=[1.4] max|diff|=4.44e-16 -> OK
 [check] c04_problems: MSE(c xbar) simulation vs (1-c)^2 mu^2 + c^2 s^2/n: ours=[0.284931] ref=[0.286] max|diff|=1.07e-03 -> OK
+[check] c05_logistic: hand log-loss vs sklearn log_loss: ours=[0.593741] ref=[0.593741] max|diff|=0.00e+00 -> OK
+[check] c05_logistic: logistic gradient X^T(p-y)/n vs finite differences: ours=[-0.024672 -0.611269] ref=[-0.024672 -0.611269] max|diff|=4.30e-11 -> OK
+[check] c05_logistic: Newton/IRLS logistic vs sklearn (no penalty): ours=[-0.36077  -0.431708  0.975935  0.371698] ref=[-0.36077  -0.431708  0.975935  0.371698] max|diff|=3.14e-11 -> OK
+[check] c05_logistic: gradient descent logistic vs Newton: ours=[-0.360667 -0.431577  0.975715  0.371633] ref=[-0.36077  -0.431708  0.975935  0.371698] max|diff|=2.21e-04 -> OK
+[check] c05_logistic: softmax regression probabilities vs sklearn multinomial: ours=[0.897103 0.095909 0.006988 0.79108  0.199728 0.009193] ref=[0.897103 0.095909 0.006988 0.79108  0.199728 0.009193] max|diff|=2.38e-08 -> OK
+[check] c05_logistic: our perceptron separates AND: ours=[-1. -1. -1.  1.] ref=[-1. -1. -1.  1.] max|diff|=0.00e+00 -> OK
+[check] c05_logistic: sklearn Perceptron separates AND too: ours=[-1. -1. -1.  1.] ref=[-1. -1. -1.  1.] max|diff|=0.00e+00 -> OK
+[check] c05_logistic: perceptron with x1*x2 feature separates XOR: ours=[-1.  1.  1. -1.] ref=[-1.  1.  1. -1.] max|diff|=0.00e+00 -> OK
+[check] c05_logistic: Poisson regression Newton vs sklearn PoissonRegressor: ours=[ 0.28901   0.936997 -0.341632] ref=[ 0.28901   0.936997 -0.341632] max|diff|=1.74e-11 -> OK
+[check] c05_problems: 5A loss vs sklearn: ours=[0.575939] ref=[0.575939] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: VIF by auxiliary regressions vs diag(inv corr): ours=[10.337063 10.324967  1.003782] ref=[10.337063 10.324967  1.003782] max|diff|=6.75e-14 -> OK
 [check] c03_linreg: #poly features p=2, d=2 = C(p+d,d): ours=[6.] ref=[6.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=3, d=2 = C(p+d,d): ours=[10.] ref=[10.] max|diff|=0.00e+00 -> OK
