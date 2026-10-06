@@ -1,4 +1,4 @@
-RESUME HERE: ch06 done; next = ch07 kNN and distances (aim ~7 pages).
+RESUME HERE: ch07 done; next = ch08 SVM (aim ~10 pages).
 
 # Classical Machine Learning — progress log
 
@@ -49,7 +49,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 04 Bias–variance and regularisation ★ (c04_biasvar.py, c04_problems.py)
 - [x] 05 Logistic regression ★ (c05_logistic.py, c05_problems.py)
 - [x] 06 Generative classifiers (c06_generative.py, c06_problems.py)
-- [ ] 07 kNN
+- [x] 07 kNN (c07_knn.py incl. a KD-tree with visit counter, c07_problems.py)
 - [ ] 08 SVM ★
 - [ ] 09 Trees ★
 - [ ] 10 Ensembles ★

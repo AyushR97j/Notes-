@@ -7,7 +7,6 @@
 [check] c02_maths: grad log det M = M^{-T}: ours=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] ref=[ 0.234193 -0.023975 -0.000254  0.020759 -0.023975  0.14863 ] max|diff|=5.48e-10 -> OK
 [check] c02_maths: P(disease | +) simulation vs Bayes: ours=[0.087235] ref=[0.087558] max|diff|=3.23e-04 -> OK
 [check] c02_maths: Pearson r numpy vs scipy: ours=[0.919239] ref=[0.919239] max|diff|=1.11e-16 -> OK
-[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
 [check] c03_linreg: 5-point slope vs sklearn: ours=[0.8] ref=[0.8] max|diff|=1.11e-16 -> OK
 [check] c03_linreg: 5-point intercept vs sklearn: ours=[1.8] ref=[1.8] max|diff|=2.22e-16 -> OK
 [check] c03_linreg: 5-point fit vs numpy.polyfit: ours=[0.8 1.8] ref=[0.8 1.8] max|diff|=2.66e-15 -> OK
@@ -19,6 +18,7 @@
 [check] c03_linreg: lstsq vs sklearn: ours=[ 2.981931  1.955009 -1.048076  0.526513] ref=[ 2.981931  1.955009 -1.048076  0.526513] max|diff|=1.11e-15 -> OK
 [check] c03_linreg: cond(X^T X) = cond(X)^2: ours=[13.062676] ref=[13.062676] max|diff|=4.23e-07 -> OK
 [check] c03_linreg: GD after 500 steps vs closed form: ours=[1.799714 0.800079] ref=[1.8 0.8] max|diff|=2.86e-04 -> OK
+[check] c01_setup: Bayes error MC vs Phi(-1): ours=[0.159945] ref=[0.158655] max|diff|=1.29e-03 -> OK
 [check] c02_maths: Bernoulli MLE numeric vs h/n: ours=[0.7] ref=[0.7] max|diff|=3.72e-07 -> OK
 [check] c02_maths: Beta-Bernoulli MAP numeric vs closed form: ours=[0.642857] ref=[0.642857] max|diff|=9.18e-08 -> OK
 [check] c02_maths: scipy norm.fit sigma^2 = MLE (ddof=0): ours=[3.2] ref=[3.2] max|diff|=4.44e-16 -> OK
@@ -58,6 +58,15 @@
 [check] c03_linreg: #poly features p=10, d=2 = C(p+d,d): ours=[66.] ref=[66.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=10, d=3 = C(p+d,d): ours=[286.] ref=[286.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=100, d=2 = C(p+d,d): ours=[5151.] ref=[5151.] max|diff|=0.00e+00 -> OK
+[check] c07_problems: 7D cosine(A,B) = 0: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c07_knn: hand kNN vote == sklearn prediction for k=1,3,5: ours=[1. 1. 1.] ref=[1. 1. 1.] max|diff|=0.00e+00 -> OK
+[check] c07_knn: kNN regression k=3 vs sklearn: ours=[18.] ref=[18.] max|diff|=0.00e+00 -> OK
+[check] c07_knn: distance-weighted kNN regression vs sklearn: ours=[18.676206] ref=[18.676206] max|diff|=0.00e+00 -> OK
+[check] c07_knn: Euclidean by formula: ours=[3.605551] ref=[3.605551] max|diff|=0.00e+00 -> OK
+[check] c07_knn: cosine distance by formula: ours=[0.305121] ref=[0.305121] max|diff|=0.00e+00 -> OK
+[check] c07_knn: Hamming (scipy returns a fraction): ours=[0.5] ref=[0.5] max|diff|=0.00e+00 -> OK
+[check] c07_knn: Mahalanobis by formula: ours=[1.069045] ref=[1.069045] max|diff|=0.00e+00 -> OK
+[check] c07_knn: our KD-tree nearest-neighbour indices == sklearn KDTree (200 queries): ours=[1651. 1005.  290. 3307. 2201. 1841.] ref=[1651. 1005.  290. 3307. 2201. 1841.] max|diff|=0.00e+00 -> OK
 [check] c04_biasvar: bias^2 + variance + noise = simulated test MSE: ours=[0.644278 0.559275 0.488433 0.398459 0.296543 0.219718] ref=[0.640389 0.554534 0.494682 0.392011 0.296674 0.22178 ] max|diff|=6.45e-03 -> OK
 [check] c04_biasvar: 1-D ridge lambda=1 vs sklearn: ours=[0.727273] ref=[0.727273] max|diff|=0.00e+00 -> OK
 [check] c04_biasvar: 1-D ridge lambda=10 vs sklearn: ours=[0.4] ref=[0.4] max|diff|=0.00e+00 -> OK
