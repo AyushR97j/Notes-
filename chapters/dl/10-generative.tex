@@ -1,0 +1,216 @@
+\chapter{Generative and representation learning}
+\label{ch:generative}
+
+Discriminative models learn $p(y\mid\x)$. Generative models learn $p(\x)$ well enough to sample
+from it; representation learning learns features without labels. Interviews ask for the VAE
+objective and the reparameterisation trick, the GAN minimax game and its failure modes, the idea
+of diffusion, and how contrastive learning, word2vec and Vision Transformers produce
+representations. Each gets one section, with the key identity verified numerically.
+
+\section{Autoencoders}
+\prototype{A linear autoencoder with a 3-unit bottleneck, trained by gradient descent, reaches
+exactly PCA's reconstruction error ($\gv{c10_generative/ae_err}$ vs $\gv{c10_generative/pca_err}$).}
+
+An \vocab{autoencoder} maps $\x$ to a low-dimensional code $\z=f(\x)$ and back,
+$\hat\x=g(\z)$, trained to minimise $\norm{\x-\hat\x}^2$. The bottleneck forces it to keep the
+directions that matter. With linear $f,g$ and squared error the optimum spans the top principal
+subspace: the script trains one on 10-dimensional data and checks that its error equals PCA's and
+that the decoder's column space coincides with the top three principal components (see the PCA
+chapter of \otherbook{Classical Machine Learning}). Non-linear autoencoders generalise PCA to curved
+manifolds. Variants: \vocab{denoising} (reconstruct $\x$ from a corrupted input, learning robust
+features), \vocab{sparse} (penalise code activity). A plain autoencoder is not a good generator:
+nothing makes the code space dense, so decoding a random $\z$ usually gives garbage. The VAE fixes this.
+
+\section{Variational autoencoders}
+\prototype{For an encoder output $\mu=1$, $\sigma=0.5$, the KL term of the VAE loss is
+$\gv{c10_generative/kl}$ nats.}
+
+\subsection{The ELBO}
+A VAE \cite{vae} posits latent $\z\sim p(\z)=\Normal(\zero,\I)$ and a decoder $p_\theta(\x\mid\z)$.
+The likelihood $p_\theta(\x)=\int p_\theta(\x\mid\z)p(\z)\dd\z$ is intractable, so an encoder
+$q_\phi(\z\mid\x)=\Normal(\bmu_\phi(\x),\diag\bm\sigma^2_\phi(\x))$ approximates the posterior.
+\begin{theorem}[Evidence lower bound]
+	For any $q$,
+	\[ \log p_\theta(\x)\ \ge\ \E_{q_\phi(\z\mid\x)}\bigl[\log p_\theta(\x\mid\z)\bigr]-\KL\bigl(q_\phi(\z\mid\x)\,\Vert\,p(\z)\bigr), \]
+	with equality iff $q_\phi(\z\mid\x)=p_\theta(\z\mid\x)$.
+\end{theorem}
+\begin{proof}
+	$\log p_\theta(\x)=\E_q\bigl[\log\frac{p_\theta(\x,\z)}{q(\z\mid\x)}\bigr]+\KL\bigl(q(\z\mid\x)\Vert p_\theta(\z\mid\x)\bigr)$,
+	which follows from $p_\theta(\x,\z)=p_\theta(\z\mid\x)p_\theta(\x)$. The KL is non-negative, and the first term
+	splits into $\E_q\log p_\theta(\x\mid\z)-\KL(q\Vert p(\z))$.
+\end{proof}
+The VAE maximises the ELBO: a \textbf{reconstruction} term (with a Gaussian decoder, a squared error;
+with Bernoulli pixels, a BCE) plus a \textbf{regulariser} pulling each $q(\z\mid\x)$ toward the prior, which
+makes the latent space smooth and samplable. For diagonal Gaussians the KL has a closed form per dimension:
+\[ \KL\bigl(\Normal(\mu,\sigma^2)\Vert\Normal(0,1)\bigr)=\tfrac12\bigl(\mu^2+\sigma^2-1-\log\sigma^2\bigr). \]
+\codefile[\script{c10_generative}]{gen/dl/snip/c10_generative-kl.py}
+With $\mu=1$, $\sigma=0.5$ it is $\gv{c10_generative/kl}$, and $\gv{c10_generative/kl0}$ at $\mu=0$,
+$\sigma=1$ (both checked against \pt{torch.distributions}). Networks output $\log\sigma^2$ rather than $\sigma$
+so that the variance is positive without constraints.
+
+\subsection{The reparameterisation trick}
+The reconstruction term is an expectation over $\z\sim q_\phi$, and we need its gradient with respect to
+$\phi$; sampling is not differentiable. Write $\z=\bmu+\bm\sigma\had\bm\eps$ with $\bm\eps\sim\Normal(\zero,\I)$:
+the randomness moves into an input, $\z$ becomes a deterministic, differentiable function of $(\bmu,\bm\sigma)$, and
+ordinary backpropagation gives low-variance gradient estimates. Check: for $f(z)=z^2$,
+$\E f=\mu^2+\sigma^2$ has gradients $(2\mu,2\sigma)=(2,1)$; a 200{,}000-sample reparameterised estimate gives
+$(\gv{c10_generative/rep_gmu},\ \gv{c10_generative/rep_gsig})$.
+
+\begin{remark}
+	\trap ``The VAE's KL term is what makes reconstructions sharp.'' It does the opposite: it trades reconstruction
+	quality for a well-behaved latent space, and Gaussian decoders average over plausible outputs, so VAE samples
+	tend to be blurry. If the KL term wins completely the decoder ignores $\z$ (\vocab{posterior collapse}); weighting
+	it ($\beta$-VAE) trades the two.
+\end{remark}
+
+\section{Generative adversarial networks}
+\prototype{Data $\Normal(0,1)$, generator $\Normal(1.5,1)$: the best discriminator outputs
+$\gv{c10_generative/dstar_0}$ at $x=0$ and $\gv{c10_generative/dstar_15}$ at $x=1.5$.}
+
+A GAN \cite{gan} trains a generator $G(\z)$ against a discriminator $D(\x)\in(0,1)$:
+\[ \min_G\max_D\ V(D,G)=\E_{\x\sim p_\text{data}}\log D(\x)+\E_{\z\sim p(\z)}\log\bigl(1-D(G(\z))\bigr). \]
+\begin{proposition}
+	For fixed $G$ with sample density $p_g$, the optimal discriminator is
+	$D^\star(\x)=p_\text{data}(\x)/(p_\text{data}(\x)+p_g(\x))$, and then
+	$V(D^\star,G)=-\log4+2\,\mathrm{JSD}(p_\text{data}\Vert p_g)$, minimised exactly when $p_g=p_\text{data}$.
+\end{proposition}
+\begin{proof}
+	Pointwise, $a\log D+b\log(1-D)$ is maximised at $D=a/(a+b)$. Substituting and adding and subtracting $\log4$
+	gives $\KL(p_\text{data}\Vert m)+\KL(p_g\Vert m)-\log4$ with $m=\frac12(p_\text{data}+p_g)$, i.e.\ $2\,\mathrm{JSD}-\log4$.
+\end{proof}
+For the prototype the integral gives $V=\gv{c10_generative/gan_V}$ and $\mathrm{JSD}=\gv{c10_generative/gan_jsd}$, so
+$V=-\gv{c10_generative/log4}+2\,\mathrm{JSD}$ as claimed (JSD from SciPy).
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth, xlabel=$x$, xmin=-4, xmax=5.5,
+	legend pos=outer north east, legend style={font=\scriptsize}]
+	\addplot table[x=x,y=pdata] {gen/dl/data/c10_generative-gan.dat}; \addlegendentry{$p_\text{data}$}
+	\addplot table[x=x,y=pg] {gen/dl/data/c10_generative-gan.dat}; \addlegendentry{$p_g$}
+	\addplot table[x=x,y=dstar] {gen/dl/data/c10_generative-gan.dat}; \addlegendentry{$D^\star$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+In practice $G$ is trained to maximise $\log D(G(\z))$ (the \vocab{non-saturating} loss): early on $D$ rejects fakes
+easily and $\log(1-D(G(\z)))$ has almost no gradient. Failure modes: \vocab{mode collapse} (the generator covers a few
+modes that fool $D$), oscillation instead of convergence, vanishing generator gradients when $D$ is too good.
+\vocab{WGAN} \cite{wgan} replaces the JS-based objective with an estimate of the Wasserstein distance, using a
+Lipschitz-constrained critic (weight clipping, later a gradient penalty); its loss is smoother when the two
+distributions barely overlap and correlates with sample quality.
+
+\section{Diffusion models}
+\prototype{With a linear noise schedule over $T=1000$ steps, after 300 steps only
+$\sqrt{\bar\alpha}=\sqrt{\gv{c10_generative/abar_300}}$ of the original signal remains.}
+
+A \vocab{diffusion model} (DDPM \cite{ddpm}) defines a fixed \emph{forward} process that adds Gaussian noise in
+$T$ small steps, $q(\x_t\mid\x_{t-1})=\Normal(\sqrt{1-\beta_t}\,\x_{t-1},\beta_t\I)$, and learns to reverse it.
+Composing Gaussians gives a closed form for any $t$:
+\[ q(\x_t\mid\x_0)=\Normal\bigl(\sqrt{\bar\alpha_t}\,\x_0,\ (1-\bar\alpha_t)\I\bigr),\qquad \bar\alpha_t=\prod_{s\le t}(1-\beta_s). \]
+\codefile[\script{c10_generative}]{gen/dl/snip/c10_generative-ddpm.py}
+The script runs 300 individual noising steps on $100{,}000$ samples and confirms the mean $\sqrt{\bar\alpha_t}x_0$ and
+variance $1-\bar\alpha_t$ of the closed form. With $\beta$ from $10^{-4}$ to $0.02$, $\bar\alpha$ drops to one half at
+step $\gv{c10_generative/snr_half}$ and to $\gv{c10_generative/abar_T}$ at $T$: $\x_T$ is essentially pure noise.
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.6\linewidth, height=0.34\linewidth, xlabel={step $t$}, legend pos=outer north east, legend style={font=\scriptsize}]
+	\addplot table[x=t,y=signal] {gen/dl/data/c10_generative-ddpm.dat}; \addlegendentry{$\sqrt{\bar\alpha_t}$ (signal)}
+	\addplot table[x=t,y=noise] {gen/dl/data/c10_generative-ddpm.dat}; \addlegendentry{$\sqrt{1-\bar\alpha_t}$ (noise)}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+Training (derivation sketch): the ELBO of the reverse chain decomposes into per-step KL terms between Gaussians;
+with the reverse mean parameterised through a noise predictor $\bm\eps_\theta$, each term reduces (up to weights
+that are usually dropped) to
+\[ \Loss=\E_{t,\x_0,\bm\eps}\bigl\Vert\bm\eps-\bm\eps_\theta\bigl(\sqrt{\bar\alpha_t}\x_0+\sqrt{1-\bar\alpha_t}\,\bm\eps,\ t\bigr)\bigr\Vert^2: \]
+pick a random step, noise a clean example in one shot, and regress the noise. Sampling starts from $\x_T\sim\Normal(\zero,\I)$
+and applies the learned denoising step $T$ times (faster samplers skip steps). Compared with GANs: stable training
+and good mode coverage, at the price of many network evaluations per sample. Text-to-image systems condition
+$\bm\eps_\theta$ on a text embedding and often run diffusion in an autoencoder's latent space.
+
+\vocab{Normalising flows}, in one paragraph: compose invertible maps with tractable Jacobian determinants so that
+$\log p(\x)=\log p(\z)+\log\abs{\det\partial\z/\partial\x}$ is exact; training is maximum likelihood. Exact density and
+exact inversion, but architectures are constrained to be invertible.
+
+\section{Representation learning without labels}
+\prototype{Four images and their four captions: the CLIP loss is a 4-way cross-entropy in each direction with the
+matching pair on the diagonal.}
+
+\subsection{Contrastive learning: SimCLR and CLIP}
+\vocab{Contrastive learning} pulls representations of positive pairs together and pushes others apart. SimCLR
+\cite{simclr} makes positives by two random augmentations of one image; CLIP \cite{clip} pairs an image with its
+caption. With $L_2$-normalised embeddings and temperature $\tau$, the \vocab{InfoNCE} loss for a batch is a
+cross-entropy over the similarity matrix:
+\codefile[\script{c10_generative}]{gen/dl/snip/c10_generative-clip.py}
+For a batch of $4$ with diagonal cosine similarities $(\gv{c10_generative/clip_diag})$ and $\tau=0.1$ the loss is
+$\gv{c10_generative/clip_loss}$ (random embeddings would give about $\ln4=\gv{c10_generative/clip_lnB}$); the hand
+computation matches. Larger batches mean more negatives and a harder, more informative task. CLIP's joint space enables
+zero-shot classification: embed ``a photo of a \{class\}'' for each class and pick the nearest to the image.
+
+\subsection{word2vec}
+\vocab{Skip-gram} \cite{word2vec} learns word vectors by predicting context words from a centre word. The full
+softmax over the vocabulary is expensive, so \vocab{negative sampling} replaces it by $1+k$ binary classifications:
+the true context word against $k$ words drawn from a noise distribution (unigram frequency to the power $3/4$):
+\[ \Loss=-\log\sigma(\uu_o\T\vv_c)-\sum_{j=1}^{k}\log\sigma(-\uu_{n_j}\T\vv_c). \]
+\codefile[\script{c10_generative}]{gen/dl/snip/c10_generative-sgns.py}
+The loss ($\gv{c10_generative/sgns_loss}$ in the script's example) and all three hand-derived gradients match autograd.
+Words in similar contexts get similar vectors; vector arithmetic captures some relations. Unlike Transformer embeddings,
+these are \emph{static}: one vector per word regardless of context.
+
+\subsection{Vision Transformers}
+A ViT \cite{vit} cuts an image into $P\times P$ patches, flattens and linearly projects each (equivalently, a convolution
+with kernel and stride $P$), adds position embeddings and a learnable \pt{[CLS]} token, and runs a standard Transformer
+encoder. For $224\times224\times3$ images and $P=16$: $\gv{c10_generative/vit_tokens}$ patch tokens of dimension
+$\gv{c10_generative/vit_patch_dim}$; projecting to $\dmodel=768$ costs $\gv{c10_generative/vit_patch_params}$ parameters
+(checked against \pt{nn.Conv2d(3, 768, 16, stride=16)}). Halving the patch size to $8$ gives $\gv{c10_generative/vit_tokens_8}$
+tokens and, attention being quadratic, roughly sixteen times the attention cost. ViTs have weaker built-in priors than CNNs
+(no locality or translation equivariance by construction), so they need more data or stronger augmentation, and scale very
+well when they get it.
+
+\begin{moral}
+	VAE: maximise reconstruction minus KL, backpropagate through $\bmu+\bm\sigma\had\bm\eps$. GAN: a two-player game whose
+	optimum matches the data distribution, hard to balance. Diffusion: learn to predict the noise. Contrastive learning:
+	classify which pair belongs together.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	Compute $\KL(\Normal(0,4)\Vert\Normal(0,1))$ and $\KL(\Normal(2,1)\Vert\Normal(0,1))$.
+	\begin{hint}$\frac12(\mu^2+\sigma^2-1-\log\sigma^2)$.\end{hint}
+	\begin{sol}First: $\frac12(0+4-1-\ln4)=\gv{c10_generative/pa1}$. Second: $\frac12(4+1-1-0)=\gv{c10_generative/pa2}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A discriminator outputs $0.5$ everywhere. What does the proposition say about the generator?
+	\begin{hint}$D^\star=p_\text{data}/(p_\text{data}+p_g)$.\end{hint}
+	\begin{sol}If this $D$ is optimal, $p_\text{data}=p_g$ everywhere: the generator has matched the data (and $V=-\log4$). In practice
+	a constant $D$ may just be a weak discriminator, so it is evidence, not proof.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Why can't we backpropagate through $\z\sim\Normal(\mu,\sigma^2)$ directly, and how does the reparameterisation fix it? Name a
+	distribution for which the trick is not available in this simple form.
+	\begin{hint}Where is the randomness?\end{hint}
+	\begin{sol}
+		Sampling is not a differentiable function of $(\mu,\sigma)$. Writing $z=\mu+\sigma\eps$ with $\eps\sim\Normal(0,1)$ independent of the
+		parameters makes $z$ differentiable in them: $\partial f(z)/\partial\mu=f'(z)$ and
+		$\partial f(z)/\partial\sigma=f'(z)\,\eps$. Discrete
+		distributions (categorical, Bernoulli) have no such continuous reparameterisation; one uses the score-function (REINFORCE) estimator or
+		continuous relaxations such as Gumbel-softmax.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many tokens does a ViT with $14\times14$ patches see for a $224\times224$ image, including \pt{[CLS]}? What is the shape of its
+	attention matrix per head?
+	\begin{hint}$224/14$.\end{hint}
+	\begin{sol}$(224/14)^2=\gv{c10_generative/pd_patches}$ patches plus one: $\gv{c10_generative/pd_tokens}$ tokens; attention
+		matrix $\gv{c10_generative/pd_tokens}\times\gv{c10_generative/pd_tokens}$ per head.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	In DDPM with $\bar\alpha_t=0.25$, write $\x_t$ in terms of $\x_0$ and $\bm\eps$, and give the signal-to-noise ratio
+	$\bar\alpha_t/(1-\bar\alpha_t)$.
+	\begin{hint}Closed form of $q(\x_t\mid\x_0)$.\end{hint}
+	\begin{sol}$\x_t=0.5\,\x_0+\sqrt{0.75}\,\bm\eps\approx0.5\x_0+\gv{c10_generative/pe_noise}\,\bm\eps$; SNR
+		$=0.25/0.75=\gv{c10_generative/pe_snr}$.\end{sol}
+\end{problem}

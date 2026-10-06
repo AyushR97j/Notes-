@@ -1,0 +1,75 @@
+\documentclass[11pt,twoside=semi,openright,numbers=noenddot,titlepage=false]{scrbook}
+\newcommand{\booktitle}{Deep Learning}
+\newcommand{\bookshort}{Deep Learning}
+\newcommand{\bookauthor}{Philospher}
+\newcommand{\bookid}{dl}
+
+\input{latex/preamble}
+\input{latex/dl-macros}
+\addbibresource{latex/refs-dl.bib}
+\input{gen/dl/all}
+
+\title{Deep Learning}
+\subtitle{A Napkin-style companion for campus placements:\\
+	from the perceptron to Transformers and LLMs, with derivations,\\
+	hand numerics, traps, and code that checks itself}
+\author{\bookauthor}
+\date{Built \today}
+
+\begin{document}
+\frontmatter
+\maketitle
+\include{chapters/dl/00-preface}
+
+\cleardoublepage
+\newcounter{temppage}
+\setcounter{temppage}{\value{page}}
+\mainmatter
+\setcounter{page}{\value{temppage}}
+\tableofcontents
+
+\Opensolutionfile{\bookid-hints}
+\Opensolutionfile{\bookid-solns}
+
+\part{Foundations}
+\parttoc
+\include{chapters/dl/01-perceptron}
+\include{chapters/dl/02-activations}
+\include{chapters/dl/03-backprop}
+\include{chapters/dl/04-optimisers}
+\include{chapters/dl/05-regularisation}
+
+\part{Architectures}
+\parttoc
+\include{chapters/dl/06-cnn}
+\include{chapters/dl/07-rnn}
+\include{chapters/dl/08-transformer}
+
+\part{Modern Deep Learning}
+\parttoc
+\include{chapters/dl/09-llm}
+\include{chapters/dl/10-generative}
+
+\part{Interview Mode}
+\parttoc
+\include{chapters/dl/11-pytorch}
+\include{chapters/dl/12-implement}
+\include{chapters/dl/13-rapidfire}
+\include{chapters/dl/14-problems}
+
+\Closesolutionfile{\bookid-hints}
+\Closesolutionfile{\bookid-solns}
+
+\part{Backmatter}
+\appendix
+\chapter{Hints to problems}
+\label{app:hints}
+\printanswers{\bookid-hints.out}
+
+\chapter{Solutions to problems}
+\label{app:sols}
+\printanswers{\bookid-solns.out}
+
+\sloppy
+\printbibliography[heading=bibintoc]
+\end{document}

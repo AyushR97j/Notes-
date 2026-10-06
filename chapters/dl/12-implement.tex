@@ -1,0 +1,148 @@
+\chapter{Implement it}
+\label{ch:implement}
+
+``Implement it in NumPy'' is the interview question that separates people who have used deep
+learning from people who understand it. This chapter assembles a tiny framework, every layer
+with an explicit forward and backward pass, and proves each piece correct the strict way: the
+NumPy model and a PyTorch model with the same initial weights are trained side by side on the
+same batches, and their loss trajectories are asserted equal. Several pieces already appeared
+where they were derived; the table points to them.
+
+\begin{center}
+	\footnotesize
+	\begin{tabular}{p{0.42\linewidth}p{0.2\linewidth}p{0.28\linewidth}}
+		\toprule
+		component & where & checked against \\
+		\midrule
+		MLP backprop, gradient checking & \cref{ch:backprop}; here & autograd; finite differences \\
+		reverse-mode autograd & \cref{ch:backprop} & autograd \\
+		softmax regression & here & finite differences \\
+		SGD, momentum, RMSProp, Adam, AdamW & \cref{ch:optim}; Adam again here & \pt{torch.optim} \\
+		BatchNorm forward/backward, running statistics & \cref{ch:reg}; layer here & \pt{nn.BatchNorm1d} \\
+		convolution forward/backward (im2col) & here & \pt{F.conv2d} + autograd \\
+		LSTM cell; LSTM layer over a sequence & \cref{ch:rnn}; here & \pt{nn.LSTMCell}, \pt{nn.LSTM} \\
+		scaled dot-product and multi-head attention & \cref{ch:transformer} & \pt{nn.MultiheadAttention} \\
+		full encoder--decoder Transformer & \cref{ch:transformer} & PyTorch twin, same logits \\
+		BPE tokeniser & \cref{ch:llm} & round trip \\
+		character-level language model & here & PyTorch twin, same trajectory \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\section{A framework in sixty lines}
+\prototype{\pt{Linear.backward} receives $\partial\Loss/\partial\text{output}$, stores
+$\partial\Loss/\partial\W=g\T\x$ and returns $g\W$; everything else is bookkeeping.}
+
+Each layer caches what its backward pass needs, exposes \pt{params} and, after \pt{backward}, \pt{grads}
+with the same keys; the optimiser walks over both.
+
+\codefile[\script{c12_implement}]{gen/dl/snip/c12_implement-framework.py}
+
+\begin{example}[Softmax regression, gradient-checked]
+	Softmax regression is \pt{Linear} followed by \pt{softmax\_ce}. On a 3-class, 10-feature dataset the analytic
+	gradient of all 30 weights agrees with centred finite differences (step $10^{-6}$) to $10^{-7}$.
+\end{example}
+
+\section{BatchNorm as a layer}
+\prototype{The same equations as \cref{ch:reg}, plus the two running averages and a \pt{training} flag.}
+
+\codefile[\script{c12_implement}]{gen/dl/snip/c12_implement-batchnorm.py}
+
+\begin{example}[A full training run, NumPy against PyTorch]
+	A $10\to32\to3$ MLP with BatchNorm and ReLU, PyTorch's initial weights copied into the NumPy layers, both trained with
+	Adam ($\eta=0.01$) on the same 50 random minibatches of 32. The two loss trajectories agree to $10^{-9}$ at every step
+	(from $\gv{c12_implement/mlp_loss0}$ to $\gv{c12_implement/mlp_loss49}$); so do the final weights, BatchNorm's running
+	variance, and the evaluation-mode outputs. Training accuracy ends at $\gv{c12_implement/mlp_acc}\%$. An identical
+	trajectory over 50 Adam steps is a much stronger test than one gradient check: any error in a backward pass, in
+	BatchNorm's unbiased running variance or in Adam's bias correction would make the curves drift apart.
+\end{example}
+
+\section{Convolution via im2col}
+\prototype{Unfold every $k\times k\times C$ patch into a column; the convolution becomes one matrix product, and its
+backward pass is two more.}
+
+\vocab{im2col} turns a convolution into a matrix multiplication: the input $\shp{B,C,H,W}$ becomes columns
+$\shp{B,Ck^2,H_oW_o}$, the weights a matrix $\shp{C_\text{out},Ck^2}$, and the output their product. Backward:
+$\partial\Loss/\partial\W$ is the product of the output gradient with the columns, and $\partial\Loss/\partial\x$
+multiplies by $\W\T$ and then scatter-adds the columns back to the image (\vocab{col2im}, the adjoint of im2col; overlapping
+patches accumulate, exactly as in the transposed convolution of \cref{ch:cnn}).
+
+\codefile[\script{c12_implement}]{gen/dl/snip/c12_implement-im2col.py}
+
+For a batch of two $3\times7\times7$ inputs, four $3\times3$ filters, stride 2 and padding 1, the output has shape
+$\gv{c12_implement/conv_out}$, and the output, $\partial\Loss/\partial\x$, $\partial\Loss/\partial\W$ and
+$\partial\Loss/\partial\bb$ all equal PyTorch's. Production libraries use im2col-like lowering, FFT or Winograd
+transforms, or direct kernels; the memory cost of im2col (each input pixel copied up to $k^2$ times) is the price of
+reusing a fast matrix multiply.
+
+\section{An LSTM layer}
+\prototype{Loop the cell of \cref{ch:rnn} over time, carrying $(\h,\bc)$.}
+
+\codefile[\script{c12_implement}]{gen/dl/snip/c12_implement-lstm_layer.py}
+
+With weights taken from an \pt{nn.LSTM(4, 6)}, a 9-step sequence with batch 3 gives the same outputs and final cell state
+as PyTorch. The backward pass is BPTT: run the cell's backward from $t=T$ down to $1$, adding the incoming
+$\partial\Loss/\partial\h_t$ from the output at each step to the gradient arriving from step $t+1$, and accumulating the
+weight gradients over time (gradient-check it as in \cref{ch:backprop}).
+
+\section{A character-level language model}
+\prototype{Three characters in, a distribution over the next character out: embedding, one $\tanh$ hidden layer, softmax.}
+
+Two more layers complete the framework: an \pt{Embedding} whose backward pass scatter-adds gradients into the rows that
+were used (\pt{np.add.at}, because a character can appear twice in one batch), and \pt{Tanh}.
+
+\codefile[\script{c12_implement}]{gen/dl/snip/c12_implement-charlm.py}
+
+\begin{example}[Training it, twice]
+	A corpus of a few repeated sentences with a vocabulary of $\gv{c12_implement/clm_V}$ characters; context of 3,
+	embeddings of size 8, 64 hidden units: $\gv{c12_implement/clm_params}$ parameters. Trained with the NumPy Adam above and,
+	from the same initial weights and batches, with \pt{torch.optim.Adam}: the two 300-step loss trajectories agree to
+	$10^{-8}$. The loss falls from $\gv{c12_implement/clm_loss0}$ (close to $\ln V=\gv{c12_implement/clm_lnV}$, as it
+	should at initialisation) to $\gv{c12_implement/clm_loss_end}$, a per-character perplexity of
+	$\gv{c12_implement/clm_ppl}$ on this tiny, repetitive corpus. Sampling from the NumPy model at temperature $0.5$, seeded
+	with ``\pt{the}'':
+	\outputfile{gen/dl/out/c12_implement-sample.txt}
+	Locally fluent, globally aimless, and clearly memorised: a three-character window cannot track meaning. Longer context
+	needs recurrence or attention (\cref{ch:rnn,ch:transformer}).
+\end{example}
+
+\begin{moral}
+	Every layer is a forward function, a cache and a backward function that maps the output gradient to the input gradient
+	and the parameter gradients. Get the shapes right and check against a reference, step by step.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\twochili
+	Write the forward and backward pass of a \pt{Sigmoid} layer in the style of this chapter.
+	\begin{hint}Cache the output.\end{hint}
+	\begin{sol}
+		\begin{pycode}
+class Sigmoid:
+    params = {}
+    def forward(self, x):
+        self.y = 1 / (1 + np.exp(-x))
+        return self.y
+    def backward(self, g):
+        return g * self.y * (1 - self.y)
+		\end{pycode}
+		Caching $y$ rather than $x$ saves recomputing the exponential.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Why does \pt{Embedding.backward} use \pt{np.add.at} instead of \pt{gE[idx] += g}?
+	\begin{hint}What if an index repeats?\end{hint}
+	\begin{sol}
+		With fancy indexing, \pt{gE[idx] += g} is a buffered assignment: when the same row appears several times in \pt{idx},
+		only one contribution survives. \pt{np.add.at} performs an unbuffered accumulation, so every occurrence adds its gradient.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	For a convolution with $C=64$ input channels, $k=3$, on a $56\times56$ map with stride 1 and padding 1, how many numbers does
+	the im2col matrix hold per image, compared with the input?
+	\begin{hint}$Ck^2\times H_oW_o$.\end{hint}
+	\begin{sol}$64\cdot9\cdot56\cdot56=\gv{c12_implement/p_cols}$ versus $64\cdot56\cdot56=\gv{c12_implement/p_in}$: nine times
+	larger, the cost of turning convolution into a matrix product.\end{sol}
+\end{problem}

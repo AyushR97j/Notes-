@@ -1,0 +1,6 @@
+buf = io.BytesIO()
+torch.save({"model": mA.state_dict(), "opt": oA.state_dict(), "rng": gA.get_state()}, buf)
+buf.seek(0); ck = torch.load(buf)
+mB = nn.Sequential(nn.Linear(20, 16), nn.ReLU(), nn.Linear(16, 2)); mB.load_state_dict(ck["model"])
+oB = torch.optim.Adam(mB.parameters(), 1e-2); oB.load_state_dict(ck["opt"])
+gB = torch.Generator(); gB.set_state(ck["rng"])

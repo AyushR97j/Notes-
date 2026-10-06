@@ -1,0 +1,327 @@
+[check] c03_backprop: graph grads vs autograd: ours=[3. 3. 1.] ref=[3. 3. 1.] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 loss: ours=[0.709913] ref=[0.709913] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 dW1: ours=[-0.063183 -0.031592  0.073959  0.036979] ref=[-0.063183 -0.031592  0.073959  0.036979] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 db1: ours=[-0.063183  0.073959] ref=[-0.063183  0.073959] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 dW2: ours=[-0.273183 -0.298185] ref=[-0.273183 -0.298185] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: 2-2-1 db2: ours=[-0.508313] ref=[-0.508313] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: MLP loss vs torch: ours=[1.092424] ref=[1.092424] max|diff|=2.22e-16 -> OK
+[check] c03_backprop: MLP dW1 vs autograd: ours=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] ref=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP db1 vs autograd: ours=[-0.040935  0.009656  0.038731  0.023918 -0.0176   -0.080173] ref=[-0.040935  0.009656  0.038731  0.023918 -0.0176   -0.080173] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP dW2 vs autograd: ours=[-0.004066  0.007696 -0.017964 -0.008911  0.037541 -0.005099] ref=[-0.004066  0.007696 -0.017964 -0.008911  0.037541 -0.005099] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP db2 vs autograd: ours=[-1.275767e-02 -1.814585e-02 -7.884562e-05 -3.593290e-02 -3.461187e-02
+ -9.913554e-03] ref=[-1.275767e-02 -1.814585e-02 -7.884562e-05 -3.593290e-02 -3.461187e-02
+ -9.913554e-03] max|diff|=1.39e-17 -> OK
+[check] c03_backprop: MLP dW3 vs autograd: ours=[-0.037743 -0.018575 -0.019019 -0.002418 -0.020083 -0.014152] ref=[-0.037743 -0.018575 -0.019019 -0.002418 -0.020083 -0.014152] max|diff|=1.73e-17 -> OK
+[check] c03_backprop: MLP db3 vs autograd: ours=[ 0.018596  0.031116 -0.049712] ref=[ 0.018596  0.031116 -0.049712] max|diff|=2.08e-17 -> OK
+[check] c03_backprop: numerical vs analytic dW1: ours=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] ref=[-0.047523 -0.039726 -0.022079 -0.045525 -0.023883 -0.014514] max|diff|=1.51e-11 -> OK
+[check] c03_backprop: mini-autograd loss: ours=[1.074884] ref=[1.074884] max|diff|=0.00e+00 -> OK
+[check] c03_backprop: mini-autograd grad 0: ours=[-0.036629 -0.004911 -0.064657 -0.025008  0.000756  0.07263 ] ref=[-0.036629 -0.004911 -0.064657 -0.025008  0.000756  0.07263 ] max|diff|=3.82e-17 -> OK
+[check] c03_backprop: mini-autograd grad 1: ours=[-0.031191  0.002565  0.050367  0.016385 -0.011658 -0.085346] ref=[-0.031191  0.002565  0.050367  0.016385 -0.011658 -0.085346] max|diff|=3.47e-17 -> OK
+[check] c03_backprop: mini-autograd grad 2: ours=[-0.005504  0.000736  0.002581  0.009744 -0.0224    0.000175] ref=[-0.005504  0.000736  0.002581  0.009744 -0.0224    0.000175] max|diff|=2.36e-17 -> OK
+[check] c03_backprop: mini-autograd grad 3: ours=[-0.026124  0.010296  0.002127  0.027144 -0.050798  0.007384] ref=[-0.026124  0.010296  0.002127  0.027144 -0.050798  0.007384] max|diff|=3.47e-17 -> OK
+[check] c03_backprop: mini-autograd grad 4: ours=[-0.013959  0.025795 -0.011836 -0.020722  0.013828  0.006893] ref=[-0.013959  0.025795 -0.011836 -0.020722  0.013828  0.006893] max|diff|=2.08e-17 -> OK
+[check] c03_backprop: mini-autograd grad 5: ours=[ 0.02112   0.046948 -0.068069] ref=[ 0.02112   0.046948 -0.068069] max|diff|=2.43e-17 -> OK
+[check] c01_perceptron: neuron z: ours=[-0.4] ref=[-0.4] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron sigmoid: ours=[0.401312] ref=[0.401312] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron tanh: ours=[-0.379949] ref=[-0.379949] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron relu: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: perceptron weights vs sklearn: ours=[4. 3. 0.] ref=[4. 3. 0.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: lr invariance (w scaled by 0.1): ours=[0.4 0.3 0. ] ref=[0.4 0.3 0. ] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: hand XOR net: ours=[0. 1. 1. 0.] ref=[0. 1. 1. 0.] max|diff|=0.00e+00 -> OK
+[check] c02_activations: sigmoid vs torch: ours=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] ref=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] max|diff|=1.11e-16 -> OK
+[check] c02_activations: d sigmoid vs autograd: ours=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] ref=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] max|diff|=5.55e-17 -> OK
+[check] c02_activations: tanh vs torch: ours=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] ref=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] max|diff|=1.11e-16 -> OK
+[check] c02_activations: d tanh vs autograd: ours=[0.001341 0.001482 0.001638 0.00181  0.002    0.00221 ] ref=[0.001341 0.001482 0.001638 0.00181  0.002    0.00221 ] max|diff|=2.65e-16 -> OK
+[check] c02_activations: relu vs torch: ours=[0. 0. 0. 0. 0. 0.] ref=[0. 0. 0. 0. 0. 0.] max|diff|=0.00e+00 -> OK
+[check] c02_activations: d relu vs autograd: ours=[0. 0. 0. 0. 0. 0.] ref=[0. 0. 0. 0. 0. 0.] max|diff|=0.00e+00 -> OK
+[check] c02_activations: leaky vs torch: ours=[-0.4   -0.395 -0.39  -0.385 -0.38  -0.375] ref=[-0.4   -0.395 -0.39  -0.385 -0.38  -0.375] max|diff|=0.00e+00 -> OK
+[check] c02_activations: elu vs torch: ours=[-0.981684 -0.980745 -0.979758 -0.97872  -0.977629 -0.976482] ref=[-0.981684 -0.980745 -0.979758 -0.97872  -0.977629 -0.976482] max|diff|=1.11e-16 -> OK
+[check] c02_activations: gelu vs torch: ours=[-0.000127 -0.000154 -0.000188 -0.000227 -0.000275 -0.000332] ref=[-0.000127 -0.000154 -0.000188 -0.000227 -0.000275 -0.000332] max|diff|=4.44e-16 -> OK
+[check] c02_activations: d gelu vs autograd: ours=[-0.000504 -0.000606 -0.000727 -0.000869 -0.001037 -0.001234] ref=[-0.000504 -0.000606 -0.000727 -0.000869 -0.001037 -0.001234] max|diff|=2.22e-16 -> OK
+[check] c02_activations: silu vs torch: ours=[-0.071945 -0.074619 -0.077377 -0.08022  -0.083149 -0.086165] ref=[-0.071945 -0.074619 -0.077377 -0.08022  -0.083149 -0.086165] max|diff|=4.44e-16 -> OK
+[check] c02_activations: d silu vs autograd: ours=[-0.052665 -0.054319 -0.056002 -0.057712 -0.059448 -0.061208] ref=[-0.052665 -0.054319 -0.056002 -0.057712 -0.059448 -0.061208] max|diff|=2.22e-16 -> OK
+[check] c02_activations: softplus vs torch: ours=[0.01815  0.019072 0.02004  0.021056 0.022124 0.023245] ref=[0.01815  0.019072 0.02004  0.021056 0.022124 0.023245] max|diff|=4.44e-16 -> OK
+[check] c02_activations: gelu tanh-approx vs torch approximate='tanh': ours=[-7.024595e-05 -8.897249e-05 -1.121977e-04 -1.408728e-04 -1.761192e-04
+ -2.192521e-04] ref=[-7.024595e-05 -8.897249e-05 -1.121977e-04 -1.408728e-04 -1.761192e-04
+ -2.192521e-04] max|diff|=4.44e-16 -> OK
+[check] c02_activations: stable softmax vs torch: ours=[0.090031 0.244728 0.665241] ref=[0.090031 0.244728 0.665241] max|diff|=2.78e-17 -> OK
+[check] c02_activations: logsumexp vs scipy: ours=[1002.407606] ref=[1002.407606] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax(z5) vs scipy: ours=[0.558545 0.205477 0.083541 0.027808 0.124628] ref=[0.558545 0.205477 0.083541 0.027808 0.124628] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE(z5, class 0) vs torch: ours=[0.58242] ref=[0.58242] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [3.0, 1.0, 0.2] y=0: ours=[0.179104] ref=[0.179104] max|diff|=5.55e-17 -> OK
+[check] c02_activations: CE example [0.0, 0.0, 0.0, 0.0] y=2: ours=[1.386294] ref=[1.386294] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [2.0, 2.0, -1.0] y=1: ours=[0.717736] ref=[0.717736] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [5.0, -2.0, 0.0, 1.0] y=1: ours=[7.025634] ref=[7.025634] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [1.0, 2.0, 3.0, 4.0, 5.0] y=0: ours=[4.451914] ref=[4.451914] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [-1.0, 0.5, 0.5, 2.5, 0.0] y=3: ours=[0.324221] ref=[0.324221] max|diff|=5.55e-17 -> OK
+[check] c02_activations: CE example [10.0, 0.0] y=0: ours=[4.53989e-05] ref=[4.53989e-05] max|diff|=4.99e-17 -> OK
+[check] c02_activations: batched CE vs torch: ours=[2.301431] ref=[2.301431] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax shift invariance: ours=[0.558545 0.205477 0.083541 0.027808 0.124628] ref=[0.558545 0.205477 0.083541 0.027808 0.124628] max|diff|=4.30e-16 -> OK
+[check] c02_activations: softmax([a,b])[0] == sigmoid(a-b): ours=[0.845535] ref=[0.845535] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax Jacobian vs autograd: ours=[ 0.246572 -0.114768 -0.046661 -0.015532 -0.069611 -0.114768] ref=[ 0.246572 -0.114768 -0.046661 -0.015532 -0.069611 -0.114768] max|diff|=2.78e-17 -> OK
+[check] c02_activations: dCE/dz = p - onehot: ours=[-0.441455  0.205477  0.083541  0.027808  0.124628] ref=[-0.441455  0.205477  0.083541  0.027808  0.124628] max|diff|=2.78e-17 -> OK
+[check] c02_activations: bce_09: ours=[0.105361] ref=[0.105361] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_01: ours=[2.302585] ref=[2.302585] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_05: ours=[0.693147] ref=[0.693147] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_099: ours=[4.60517] ref=[4.60517] max|diff|=8.88e-16 -> OK
+[check] c02_activations: BCE with logits vs torch: ours=[1.000000e+03 5.006715e+00 6.931472e-01 5.006715e+00 1.000000e+03] ref=[1.000000e+03 5.006715e+00 6.931472e-01 5.006715e+00 1.000000e+03] max|diff|=0.00e+00 -> OK
+[check] c02_activations: MSE-through-sigmoid gradient vs autograd: ours=[-0.000335 -0.00037  -0.000409 -0.000452 -0.0005   -0.000552] ref=[-0.000335 -0.00037  -0.000409 -0.000452 -0.0005   -0.000552] max|diff|=5.55e-17 -> OK
+[check] c02_activations: Huber vs torch: ours=[2.5   0.5   0.125 0.    0.02  1.5  ] ref=[2.5   0.5   0.125 0.    0.02  1.5  ] max|diff|=0.00e+00 -> OK
+[check] c02_activations: focal with gamma=0 is CE: ours=[0.58242] ref=[0.58242] max|diff|=0.00e+00 -> OK
+[check] c02_activations: label smoothing CE vs torch: ours=[0.73042] ref=[0.73042] max|diff|=1.11e-16 -> OK
+[check] c02_activations: multiclass hinge vs torch multi_margin_loss*(K): ours=[0.52] ref=[0.52] max|diff|=0.00e+00 -> OK
+[check] c02_activations: halving the loss: ours=[0.804719] ref=[0.804719] max|diff|=1.11e-16 -> OK
+[check] c01_perceptron: MLP 784-256-128-10 param count: ours=[235146.] ref=[235146.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: two linear layers == one linear layer: ours=[1.961044 2.578578] ref=[1.961044 2.578578] max|diff|=4.44e-16 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=2): ours=[0.      0.00125 0.0025  0.00375 0.005   0.00625] ref=[0.      0.00125 0.0025  0.00375 0.005   0.00625] max|diff|=5.55e-17 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=4): ours=[0.      0.01125 0.0225  0.03375 0.045   0.05625] ref=[0.      0.01125 0.0225  0.03375 0.045   0.05625] max|diff|=6.66e-16 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=8): ours=[0.       0.015392 0.030784 0.046176 0.061569 0.076961] ref=[0.       0.015392 0.030784 0.046176 0.061569 0.076961] max|diff|=1.11e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=16): ours=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] ref=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] max|diff|=1.78e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=32): ours=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] ref=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] max|diff|=2.11e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=64): ours=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] ref=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] max|diff|=2.61e-15 -> OK
+[check] c05_init_norm: xavier_uniform bound (max |w| <= bound, ~ bound): ours=[0.124994] ref=[0.125] max|diff|=5.73e-06 -> OK
+[check] c05_init_norm: kaiming_normal std: ours=[0.088479] ref=[0.088388] max|diff|=9.07e-05 -> OK
+[check] c05_init_norm: xavier_normal std: ours=[0.072663] ref=[0.072169] max|diff|=4.94e-04 -> OK
+[check] c05_init_norm: nn.Linear default bound 1/sqrt(fan_in): ours=[0.062498] ref=[0.0625] max|diff|=1.58e-06 -> OK
+[check] c05_init_norm: E[relu(z)^2] = Var(z)/2: ours=[2.002487] ref=[2.] max|diff|=2.49e-03 -> OK
+[check] c05_init_norm: BN forward (train) vs torch: ours=[-1.069043 -1.13809  -0.534522 -0.069045  0.        1.      ] ref=[-1.069043e+00 -1.138090e+00 -5.345217e-01 -6.904495e-02 -1.110223e-16
+  1.000000e+00] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: BN backward dx vs autograd: ours=[-2.940107e-01 -2.335670e-04  3.735661e-01  4.323559e-03 -8.067486e-03
+ -5.375464e-03] ref=[-2.940107e-01 -2.335670e-04  3.735661e-01  4.323559e-03 -8.067486e-03
+ -5.375464e-03] max|diff|=1.25e-16 -> OK
+[check] c05_init_norm: BN backward dgamma vs autograd: ours=[-3.022844 -1.740172] ref=[-3.022844 -1.740172] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: BN backward dbeta vs autograd: ours=[0.310184 0.430923] ref=[0.310184 0.430923] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN running_mean after 1 step: ours=[0.3 3. ] ref=[0.3 3. ] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN running_var after 1 step (unbiased): ours=[ 1.366667 47.566667] ref=[ 1.366667 47.566667] max|diff|=0.00e+00 -> OK
+[check] c05_init_norm: BN eval uses running stats: ours=[2.309569 8.82965 ] ref=[2.309569 8.82965 ] max|diff|=1.78e-15 -> OK
+[check] c05_init_norm: LayerNorm vs torch: ours=[-1.069043 -0.534522  0.        1.603565] ref=[-1.069043 -0.534522  0.        1.603565] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: RMSNorm vs torch.nn.RMSNorm: ours=[0.282843 0.565685 0.848528 1.697056] ref=[0.282843 0.565685 0.848528 1.697056] max|diff|=2.22e-16 -> OK
+[check] c05_init_norm: GroupNorm vs torch: ours=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] ref=[-0.549509 -1.276135 -0.030743 -1.527658 -0.600367 -0.262421] max|diff|=4.44e-16 -> OK
+[check] c05_init_norm: GroupNorm(G=C) = InstanceNorm: ours=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] ref=[ 0.553782 -1.020413  1.67766  -1.565323  0.443602  1.175743] max|diff|=4.44e-16 -> OK
+[check] c05_init_norm: GroupNorm(G=1) = LayerNorm over (C,H,W): ours=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] ref=[ 0.293575 -0.825734  1.092692 -1.213184  0.215233  0.735812] max|diff|=8.88e-16 -> OK
+[check] c04_optim: GD contraction factor (kappa-1)/(kappa+1): ours=[0.818182] ref=[0.818182] max|diff|=0.00e+00 -> OK
+[check] c04_optim: heavy-ball rate (sqrt k - 1)/(sqrt k + 1): ours=[0.522478] ref=[0.522491] max|diff|=1.37e-05 -> OK
+[check] c04_optim: SGD: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] max|diff|=1.11e-16 -> OK
+[check] c04_optim: SGD momentum: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.321621] max|diff|=1.80e-16 -> OK
+[check] c04_optim: Nesterov: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.124607] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.124607] max|diff|=2.22e-16 -> OK
+[check] c04_optim: SGD + weight decay: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.32108 ] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.32108 ] max|diff|=3.33e-16 -> OK
+[check] c04_optim: AdaGrad: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.040525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.040525] max|diff|=1.11e-16 -> OK
+[check] c04_optim: RMSProp: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.440525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.440525] max|diff|=1.11e-16 -> OK
+[check] c04_optim: Adam: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] max|diff|=1.67e-16 -> OK
+[check] c04_optim: Adam + L2: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.490525] max|diff|=4.44e-16 -> OK
+[check] c04_optim: AdamW: 25 steps vs torch.optim: ours=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.487823] ref=[ 0.540525  1.935088 -0.26962  -0.243559  1.002314  0.487823] max|diff|=2.22e-16 -> OK
+[check] c04_optim: hand Adam two steps vs torch: ours=[0.998043 1.000634] ref=[0.998043 1.000634] max|diff|=0.00e+00 -> OK
+[check] c04_optim: step decay vs StepLR: ours=[1. 1. 1. 1. 1. 1.] ref=[1. 1. 1. 1. 1. 1.] max|diff|=0.00e+00 -> OK
+[check] c04_optim: cosine vs CosineAnnealingLR: ours=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] ref=[1.       0.999753 0.999013 0.997781 0.996057 0.993844] max|diff|=0.00e+00 -> OK
+[check] c04_optim: one-cycle vs OneCycleLR: ours=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] ref=[0.04     0.042814 0.051222 0.065126 0.084364 0.108709] max|diff|=0.00e+00 -> OK
+[check] c04_optim: minibatch-gradient variance scales like 1/B (slope): ours=[-1.000769] ref=[-1.] max|diff|=7.69e-04 -> OK
+[check] c04_optim: clip by norm vs torch: ours=[0.6 0.8] ref=[0.6 0.8] max|diff|=1.60e-07 -> OK
+[check] c04_optim: clip by value vs torch: ours=[1. 1.] ref=[1. 1.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: inverted dropout preserves the mean: ours=[2.0024  3.9996  5.9874  8.00008] ref=[2. 4. 6. 8.] max|diff|=1.26e-02 -> OK
+[check] c05_regularise: dropout at inference is identity: ours=[2. 4. 6. 8.] ref=[2. 4. 6. 8.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: torch dropout scales kept units by 1/(1-p): ours=[2.] ref=[2.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: torch dropout eval = identity: ours=[2. 4. 6. 8.] ref=[2. 4. 6. 8.] max|diff|=0.00e+00 -> OK
+[check] c05_regularise: ridge lambda=1e-08 vs sklearn: ours=[  13.654647   46.854356  -93.876782 -136.213793  242.981748  169.466702] ref=[  13.654647   46.854356  -93.876782 -136.213793  242.981749  169.466702] max|diff|=3.85e-07 -> OK
+[check] c05_regularise: ridge lambda=3e-08 vs sklearn: ours=[ 10.436824  32.174957 -65.667339 -93.756267 161.44123  119.29601 ] ref=[ 10.436824  32.174957 -65.667339 -93.756267 161.441229 119.29601 ] max|diff|=1.70e-07 -> OK
+[check] c05_regularise: ridge lambda=1e-07 vs sklearn: ours=[  7.182048  17.016627 -37.186822 -49.795819  79.263886  67.201087] ref=[  7.182048  17.016627 -37.186822 -49.795819  79.263886  67.201087] max|diff|=2.36e-08 -> OK
+[check] c05_regularise: ridge lambda=3e-07 vs sklearn: ours=[  5.3043     7.461019 -20.895651 -21.783386  32.647633  33.627757] ref=[  5.3043     7.461019 -20.895651 -21.783386  32.647633  33.627757] max|diff|=9.36e-09 -> OK
+[check] c05_regularise: ridge lambda=1e-06 vs sklearn: ours=[  4.557709   2.521091 -14.625976  -6.919416  15.300295  15.337012] ref=[  4.557709   2.521091 -14.625976  -6.919416  15.300295  15.337012] max|diff|=1.07e-09 -> OK
+[check] c05_regularise: ridge lambda=3e-06 vs sklearn: ours=[  4.2955     0.110649 -12.594715   0.489359  10.219268   6.028685] ref=[  4.2955     0.110649 -12.594715   0.489359  10.219268   6.028685] max|diff|=5.52e-10 -> OK
+[check] c05_regularise: ridge lambda=1e-05 vs sklearn: ours=[  4.161367  -0.936559 -11.686489   3.618159   8.490192   2.194691] ref=[  4.161367  -0.936559 -11.686489   3.618159   8.490192   2.194691] max|diff|=7.57e-11 -> OK
+[check] c05_regularise: ridge lambda=3e-05 vs sklearn: ours=[  3.986555  -1.422651 -10.609544   4.815697   7.034636   1.005236] ref=[  3.986555  -1.422651 -10.609544   4.815697   7.034636   1.005236] max|diff|=3.03e-11 -> OK
+[check] c05_regularise: ridge lambda=1e-04 vs sklearn: ours=[ 3.692495 -1.583365 -8.837075  5.094676  4.863495  0.791038] ref=[ 3.692495 -1.583365 -8.837075  5.094676  4.863495  0.791038] max|diff|=1.15e-11 -> OK
+[check] c05_regularise: ridge lambda=3e-04 vs sklearn: ours=[ 3.336374 -1.045205 -6.727559  4.281424  2.319812  0.5207  ] ref=[ 3.336374 -1.045205 -6.727559  4.281424  2.319812  0.5207  ] max|diff|=4.74e-12 -> OK
+[check] c05_regularise: ridge lambda=1e-03 vs sklearn: ours=[ 3.018574  0.118605 -4.983189  2.606168  0.309476 -0.104823] ref=[ 3.018574  0.118605 -4.983189  2.606168  0.309476 -0.104823] max|diff|=1.01e-12 -> OK
+[check] c05_regularise: ridge lambda=3e-03 vs sklearn: ours=[ 2.723157  0.999777 -3.757929  1.243849 -0.736901 -0.608031] ref=[ 2.723157  0.999777 -3.757929  1.243849 -0.736901 -0.608031] max|diff|=4.05e-13 -> OK
+[check] c05_regularise: ridge lambda=1e-02 vs sklearn: ours=[ 2.326016  1.224285 -2.659319  0.555618 -0.985127 -0.754888] ref=[ 2.326016  1.224285 -2.659319  0.555618 -0.985127 -0.754888] max|diff|=4.44e-14 -> OK
+[check] c05_regularise: ridge lambda=3e-02 vs sklearn: ours=[ 1.809763  0.961352 -1.490466  0.225865 -0.814881 -0.638182] ref=[ 1.809763  0.961352 -1.490466  0.225865 -0.814881 -0.638182] max|diff|=1.11e-14 -> OK
+[check] c05_regularise: ridge lambda=1e-01 vs sklearn: ours=[ 1.35096   0.512109 -0.62197   0.040838 -0.561175 -0.42085 ] ref=[ 1.35096   0.512109 -0.62197   0.040838 -0.561175 -0.42085 ] max|diff|=4.33e-15 -> OK
+[check] c05_regularise: ridge lambda=3e-01 vs sklearn: ours=[ 0.971958  0.168155 -0.182197 -0.055816 -0.327849 -0.249918] ref=[ 0.971958  0.168155 -0.182197 -0.055816 -0.327849 -0.249918] max|diff|=1.92e-15 -> OK
+[check] c05_regularise: ridge lambda=1e+00 vs sklearn: ours=[ 0.625847  0.010076  0.019191 -0.081952 -0.117122 -0.1494  ] ref=[ 0.625847  0.010076  0.019191 -0.081952 -0.117122 -0.1494  ] max|diff|=8.88e-16 -> OK
+[check] c05_regularise: ridge lambda=3e+00 vs sklearn: ours=[ 0.374123 -0.02508   0.093969 -0.06041   0.010169 -0.080913] ref=[ 0.374123 -0.02508   0.093969 -0.06041   0.010169 -0.080913] max|diff|=1.11e-16 -> OK
+[check] c05_regularise: ridge lambda=1e+01 vs sklearn: ours=[ 0.210073 -0.017327  0.087754 -0.030351  0.042676 -0.036371] ref=[ 0.210073 -0.017327  0.087754 -0.030351  0.042676 -0.036371] max|diff|=8.33e-17 -> OK
+[check] c05_regularise: ridge lambda=3e+01 vs sklearn: ours=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] ref=[ 0.098318 -0.007611  0.049076 -0.01221   0.028612 -0.01403 ] max|diff|=1.39e-17 -> OK
+[check] c05_regularise: ridge lambda=1e+02 vs sklearn: ours=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] ref=[ 0.037496 -0.002758  0.01986  -0.0043    0.012153 -0.004865] max|diff|=1.04e-17 -> OK
+[check] c04_optim: problem: clip (6,-8,0) by norm 5: ours=[ 3. -4.  0.] ref=[ 3. -4.  0.] max|diff|=4.00e-07 -> OK
+[check] c06_cnn: hand cross-correlation vs torch conv2d: ours=[-3. -1.  0. -4.] ref=[-3. -1.  0. -4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: hand cross-correlation vs scipy correlate2d: ours=[-3. -1.  0. -4.] ref=[-3. -1.  0. -4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: true convolution = cross-correlation with flipped kernel: ours=[3. 1. 0. 4.] ref=[3. 1. 0. 4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: padding 1 vs torch: ours=[-5. -1.  1.  3. -5. -3.] ref=[-5. -1.  1.  3. -5. -3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=32 k=5 s=1 p=0 d=1: ours=[28.] ref=[28.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=32 k=3 s=1 p=1 d=1: ours=[32.] ref=[32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=224 k=7 s=2 p=3 d=1: ours=[112.] ref=[112.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=227 k=11 s=4 p=0 d=1: ours=[55.] ref=[55.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=28 k=3 s=2 p=1 d=1: ours=[14.] ref=[14.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=64 k=3 s=1 p=2 d=2: ours=[64.] ref=[64.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=7 k=3 s=2 p=0 d=1: ours=[3.] ref=[3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=10 k=4 s=3 p=1 d=1: ours=[3.] ref=[3.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=56 k=1 s=1 p=0 d=1: ours=[56.] ref=[56.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: out size n=112 k=3 s=2 p=1 d=1: ours=[56.] ref=[56.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: 32x32x3 -> 5x5x3 x10 params: ours=[760.] ref=[760.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[448.] ref=[448.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[16. 32. 32.] ref=[16. 32. 32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d output shape: ours=[16. 16. 16.] ref=[16. 16. 16.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[4640.] ref=[4640.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[32. 16. 16.] ref=[32. 16. 16.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: MaxPool2d output shape: ours=[32.  8.  8.] ref=[32.  8.  8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d params formula vs torch: ours=[18496.] ref=[18496.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Conv2d output shape: ours=[64.  4.  4.] ref=[64.  4.  4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: AdaptiveAvgPool2d params formula vs torch: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: AdaptiveAvgPool2d output shape: ours=[64.  1.  1.] ref=[64.  1.  1.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: Linear params formula vs torch: ours=[650.] ref=[650.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: small CNN total params vs torch: ours=[24234.] ref=[24234.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field two3: formula vs gradient probe: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field three3: formula vs gradient probe: ours=[7.] ref=[7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field pool: formula vs gradient probe: ours=[8.] ref=[8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field s2: formula vs gradient probe: ours=[15.] ref=[15.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field dil: formula vs gradient probe: ours=[15.] ref=[15.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: receptive field vggblock: formula vs gradient probe: ours=[40.] ref=[40.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: max-pool 2x2 vs torch: ours=[4. 2. 5. 7.] ref=[4. 2. 5. 7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: avg-pool 2x2 vs torch: ours=[2.5 1.  2.  4. ] ref=[2.5 1.  2.  4. ] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: standard 3x3 params: ours=[589824.] ref=[589824.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: depthwise params: ours=[2304.] ref=[2304.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: pointwise params: ours=[65536.] ref=[65536.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: depthwise-separable output shape = standard: ours=[  1. 256.   8.   8.] ref=[  1. 256.   8.   8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=4 k=4 s=2 p=1: ours=[8.] ref=[8.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=7 k=3 s=2 p=1: ours=[13.] ref=[13.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=16 k=2 s=2 p=0: ours=[32.] ref=[32.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv out n=5 k=3 s=1 p=1: ours=[5.] ref=[5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: transposed conv by scattering vs torch: ours=[1. 3. 2. 4. 9. 4.] ref=[1. 3. 2. 4. 9. 4.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: <conv(x), y> = <x, conv_transpose(y)>: ours=[14.531618] ref=[14.531618] max|diff|=1.78e-15 -> OK
+[check] c05_init_norm: Linear(256,128,bias=False)+BN params: ours=[33024.] ref=[33024.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: VGG-16 config: feature map 7x7x512 at 224: ours=[  1. 512.   7.   7.] ref=[  1. 512.   7.   7.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: ResNet-18 config output shape: ours=[   1. 1000.] ref=[   1. 1000.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: IoU vs pixel counting: ours=[0.142857] ref=[0.142857] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: NMS vs vectorised reference: ours=[0. 2. 5.] ref=[0. 2. 5.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: problem A conv2 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
+[check] c06_cnn: problem C receptive field: ours=[19.] ref=[19.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: scalar RNN unrolled by hand vs nn.RNN: ours=[ 0.462117  0.550915 -0.059199] ref=[ 0.462117  0.550915 -0.059199] max|diff|=2.22e-16 -> OK
+[check] c07_rnn: dh3/dh1 by chain rule vs autograd: ours=[0.444193] ref=[0.444193] max|diff|=1.11e-16 -> OK
+[check] c07_rnn: rnn D=10 H=20 params: ours=[640.] ref=[640.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: lstm D=10 H=20 params: ours=[2560.] ref=[2560.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: gru D=10 H=20 params: ours=[1920.] ref=[1920.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: lstm2 D=10 H=20 params: ours=[5920.] ref=[5920.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: bilstm D=10 H=20 params: ours=[5120.] ref=[5120.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: bilstm2 D=10 H=20 params: ours=[15040.] ref=[15040.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: LSTM(100,128): ours=[117760.] ref=[117760.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: GRU(100,128): ours=[88320.] ref=[88320.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: LSTM cell h vs nn.LSTMCell: ours=[-0.066386  0.446007] ref=[-0.066386  0.446007] max|diff|=6.94e-17 -> OK
+[check] c07_rnn: LSTM cell c vs nn.LSTMCell: ours=[-0.146423  0.970548] ref=[-0.146423  0.970548] max|diff|=1.39e-16 -> OK
+[check] c07_rnn: GRU cell vs nn.GRUCell: ours=[0.253622 0.122621] ref=[0.253622 0.122621] max|diff|=5.55e-17 -> OK
+[check] c07_rnn: scalar LSTM step by hand: ours=[0.426753 0.839591] ref=[0.426753 0.839591] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: beam search with k = V^T equals brute force: ours=[-1.937942] ref=[-1.937942] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: CTC by enumerating alignments vs F.ctc_loss: ours=[0.938062] ref=[0.938062] max|diff|=1.11e-16 -> OK
+[check] c07_rnn: problem: LSTM(50,64): ours=[29696.] ref=[29696.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: problem: GRU(50,64): ours=[22272.] ref=[22272.] max|diff|=0.00e+00 -> OK
+[check] c07_rnn: problem: Linear(128,5): ours=[645.] ref=[645.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: 3-token attention vs F.scaled_dot_product_attention: ours=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] ref=[3.       4.       3.406673 4.406673 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
+[check] c08_attention: causal attention vs is_causal=True: ours=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] ref=[1.       2.       2.339523 3.339523 3.51047  4.51047 ] max|diff|=8.88e-16 -> OK
+[check] c08_attention: padding-masked attention vs attn_mask: ours=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] ref=[1.660477 2.660477 2.339523 3.339523 2.       3.      ] max|diff|=4.44e-16 -> OK
+[check] c08_attention: Var(q.k) grows linearly in d_k (log-log slope): ours=[0.993558] ref=[1.] max|diff|=6.44e-03 -> OK
+[check] c08_attention: NumPy MHA vs nn.MultiheadAttention (output): ours=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] ref=[-0.195741 -0.0408   -0.196273  0.083269 -0.147767 -0.356952] max|diff|=1.67e-16 -> OK
+[check] c08_attention: NumPy MHA vs nn.MultiheadAttention (weights): ours=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] ref=[0.1991   0.203411 0.336283 0.261205 0.258449 0.281819] max|diff|=5.55e-17 -> OK
+[check] c08_attention: NumPy causal MHA vs nn.MultiheadAttention(attn_mask): ours=[-0.573042  0.202951 -0.590569 -0.14893  -0.828076 -0.640935] ref=[-0.573042  0.202951 -0.590569 -0.14893  -0.828076 -0.640935] max|diff|=8.33e-17 -> OK
+[check] c08_attention: self-attention is permutation-equivariant: ours=[-0.222018 -0.025682 -0.280655  0.068826 -0.23368  -0.38999 ] ref=[-0.222018 -0.025682 -0.280655  0.068826 -0.23368  -0.38999 ] max|diff|=1.11e-16 -> OK
+[check] c08_attention: MHA d=512 params: ours=[1050624.] ref=[1050624.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: MHA d=768 params: ours=[2362368.] ref=[2362368.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: MHA d=1024 params: ours=[4198400.] ref=[4198400.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: PE(p+k) = R_k PE(p) for all p: ours=[-0.958924  0.283662  0.323935 -0.946079  0.999947 -0.010342] ref=[-0.958924  0.283662  0.323935 -0.946079  0.999947 -0.010342] max|diff|=2.66e-15 -> OK
+[check] c08_attention: RoPE: q_m . k_n depends only on m - n: ours=[4.397777 4.397777 4.397777] ref=[4.397777 4.397777 4.397777] max|diff|=0.00e+00 -> OK
+[check] c08_attention: RoPE preserves norms: ours=[3.096369] ref=[3.096369] max|diff|=0.00e+00 -> OK
+[check] c08_attention: encoder layer d=512: ours=[3152384.] ref=[3152384.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: decoder layer d=512: ours=[4204032.] ref=[4204032.] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: our MHA (cross, key padding) vs nn.MultiheadAttention: ours=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] ref=[-0.264695  0.007196 -0.561872 -0.196097  0.18664   0.23897 ] max|diff|=0.00e+00 -> OK
+[check] c08_capstone: our pre-LN encoder layer vs nn.TransformerEncoderLayer(norm_first=True): ours=[ 0.909841 -0.820358  0.08486   1.345751 -1.570617 -1.669031] ref=[ 0.90984  -0.820358  0.08486   1.345751 -1.570617 -1.669031] max|diff|=2.38e-07 -> OK
+[check] c08_capstone: our pre-LN decoder layer vs nn.TransformerDecoderLayer(norm_first=True): ours=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] ref=[ 0.938508 -1.263362 -1.340221  1.213008 -0.504544 -1.06607 ] max|diff|=3.58e-07 -> OK
+[check] c08_attention: encoder layer d=768: ours=[7087872.] ref=[7087872.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: decoder layer d=768: ours=[9451776.] ref=[9451776.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: nn.Transformer(512, 8, 6+6, 2048) body: ours=[44140544.] ref=[44140544.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: 12-layer d=768 encoder stack: ours=[85054464.] ref=[85054464.] max|diff|=0.00e+00 -> OK
+[check] c08_attention: blockwise online-softmax attention == standard: ours=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] ref=[ 0.09431  -0.089029  0.09235  -0.270052 -0.066757 -0.177624] max|diff|=4.44e-16 -> OK
+[check] c08_attention: problem A vs torch: ours=[13.302385 15.      ] ref=[13.302385 15.      ] max|diff|=1.78e-15 -> OK
+[check] c08_attention: problem B MHA(256): ours=[263168.] ref=[263168.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: BPE round trip 'sleeper': ours=[1.] ref=[1.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: BPE round trip 'keepest': ours=[1.] ref=[1.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: BPE round trip 'deepen': ours=[1.] ref=[1.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: BPE encode == training segmentation for every corpus word: ours=[1.] ref=[1.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: perplexity = exp(mean NLL) = 1/geometric-mean(p): ours=[3.017088] ref=[3.017088] max|diff|=4.44e-16 -> OK
+[check] c09_llm: uniform model: PPL = V: ours=[50000.] ref=[50000.] max|diff|=8.00e-11 -> OK
+[check] c09_llm: top-p vs brute-force reference: ours=[0.574097 0.348207 0.077696 0.       0.       0.      ] ref=[0.574097 0.348207 0.077696 0.       0.       0.      ] max|diff|=0.00e+00 -> OK
+[check] c09_llm: top-k(k=V) == softmax: ours=[0.528526 0.320567 0.071528 0.043384 0.026314 0.00968 ] ref=[0.528526 0.320567 0.071528 0.043384 0.026314 0.00968 ] max|diff|=0.00e+00 -> OK
+[check] c09_llm: temperature 1 == softmax (torch): ours=[0.528526 0.320567 0.071528 0.043384 0.026314 0.00968 ] ref=[0.528526 0.320567 0.071528 0.043384 0.026314 0.00968 ] max|diff|=6.94e-18 -> OK
+[check] c09_llm: LoRA with B = 0 equals the base layer: ours=[-0.25826   1.722563 -0.339535 -0.296887 -0.651374 -0.354946] ref=[-0.25826   1.722563 -0.339535 -0.296887 -0.651374 -0.354946] max|diff|=0.00e+00 -> OK
+[check] c09_llm: merged weight W + (a/r) B A gives the same output: ours=[-0.396545  1.948426 -0.012665 -1.14817  -0.567808 -0.205249] ref=[-0.396545  1.948426 -0.012665 -1.14817  -0.567808 -0.205249] max|diff|=1.33e-15 -> OK
+[check] c09_llm: LoRA trainable params = r (d_in + d_out): ours=[384.] ref=[384.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: int8 codes vs torch.quantize_per_tensor: ours=[127.  -1.  -2.  25.  -1.  -1.] ref=[127.  -1.  -2.  25.  -1.  -1.] max|diff|=0.00e+00 -> OK
+[check] c09_llm: distillation loss T^2 KL vs F.kl_div: ours=[0.225491] ref=[0.225491] max|diff|=4.16e-16 -> OK
+[check] c09_llm: BLEU-2 = BP * geometric mean of precisions: ours=[0.707107] ref=[0.707107] max|diff|=0.00e+00 -> OK
+[check] c09_llm: retrieval cosine vs sklearn: ours=[0.       0.214373 0.049083 0.045606] ref=[0.       0.214373 0.049083 0.045606] max|diff|=2.78e-17 -> OK
+[check] c09_llm: problem A: PPL = (prod p)^(-1/3): ours=[4.641589] ref=[4.641589] max|diff|=0.00e+00 -> OK
+[check] c09_llm: problem B LoRA count: ours=[81920.] ref=[81920.] max|diff|=0.00e+00 -> OK
+[check] c10_generative: linear autoencoder reconstruction error -> PCA error: ours=[0.007049] ref=[0.007049] max|diff|=3.83e-10 -> OK
+[check] c10_generative: decoder column space = top-k principal subspace: ours=[1. 1. 1.] ref=[1. 1. 1.] max|diff|=5.24e-12 -> OK
+[check] c10_generative: Gaussian KL closed form vs torch.distributions: ours=[0.818147] ref=[0.818147] max|diff|=0.00e+00 -> OK
+[check] c10_generative: 8-dim KL vs torch: ours=[3.923135] ref=[3.923135] max|diff|=0.00e+00 -> OK
+[check] c10_generative: reparameterised MC gradient wrt mu ~ 2 mu: ours=[1.998782] ref=[2.] max|diff|=1.22e-03 -> OK
+[check] c10_generative: reparameterised MC gradient wrt sigma ~ 2 sigma: ours=[0.998201] ref=[1.] max|diff|=1.80e-03 -> OK
+[check] c10_generative: V(D*, G) = -log 4 + 2 JSD: ours=[-0.943953] ref=[-0.943953] max|diff|=5.23e-13 -> OK
+[check] c10_generative: 300 noising steps: mean matches sqrt(abar) x0: ours=[1.262132] ref=[1.259237] max|diff|=2.89e-03 -> OK
+[check] c10_generative: 300 noising steps: variance matches 1 - abar: ours=[0.601811] ref=[0.60358] max|diff|=1.77e-03 -> OK
+[check] c10_generative: CLIP loss by hand vs F.cross_entropy form: ours=[0.008325] ref=[0.008325] max|diff|=2.08e-16 -> OK
+[check] c10_generative: SGNS loss vs torch: ours=[2.743125] ref=[2.743125] max|diff|=4.44e-16 -> OK
+[check] c10_generative: SGNS grad wrt centre vector vs autograd: ours=[ 0.326494 -0.335395  0.234273  0.102524  0.024437] ref=[ 0.326494 -0.335395  0.234273  0.102524  0.024437] max|diff|=1.39e-17 -> OK
+[check] c10_generative: SGNS grad wrt context vector vs autograd: ours=[-0.015986 -0.011332  0.057176 -0.081188  0.20962 ] ref=[-0.015986 -0.011332  0.057176 -0.081188  0.20962 ] max|diff|=0.00e+00 -> OK
+[check] c10_generative: SGNS grad wrt negatives vs autograd: ours=[ 0.013511  0.009578 -0.048323  0.068616 -0.177161  0.012837] ref=[ 0.013511  0.009578 -0.048323  0.068616 -0.177161  0.012837] max|diff|=2.78e-17 -> OK
+[check] c10_generative: ViT patch tokens: ours=[  1. 196. 768.] ref=[  1. 196. 768.] max|diff|=0.00e+00 -> OK
+[check] c10_generative: ViT patch embedding params: ours=[590592.] ref=[590592.] max|diff|=0.00e+00 -> OK
+[check] c10_generative: problem A KL vs torch: ours=[0.806853] ref=[0.806853] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: eval mode is deterministic: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: without zero_grad the second backward doubles the gradient: ours=[-10.371587  -0.331078  -0.617689] ref=[-10.371587  -0.331078  -0.617689] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: accumulating 4 micro-batches of 8 (loss/4) == one batch of 32: ours=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] ref=[ 0.01986   0.011825 -0.014553 -0.051018  0.015535 -0.040081] max|diff|=2.98e-08 -> OK
+[check] c11_pytorch: resume from checkpoint == uninterrupted training: ours=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] ref=[-0.004154  0.156314 -0.25025  -0.054406 -0.196704 -0.00685 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: same seed -> identical initial weights: ours=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] ref=[ 0.031236 -0.269399  0.142403  0.140327 -0.239025 -0.067027] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN layer is permutation-equivariant: ours=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] ref=[0.269338 0.808013 0.311004 0.933013 0.176777 0.53033 ] max|diff|=0.00e+00 -> OK
+[check] c11_pytorch: GCN matrix form == per-node message passing: ours=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] ref=[0.311004 0.933013 0.311004 0.933013 0.269338 0.808013] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P1 sigmoid: ours=[0.425557] ref=[0.425557] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P2 MLP params: ours=[17226.] ref=[17226.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P6 CE: ours=[0.407606] ref=[0.407606] max|diff|=5.55e-17 -> OK
+[check] c14_problems: P7 CE: ours=[1.216415] ref=[1.216415] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P8 BCE: ours=[1.609438] ref=[1.609438] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P12 smoothed CE vs torch: ours=[0.648561] ref=[0.648561] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P13 gradients vs autograd: ours=[ 3.   1.5 -1.5 -1.5] ref=[ 3.   1.5 -1.5 -1.5] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P14 gradient: ours=[-0.574443 -1.148885] ref=[-0.574443 -1.148885] max|diff|=2.22e-16 -> OK
+[check] c14_problems: P19 momentum steps vs torch: ours=[-0.1   -0.29  -0.561] ref=[-0.1   -0.29  -0.561] max|diff|=1.11e-16 -> OK
+[check] c14_problems: P20 Adam two steps vs torch: ours=[0.987337] ref=[0.987337] max|diff|=5.00e-10 -> OK
+[check] c14_problems: P21 RMSProp first step: ours=[-0.031623] ref=[-0.031623] max|diff|=6.94e-18 -> OK
+[check] c14_problems: P25 clip: ours=[0.5 1.  1. ] ref=[0.5 1.  1. ] max|diff|=3.33e-07 -> OK
+[check] c14_problems: P28 BN vs torch: ours=[-1.683279  0.105574  1.894426  3.683279] ref=[-1.683279  0.105574  1.894426  3.683279] max|diff|=4.44e-16 -> OK
+[check] c14_problems: P30 LN: ours=[-1.224743  0.        1.224743] ref=[-1.224743  0.        1.224743] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P35 params formula: ours=[  9472.      0.  73856. 295168.] ref=[  9472.      0.  73856. 295168.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P36 dilated size: ours=[26.] ref=[26.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P37 params: ours=[51264.] ref=[51264.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P40 depthwise separable: ours=[133376.] ref=[133376.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P42 transposed: ours=[14.] ref=[14.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P45 LSTM: ours=[25088.] ref=[25088.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P46: ours=[37888.] ref=[37888.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P50 attention vs torch: ours=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] ref=[0.598888 0.598888 0.232082 0.813306 0.802224 0.598888] max|diff|=2.78e-17 -> OK
+[check] c14_problems: P51 MHA: ours=[591360.] ref=[591360.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P52 encoder layer: ours=[789760.] ref=[789760.] max|diff|=0.00e+00 -> OK
+[check] c14_problems: P62 KL: ours=[0.568147] ref=[0.568147] max|diff|=0.00e+00 -> OK
+[check] c12_implement: NumPy MLP+BN+Adam: 50-step loss trajectory vs PyTorch: ours=[1.112759 1.094242 1.103179 0.955791 0.855986 0.855006] ref=[1.112759 1.094242 1.103179 0.955791 0.855986 0.855006] max|diff|=2.22e-16 -> OK
+[check] c12_implement: NumPy vs PyTorch weights after 50 steps: ours=[-0.181766 -0.004712 -0.317426 -0.109015 -0.140573  0.30508 ] ref=[-0.181766 -0.004712 -0.317426 -0.109015 -0.140573  0.30508 ] max|diff|=1.39e-16 -> OK
+[check] c12_implement: BN running variance after 50 steps: ours=[1.737285 0.715855 2.128207 1.862922 1.999912 3.889597] ref=[1.737285 0.715855 2.128207 1.862922 1.999912 3.889597] max|diff|=1.33e-15 -> OK
+[check] c12_implement: eval-mode outputs (running statistics): ours=[ 1.293305  0.34857  -1.660132 -0.640338 -1.030521  0.309014] ref=[ 1.293305  0.34857  -1.660132 -0.640338 -1.030521  0.309014] max|diff|=1.51e-11 -> OK
+[check] c12_implement: softmax regression gradient vs centred differences: ours=[-0.12062   0.110693  0.00505  -0.125169 -0.156112 -0.013314] ref=[-0.12062   0.110693  0.00505  -0.125169 -0.156112 -0.013314] max|diff|=1.77e-10 -> OK
+[check] c12_implement: im2col conv forward vs F.conv2d: ours=[-1.941369  5.66165  -8.035657 -4.369196  4.769523 -1.693923] ref=[-1.941369  5.66165  -8.035657 -4.369196  4.769523 -1.693923] max|diff|=0.00e+00 -> OK
+[check] c12_implement: conv backward dx vs autograd: ours=[2.893645e-03 3.550814e-01 2.093616e-01 3.026137e+00 2.071657e+00
+ 1.860128e-01] ref=[2.893645e-03 3.550814e-01 2.093616e-01 3.026137e+00 2.071657e+00
+ 1.860128e-01] max|diff|=3.55e-15 -> OK
+[check] c12_implement: conv backward dW vs autograd: ours=[ 4.472672  3.522152 -0.119979  1.510781  2.989991 -0.58203 ] ref=[ 4.472672  3.522152 -0.119979  1.510781  2.989991 -0.58203 ] max|diff|=3.55e-15 -> OK
+[check] c12_implement: conv backward db vs autograd: ours=[ 7.841828  3.118443 -4.006629 -4.195071] ref=[ 7.841828  3.118443 -4.006629 -4.195071] max|diff|=2.66e-15 -> OK
+[check] c12_implement: NumPy LSTM over 9 steps vs nn.LSTM (outputs): ours=[ 0.073465  0.084313 -0.070527 -0.00723  -0.037139  0.062744] ref=[ 0.073465  0.084313 -0.070527 -0.00723  -0.037139  0.062744] max|diff|=1.11e-16 -> OK
+[check] c12_implement: NumPy LSTM final cell state vs nn.LSTM: ours=[ 0.62756   0.648325 -0.47471  -0.589514 -0.503217 -0.080488] ref=[ 0.62756   0.648325 -0.47471  -0.589514 -0.503217 -0.080488] max|diff|=5.55e-17 -> OK
+[check] c12_implement: char-LM: NumPy training trajectory (300 Adam steps) vs PyTorch: ours=[3.284007 3.031819 3.034355 2.921772 2.752721 2.830714] ref=[3.284007 3.031819 3.034355 2.921772 2.752721 2.830714] max|diff|=8.88e-16 -> OK
+[check] c08_capstone: NumPy Transformer forward vs PyTorch (trained weights, 50 sequences): ours=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] ref=[-1.513454 -0.166325 -1.23958  -2.538179 -0.62864  -0.076482] max|diff|=1.20e-14 -> OK
+[check] c08_capstone: NumPy greedy decoding == PyTorch greedy decoding (200 sequences): ours=[ 1.  9.  4.  4. 10.  6.] ref=[ 1.  9.  4.  4. 10.  6.] max|diff|=0.00e+00 -> OK
