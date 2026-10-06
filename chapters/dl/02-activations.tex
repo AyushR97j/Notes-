@@ -1,4 +1,475 @@
 \chapter{Activations, losses and output layers}
 \label{ch:activations}
-\section{Activations, losses and output layers}
-\stub{Activations, losses and output layers}
+
+Three choices sit at fixed places in every network: the non-linearity between
+layers, the function that turns the last layer's numbers into a prediction, and
+the loss that scores that prediction. OAs test all three with one-minute numerics
+(``compute the softmax of these five logits'') and with classification questions
+(``which of these is a loss and which is an activation?''). Interviews test whether
+you know why the standard pairings are standard.
+
+\section{Activation functions}
+\prototype{Sigmoid, $\tanh$, ReLU and GELU evaluated at $z=-2$ give four different
+answers, and the derivative of the sigmoid is never larger than
+$\gv{c02_activations/dsig_max}$.}
+
+\subsection{What the activation is for}
+\Cref{ch:perceptron} showed that without an activation a deep network collapses to
+one affine map. The activation is the \emph{only} source of non-linearity in an
+MLP: weights and biases enter linearly, and the loss is applied after the network,
+so it cannot change what functions the network represents.
+
+\begin{remark}
+	\trap ``Which component provides non-linearity: weights, biases, activation
+	function, loss function?'' Only the activation function. A non-linear
+	\emph{loss} (cross-entropy is very non-linear) does not help: a linear model
+	trained with cross-entropy is still logistic regression, with a linear boundary.
+\end{remark}
+
+\subsection{The zoo, with values}
+\begin{center}
+	\small
+	\begin{tabular}{lll}
+		\toprule
+		name & $\phi(z)$ & $\phi'(z)$ \\
+		\midrule
+		sigmoid & $\sigma(z)=1/(1+e^{-z})$ & $\sigma(z)(1-\sigma(z))\le\frac14$ \\
+		$\tanh$ & $(e^z-e^{-z})/(e^z+e^{-z}) = 2\sigma(2z)-1$ & $1-\tanh^2 z\le1$ \\
+		ReLU & $\max(0,z)$ & $\ind{z>0}$ \\
+		leaky ReLU & $\max(\alpha z, z)$, $\alpha\approx0.01$ & $1$ or $\alpha$ \\
+		ELU & $z$ if $z>0$, else $\alpha(e^z-1)$ & $1$ or $\alpha e^z$ \\
+		GELU & $z\,\Phi(z)$, $\Phi$ the standard normal CDF & $\Phi(z)+z\,\varphi(z)$ \\
+		SiLU / swish & $z\,\sigma(z)$ & $\sigma(z)\bigl(1+z(1-\sigma(z))\bigr)$ \\
+		softplus & $\log(1+e^z)$ & $\sigma(z)$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\begin{example}[Values an OA might ask for]
+	Computed by \script{c02_activations}, each function checked against
+	\pt{torch.nn.functional} on a grid of $161$ points and each derivative against
+	autograd:
+	\begin{center}
+		\small
+		\begin{tabular}{lrrrrr}
+			\toprule
+			$\phi$ & $z=-2$ & $-0.5$ & $0$ & $0.5$ & $2$ \\
+			\midrule
+			\gv{c02_activations/act_table}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+\end{example}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.6cm},
+	napkinplot, width=0.5\linewidth, height=0.42\linewidth, xlabel=$z$,
+	legend style={font=\scriptsize}, legend pos=north west]
+\nextgroupplot[title={$\phi(z)$}, ymin=-1.2, ymax=3]
+	\addplot table[x=z,y=sigmoid] {gen/dl/data/c02_activations-acts.dat}; \addlegendentry{sigmoid}
+	\addplot table[x=z,y=tanh] {gen/dl/data/c02_activations-acts.dat}; \addlegendentry{tanh}
+	\addplot table[x=z,y=relu] {gen/dl/data/c02_activations-acts.dat}; \addlegendentry{ReLU}
+	\addplot table[x=z,y=gelu] {gen/dl/data/c02_activations-acts.dat}; \addlegendentry{GELU}
+	\addplot table[x=z,y=elu] {gen/dl/data/c02_activations-acts.dat}; \addlegendentry{ELU}
+\nextgroupplot[title={$\phi'(z)$}, ymin=-0.2, ymax=1.25]
+	\addplot table[x=z,y=sigmoid] {gen/dl/data/c02_activations-dacts.dat};
+	\addplot table[x=z,y=tanh] {gen/dl/data/c02_activations-dacts.dat};
+	\addplot table[x=z,y=relu] {gen/dl/data/c02_activations-dacts.dat};
+	\addplot table[x=z,y=gelu] {gen/dl/data/c02_activations-dacts.dat};
+\end{groupplot}
+\end{tikzpicture}
+\end{center}
+
+\subsection{Sigmoid and tanh: saturation}
+Both squash $\RR$ into a bounded interval, and both are nearly flat away from
+$0$: $\sigma'(5)=\gv{c02_activations/dsig_5}$. Backpropagation multiplies one such
+factor per layer (\cref{ch:backprop}), and since $\sigma'\le\frac14$ ten sigmoid
+layers shrink a gradient by at least $4^{10}$, i.e.\ to at most
+$\gv{c02_activations/dsig_pow10}$ of its size from that factor alone. This is the
+\vocab{vanishing gradient} problem in its simplest form.
+
+The sigmoid has a second defect: its outputs are all positive. For a neuron fed by
+sigmoid units, $\partial\Loss/\partial w_i = \delta\cdot h_i$ with every $h_i>0$, so
+all of that neuron's weight gradients share the sign of $\delta$ and the weights can
+only move together up or together down, giving zig-zag updates. $\tanh$ is
+zero-centred and its maximum slope is $1$, so it was preferred for hidden layers
+even before ReLU. Today sigmoid is used at outputs (probabilities) and in gates
+(LSTM, \cref{ch:rnn}), almost never in hidden layers.
+
+\subsection{ReLU and its relatives}
+ReLU does not saturate for $z>0$ (derivative exactly $1$), is cheap, and produces
+exact zeros (sparse activations). Its failure mode is the \vocab{dead ReLU}: a unit
+whose pre-activation is negative on every training input gets zero gradient forever
+(\cref{ch:backprop} has a simulation). Leaky ReLU and PReLU (learned $\alpha$) keep
+a small slope for $z<0$; ELU makes the negative side smooth and pushes mean
+activations toward zero.
+
+\begin{remark}
+	\trap ``ReLU is not differentiable at $0$, so it cannot be trained by gradient
+	descent.'' The kink is a single point that floating-point inputs essentially
+	never hit exactly; frameworks use the subgradient $0$ there, and ReLU is the
+	default hidden activation of most CNNs.
+\end{remark}
+
+\subsection{Smooth modern activations: GELU and SiLU}
+GELU weights the input by the probability that a standard normal falls below it,
+$z\,\Phi(z)$; Transformers (BERT, GPT-style models) use it or SiLU in their
+feed-forward blocks \cite{gelu}. The common approximation
+$\tfrac12 z\bigl(1+\tanh(\sqrt{2/\pi}(z+0.044715z^3))\bigr)$ is within
+$\gv{c02_activations/gelu_approx_err}$ of the exact GELU on $[-6,6]$. Both are
+\emph{non-monotone}: SiLU has a minimum $\gv{c02_activations/silu_min}$ at
+$z=\gv{c02_activations/silu_argmin}$, GELU a minimum $\gv{c02_activations/gelu_min}$
+at $z=\gv{c02_activations/gelu_argmin}$ (found numerically). They behave like ReLU
+for large $|z|$ but pass small negative signals and have a continuous derivative.
+
+\begin{moral}
+	Hidden layers: ReLU for CNNs and MLPs, GELU/SiLU for Transformers, $\tanh$ and
+	sigmoid only inside recurrent cells and gates. Output layers: chosen by the task,
+	next section.
+\end{moral}
+
+\section{Output layers: sigmoid and softmax}
+\prototype{Logits $\z=(2,1,0.1,-1,0.5)$ for five classes; the softmax gives class
+$1$ probability $\gv{c02_activations/z5_p0}$.}
+
+\subsection{Softmax}
+For $K$ classes the network outputs \vocab{logits} $\z\in\RR^K$ and
+\[
+	\softmax(\z)_k = \frac{e^{z_k}}{\sum_{j=1}^K e^{z_j}}.
+\]
+It is positive and sums to $1$, preserves the order of the logits, and is invariant
+to adding a constant to every logit (multiply top and bottom by $e^{-c}$), but not to
+scaling them.
+
+\begin{example}[Softmax confidence from five logits]
+	\label{ex:softmax5}
+	For $\z=(2,1,0.1,-1,0.5)$: $e^{z}=(\gv{c02_activations/z5_e0},
+	\gv{c02_activations/z5_e1}, \gv{c02_activations/z5_e2}, \gv{c02_activations/z5_e3},
+	\gv{c02_activations/z5_e4})$ with sum $\gv{c02_activations/z5_sum}$, so
+	\[ \softmax(\z) = (\gv{c02_activations/z5_p0},\ \gv{c02_activations/z5_p1},\
+	\gv{c02_activations/z5_p2},\ \gv{c02_activations/z5_p3},\ \gv{c02_activations/z5_p4}). \]
+	The model predicts class 1 with confidence $\gv{c02_activations/z5_conf}\%$.
+	Note that a logit gap of $1$ ($2$ vs $1$) is a probability ratio of $e\approx2.72$,
+	not a difference of $1$ in anything.
+\end{example}
+
+\subsection{Overflow and the log-sum-exp trick}
+$e^{1000}$ overflows double precision, so the textbook formula applied to
+$\z=(1000,1001,1002)$ returns $\gv{c02_activations/naive_nan}$ for every entry. The fix
+uses shift invariance: subtract $m=\max_k z_k$ first. Then every exponent is
+$\le0$, the largest term is exactly $1$, and nothing overflows. The same trick gives a
+stable \vocab{log-sum-exp}
+\[
+	\LSE(\z)=\log\sum_k e^{z_k} = m + \log\sum_k e^{z_k-m},
+\]
+which is what a cross-entropy implementation actually needs.
+
+\codefile[\script{c02_activations}]{gen/dl/snip/c02_activations-softmax.py}
+
+For $(1000,1001,1002)$ the stable version returns
+$(\gv{c02_activations/big_p0},\gv{c02_activations/big_p1},\gv{c02_activations/big_p2})$,
+identical to $\softmax(0,1,2)$, and $\LSE=\gv{c02_activations/lse_big}$; both
+match PyTorch's softmax and SciPy's \pt{logsumexp}.
+
+\subsection{Temperature}
+Dividing logits by a \vocab{temperature} $T>0$ before the softmax sharpens ($T<1$)
+or flattens ($T>1$) the distribution without changing the arg-max. For the five
+logits above (last column: entropy in nats; the uniform distribution has
+$\ln 5=\gv{c02_activations/lnfive}$):
+\begin{center}
+	\small
+	\begin{tabular}{crrrrr|r}
+		\toprule
+		$T$ & $p_1$ & $p_2$ & $p_3$ & $p_4$ & $p_5$ & $H(p)$ \\
+		\midrule
+		\gv{c02_activations/temp_table}
+		\bottomrule
+	\end{tabular}
+\end{center}
+As $T\to0$ the softmax becomes a one-hot arg-max, as $T\to\infty$ it becomes uniform.
+Temperature reappears in knowledge distillation and LLM sampling (\cref{ch:llm}).
+
+\subsection{Sigmoid is two-class softmax}
+$\softmax(a,b)_1 = e^a/(e^a+e^b) = 1/(1+e^{-(a-b)}) = \sigma(a-b)$ (checked
+numerically). So a binary classifier needs one logit and a sigmoid; two logits and a
+softmax is equivalent but over-parameterised.
+
+\subsection{The softmax Jacobian}
+With $\bm p=\softmax(\z)$, $\partial p_i/\partial z_j = p_i(\delta_{ij}-p_j)$, i.e.\
+$J = \diag(\bm p)-\bm p\bm p\T$ (verified against \pt{torch.autograd.functional.jacobian}).
+Rows sum to zero because the outputs always sum to $1$. In practice you never form $J$:
+combined with cross-entropy it collapses to the gradient $\bm p-\y$ derived below.
+
+\begin{remark}
+	\trap Multi-label is not multi-class. If an image can contain both a cat and a
+	dog, use $K$ independent sigmoids with $K$ binary cross-entropies. A softmax forces
+	the probabilities to compete and sum to $1$, so ``cat $0.9$, dog $0.8$'' is
+	impossible under it.
+\end{remark}
+
+\section{Loss functions}
+\prototype{True class 1 for the logits above: cross-entropy
+$-\ln \gv{c02_activations/z5_p0} = \gv{c02_activations/z5_ce0}$ nats.}
+
+\subsection{Cross-entropy is maximum likelihood}
+If the network outputs a distribution $\bm p_\theta(\cdot\mid\x)$ over $K$ classes and
+the data are independent, the negative log-likelihood of the labels is
+\[
+	-\sum_{i}\log p_\theta(y_i\mid\x_i)
+	= \sum_i \Bigl(\LSE(\z_i) - z_{i,y_i}\Bigr),
+\]
+the \vocab{categorical cross-entropy} between the one-hot label and $\bm p$.
+Minimising it is minimising the KL divergence from the empirical label distribution
+to the model (the information-theory section of the companion book
+\otherbook{Classical Machine Learning} has the identity
+$H(q,p)=H(q)+\KL(q\Vert p)$).
+
+\begin{proposition}[Gradient of softmax + cross-entropy]
+	For one example with logits $\z$, one-hot label $\y$ and
+	$\Loss=-\sum_k y_k\log\softmax(\z)_k$,
+	\[ \pd{\Loss}{\z} = \softmax(\z)-\y. \]
+\end{proposition}
+\begin{proof}
+	$\Loss = \LSE(\z)-\z\T\y$ because $\sum_k y_k=1$. The gradient of $\LSE$ is the
+	softmax, and the gradient of $\z\T\y$ is $\y$.
+\end{proof}
+
+For \cref{ex:softmax5} with true class 1 the gradient, identical to autograd's, is
+\[ \pd{\Loss}{\z} = (\gv{c02_activations/z5_g0},\ \gv{c02_activations/z5_g1},\
+\gv{c02_activations/z5_g2},\ \gv{c02_activations/z5_g3},\ \gv{c02_activations/z5_g4}). \]
+The gradient pushes the true logit up by $1-p_y$ and each wrong logit down by its
+probability: big mistakes get big corrections, and the gradient never saturates
+while the prediction is wrong.
+
+\begin{example}[Cross-entropy from logits, many cases]
+	Each row is checked against \pt{F.cross\_entropy}. Classes are numbered from $0$
+	here, as in code.
+	\begin{center}
+		\footnotesize
+		\begin{tabular}{lclccc}
+			\toprule
+			logits $\z$ & $y$ & $\softmax(\z)$ & pred & $p_y$ & $\CE=-\ln p_y$ \\
+			\midrule
+			\gv{c02_activations/ce_table}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Patterns worth memorising: equal logits give $\CE=\ln K$ (row 2); a confident wrong
+	prediction is punished hard (row 4: the true class has probability $0.001$); the
+	loss of a correct prediction is small but never exactly $0$ (last row); with
+	the same probabilities the loss of predicting the wrong class grows by the logit
+	gap ($\CE$ for class 4 in \cref{ex:softmax5} is
+	$\gv{c02_activations/z5_ce3} = \gv{c02_activations/z5_ce0}+3$).
+\end{example}
+
+\begin{remark}
+	\trap Sanity check at initialisation: with small random weights the logits are
+	nearly equal, so the loss of a $K$-class classifier starts near $\ln K$. For a
+	batch of $64$ random $10$-class logits of scale $0.01$ the script measures
+	$\gv{c02_activations/ce_init}$ against $\ln10=\gv{c02_activations/ln10}$. A first
+	loss far from $\ln K$ means a bug (wrong labels, softmax applied twice, a huge
+	initial scale).
+\end{remark}
+
+\subsection{Binary cross-entropy and its stable form}
+For $y\in\{0,1\}$ and $p=\sigma(z)$, $\mathrm{BCE}=-[y\log p+(1-y)\log(1-p)]$:
+$\gv{c02_activations/bce_09}$ for $p=0.9$, $y=1$; $\gv{c02_activations/bce_01}$ for
+$p=0.1$, $y=1$; $\ln2=\gv{c02_activations/bce_05}$ at $p=0.5$; and
+$\gv{c02_activations/bce_099}$ for a $0.99$ prediction of the wrong class. Computing
+$\sigma$ first and then $\log$ breaks for large $|z|$: at $z=-1000$, $y=1$ the
+sigmoid underflows to $0$ and the loss becomes $\gv{c02_activations/naive_bce_m1000}$.
+Working from the logit,
+\[
+	\mathrm{BCE}(z,y) = \max(z,0) - zy + \log\bigl(1+e^{-|z|}\bigr),
+\]
+gives the correct $\gv{c02_activations/stable_bce_m1000}$. This is
+\pt{BCEWithLogitsLoss}, and the reason you pass logits, not probabilities, to it.
+
+\codefile[\script{c02_activations}]{gen/dl/snip/c02_activations-bce_logits.py}
+
+\subsection{Why not MSE for classification?}
+With a sigmoid output and squared error $\frac12(\sigma(z)-y)^2$, the gradient is
+$(\sigma(z)-y)\,\sigma'(z)$. When the prediction is confidently wrong ($y=1$,
+$z=-5$) the factor $\sigma'(z)$ kills it: $\gv{c02_activations/gmse_m5}$ for MSE
+against $\gv{c02_activations/gce_m5}$ for cross-entropy. The model that is most
+wrong learns slowest under MSE. Cross-entropy's $\log$ exactly cancels the
+sigmoid's saturation. (MSE on a sigmoid is also non-convex in $z$; CE is convex.)
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth,
+	xlabel={logit $z$ (true label $y=1$)}, ylabel={$|\partial\Loss/\partial z|$},
+	legend pos=north east]
+	\addplot table[x=z,y=ce] {gen/dl/data/c02_activations-msegrad.dat}; \addlegendentry{cross-entropy}
+	\addplot table[x=z,y=mse] {gen/dl/data/c02_activations-msegrad.dat}; \addlegendentry{MSE}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\subsection{Margin losses: hinge}
+With labels $y\in\{-1,+1\}$ and score $z$, every binary loss is a function of the
+\vocab{margin} $m=yz$. The 0--1 loss $\ind{m\le0}$ is what we care about but has zero
+gradient almost everywhere; the \vocab{hinge} $\max(0,1-m)$ (SVMs) and the logistic loss
+$\log(1+e^{-m})$ are convex upper bounds (the logistic in base 2 so that it passes
+through $(0,1)$). The multiclass hinge sums
+$\max(0,z_j-z_y+1)$ over wrong classes $j$; for \cref{ex:softmax5} with true class 2
+it is $\gv{c02_activations/hinge5}$ (\pt{F.multi\_margin\_loss} divides by $K$).
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.62\linewidth, height=0.4\linewidth,
+	xlabel={margin $m = yz$}, ylabel={loss}, ymin=0, ymax=4, legend pos=north east]
+	\addplot table[x=m,y=zeroone] {gen/dl/data/c02_activations-margin.dat}; \addlegendentry{0--1}
+	\addplot table[x=m,y=hinge] {gen/dl/data/c02_activations-margin.dat}; \addlegendentry{hinge}
+	\addplot table[x=m,y=logistic] {gen/dl/data/c02_activations-margin.dat}; \addlegendentry{logistic ($\log_2$)}
+	\addplot table[x=m,y=square] {gen/dl/data/c02_activations-margin.dat}; \addlegendentry{squared}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+The squared loss punishes \emph{correct} predictions with margin above $1$: another
+reason it is a poor classification loss.
+
+\subsection{Regression: MSE, MAE, Huber}
+MSE is the Gaussian negative log-likelihood and is dominated by outliers; MAE
+(Laplace likelihood) is robust but has a constant-size gradient that does not shrink
+near the optimum. \vocab{Huber} interpolates: quadratic within $\delta$, linear
+outside.
+
+\codefile[\script{c02_activations}]{gen/dl/snip/c02_activations-huber.py}
+
+With $\delta=1$, a residual of $10$ costs $\gv{c02_activations/huber_10}$ under Huber
+and $\gv{c02_activations/mse_10}$ under $\frac12r^2$; a residual of $0.2$ costs
+$\gv{c02_activations/huber_02}$ under both (matches \pt{F.huber\_loss}).
+
+\subsection{Focal loss and label smoothing}
+\vocab{Focal loss} \cite{focal} multiplies cross-entropy by $(1-p_y)^\gamma$ to down-weight
+easy, well-classified examples, which dominate the loss when one class (background)
+vastly outnumbers the rest:
+\begin{center}
+	\small
+	\begin{tabular}{cccc}
+		\toprule
+		$p_y$ & CE & focal ($\gamma=2$) & factor $(1-p_y)^2$ \\
+		\midrule
+		$0.9$ & $\gv{c02_activations/ce_9}$ & $\gv{c02_activations/focal_9}$ & $\gv{c02_activations/focal_ratio_9}$ \\
+		$0.5$ & $\gv{c02_activations/ce_5}$ & $\gv{c02_activations/focal_5}$ & $\gv{c02_activations/focal_ratio_5}$ \\
+		$0.1$ & $\gv{c02_activations/ce_1}$ & $\gv{c02_activations/focal_1}$ & $\gv{c02_activations/focal_ratio_1}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+\vocab{Label smoothing} with parameter $\eps$ replaces the one-hot target by
+$(1-\eps)\y+\eps/K$; with $\eps=0.1$, $K=5$ the target is
+$\gv{c02_activations/ls_target_true}$ on the true class and
+$\gv{c02_activations/ls_target_other}$ elsewhere. The model can no longer drive the
+loss to $0$ by pushing one logit to infinity, which curbs over-confidence. For
+\cref{ex:softmax5} the smoothed loss is $\gv{c02_activations/ls_ce}$
+(\pt{F.cross\_entropy(..., label\_smoothing=0.1)} agrees).
+
+\subsection{Which is a loss, which is an activation?}
+\begin{center}
+	\small
+	\begin{tabular}{p{0.28\linewidth}p{0.28\linewidth}p{0.32\linewidth}}
+		\toprule
+		activations & output maps & losses \\
+		\midrule
+		ReLU, leaky ReLU, ELU, GELU, SiLU, $\tanh$, sigmoid (hidden) &
+		sigmoid, softmax, identity (linear output) &
+		MSE, MAE, Huber, BCE, CE, hinge, focal, KL divergence, contrastive/triplet \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+Sigmoid and softmax appear in two columns because they are used both as squashing
+functions and as output maps; they are never losses.
+
+\begin{center}
+	\small
+	\begin{tabular}{lll}
+		\toprule
+		task & output layer & loss \\
+		\midrule
+		regression & linear (identity) & MSE / MAE / Huber \\
+		binary classification & 1 logit, sigmoid & BCE (with logits) \\
+		multi-class (one label) & $K$ logits, softmax & categorical CE \\
+		multi-label & $K$ logits, $K$ sigmoids & sum of $K$ BCEs \\
+		counts & exponential (log-rate) & Poisson NLL \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\begin{remark}
+	\trap In PyTorch, \pt{nn.CrossEntropyLoss} takes \emph{logits} and applies
+	log-softmax internally. Putting an \pt{nn.Softmax} before it computes
+	softmax twice; training still runs but gradients shrink and the loss floor
+	is wrong. The same holds for \pt{BCEWithLogitsLoss} after a sigmoid
+	(\cref{ch:pytorch} lists this among the silent bugs).
+\end{remark}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	A 4-class classifier outputs logits $(1,1,1,1)$. What is the cross-entropy
+	loss? What if the logits are $(101,101,101,101)$?
+	\begin{hint}Shift invariance.\end{hint}
+	\begin{sol}
+		Both give the uniform distribution, so the loss is $\ln4\approx\gv{c02_activations/ln4}$
+		(row 2 of the table).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Show $\tanh z=2\sigma(2z)-1$ and deduce $\tanh'(0)=4\sigma'(0)$.
+	\begin{hint}Write $\tanh z=(1-e^{-2z})/(1+e^{-2z})$.\end{hint}
+	\begin{sol}
+		$2\sigma(2z)-1 = \frac{2}{1+e^{-2z}}-1=\frac{1-e^{-2z}}{1+e^{-2z}}=\tanh z$.
+		Differentiating, $\tanh'(z)=4\sigma'(2z)$, so $\tanh'(0)=4\cdot\frac14=1$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Derive $\partial\,\mathrm{BCE}/\partial z = \sigma(z)-y$ for $\mathrm{BCE}=
+	-[y\log\sigma(z)+(1-y)\log(1-\sigma(z))]$, and verify that the stable form
+	$\max(z,0)-zy+\log(1+e^{-|z|})$ equals BCE for both signs of $z$.
+	\begin{hint}$\log\sigma(z)=-\log(1+e^{-z})$ and $\log(1-\sigma(z))=-z-\log(1+e^{-z})$.\end{hint}
+	\begin{sol}
+		Using the hint, $\mathrm{BCE}=\log(1+e^{-z})+(1-y)z$. Its derivative is
+		$-\frac{e^{-z}}{1+e^{-z}}+1-y = -(1-\sigma(z))+1-y=\sigma(z)-y$. For $z\ge0$ the
+		stable form is $z-zy+\log(1+e^{-z})$, the same expression. For $z<0$ write
+		$\log(1+e^{-z})=-z+\log(1+e^{z})$; then
+		$\mathrm{BCE}=-zy+\log(1+e^{z})=0-zy+\log(1+e^{-|z|})$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which are loss functions? (a) ReLU (b) hinge (c) softmax (d) Huber (e) cross-entropy
+	(f) GELU (g) KL divergence.
+	\begin{hint}Four of them.\end{hint}
+	\begin{sol}(b), (d), (e), (g). ReLU and GELU are activations; softmax is an output map.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A softmax classifier predicts $p_y=0.2$ for the true class. By how much must the true
+	logit increase, other logits fixed, to halve the loss? Give a formula, then evaluate
+	for $p_y=0.2$.
+	\begin{hint}Let $S$ be the sum of the other exponentials; $p_y=e^{z_y}/(e^{z_y}+S)$.\end{hint}
+	\begin{sol}
+		Halving $-\ln p_y$ means the new probability is $\sqrt{p_y}$. With
+		$p=e^{z}/(e^z+S)$, the odds $p/(1-p)=e^z/S$, so increasing $z$ by $\Delta$
+		multiplies the odds by $e^\Delta$:
+		$\Delta = \ln\frac{\sqrt{p}/(1-\sqrt{p})}{p/(1-p)}$. For $p=0.2$:
+		$\sqrt{0.2}=\gv{c02_activations/pd_sqrt}$, odds $\gv{c02_activations/pd_odds_new}$ vs
+		$\gv{c02_activations/pd_odds_old}$, so $\Delta=\ln\gv{c02_activations/pd_ratio}\approx
+		\gv{c02_activations/pd_delta}$ (the script checks that the loss indeed halves).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A team trains an image tagger where each image may have several of 20 tags, with a
+	softmax output and categorical cross-entropy. What goes wrong, and what is the fix?
+	\begin{hint}What does a softmax force the 20 probabilities to do?\end{hint}
+	\begin{sol}
+		The softmax makes the tags compete: probabilities sum to $1$, so an image with
+		four true tags can give each at most about $0.25$, and thresholds become
+		meaningless. Use 20 sigmoid outputs with a binary cross-entropy per tag
+		(\pt{BCEWithLogitsLoss} on 20 logits).
+	\end{sol}
+\end{problem}

@@ -1,0 +1,58 @@
+[check] c02_activations: sigmoid vs torch: ours=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] ref=[0.017986 0.018891 0.01984  0.020836 0.021881 0.022977] max|diff|=1.11e-16 -> OK
+[check] c02_activations: d sigmoid vs autograd: ours=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] ref=[0.017663 0.018534 0.019447 0.020402 0.021402 0.022449] max|diff|=5.55e-17 -> OK
+[check] c02_activations: tanh vs torch: ours=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] ref=[-0.999329 -0.999259 -0.999181 -0.999095 -0.999    -0.998894] max|diff|=1.11e-16 -> OK
+[check] c02_activations: d tanh vs autograd: ours=[0.001341 0.001482 0.001638 0.00181  0.002    0.00221 ] ref=[0.001341 0.001482 0.001638 0.00181  0.002    0.00221 ] max|diff|=2.65e-16 -> OK
+[check] c02_activations: relu vs torch: ours=[0. 0. 0. 0. 0. 0.] ref=[0. 0. 0. 0. 0. 0.] max|diff|=0.00e+00 -> OK
+[check] c02_activations: d relu vs autograd: ours=[0. 0. 0. 0. 0. 0.] ref=[0. 0. 0. 0. 0. 0.] max|diff|=0.00e+00 -> OK
+[check] c02_activations: leaky vs torch: ours=[-0.4   -0.395 -0.39  -0.385 -0.38  -0.375] ref=[-0.4   -0.395 -0.39  -0.385 -0.38  -0.375] max|diff|=0.00e+00 -> OK
+[check] c02_activations: elu vs torch: ours=[-0.981684 -0.980745 -0.979758 -0.97872  -0.977629 -0.976482] ref=[-0.981684 -0.980745 -0.979758 -0.97872  -0.977629 -0.976482] max|diff|=1.11e-16 -> OK
+[check] c02_activations: gelu vs torch: ours=[-0.000127 -0.000154 -0.000188 -0.000227 -0.000275 -0.000332] ref=[-0.000127 -0.000154 -0.000188 -0.000227 -0.000275 -0.000332] max|diff|=4.44e-16 -> OK
+[check] c02_activations: d gelu vs autograd: ours=[-0.000504 -0.000606 -0.000727 -0.000869 -0.001037 -0.001234] ref=[-0.000504 -0.000606 -0.000727 -0.000869 -0.001037 -0.001234] max|diff|=2.22e-16 -> OK
+[check] c02_activations: silu vs torch: ours=[-0.071945 -0.074619 -0.077377 -0.08022  -0.083149 -0.086165] ref=[-0.071945 -0.074619 -0.077377 -0.08022  -0.083149 -0.086165] max|diff|=4.44e-16 -> OK
+[check] c02_activations: d silu vs autograd: ours=[-0.052665 -0.054319 -0.056002 -0.057712 -0.059448 -0.061208] ref=[-0.052665 -0.054319 -0.056002 -0.057712 -0.059448 -0.061208] max|diff|=2.22e-16 -> OK
+[check] c02_activations: softplus vs torch: ours=[0.01815  0.019072 0.02004  0.021056 0.022124 0.023245] ref=[0.01815  0.019072 0.02004  0.021056 0.022124 0.023245] max|diff|=4.44e-16 -> OK
+[check] c02_activations: gelu tanh-approx vs torch approximate='tanh': ours=[-7.024595e-05 -8.897249e-05 -1.121977e-04 -1.408728e-04 -1.761192e-04
+ -2.192521e-04] ref=[-7.024595e-05 -8.897249e-05 -1.121977e-04 -1.408728e-04 -1.761192e-04
+ -2.192521e-04] max|diff|=4.44e-16 -> OK
+[check] c02_activations: stable softmax vs torch: ours=[0.090031 0.244728 0.665241] ref=[0.090031 0.244728 0.665241] max|diff|=2.78e-17 -> OK
+[check] c02_activations: logsumexp vs scipy: ours=[1002.407606] ref=[1002.407606] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax(z5) vs scipy: ours=[0.558545 0.205477 0.083541 0.027808 0.124628] ref=[0.558545 0.205477 0.083541 0.027808 0.124628] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE(z5, class 0) vs torch: ours=[0.58242] ref=[0.58242] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [3.0, 1.0, 0.2] y=0: ours=[0.179104] ref=[0.179104] max|diff|=5.55e-17 -> OK
+[check] c02_activations: CE example [0.0, 0.0, 0.0, 0.0] y=2: ours=[1.386294] ref=[1.386294] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [2.0, 2.0, -1.0] y=1: ours=[0.717736] ref=[0.717736] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [5.0, -2.0, 0.0, 1.0] y=1: ours=[7.025634] ref=[7.025634] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [1.0, 2.0, 3.0, 4.0, 5.0] y=0: ours=[4.451914] ref=[4.451914] max|diff|=0.00e+00 -> OK
+[check] c02_activations: CE example [-1.0, 0.5, 0.5, 2.5, 0.0] y=3: ours=[0.324221] ref=[0.324221] max|diff|=5.55e-17 -> OK
+[check] c02_activations: CE example [10.0, 0.0] y=0: ours=[4.53989e-05] ref=[4.53989e-05] max|diff|=4.99e-17 -> OK
+[check] c02_activations: batched CE vs torch: ours=[2.301431] ref=[2.301431] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax shift invariance: ours=[0.558545 0.205477 0.083541 0.027808 0.124628] ref=[0.558545 0.205477 0.083541 0.027808 0.124628] max|diff|=4.30e-16 -> OK
+[check] c02_activations: softmax([a,b])[0] == sigmoid(a-b): ours=[0.845535] ref=[0.845535] max|diff|=0.00e+00 -> OK
+[check] c02_activations: softmax Jacobian vs autograd: ours=[ 0.246572 -0.114768 -0.046661 -0.015532 -0.069611 -0.114768] ref=[ 0.246572 -0.114768 -0.046661 -0.015532 -0.069611 -0.114768] max|diff|=2.78e-17 -> OK
+[check] c02_activations: dCE/dz = p - onehot: ours=[-0.441455  0.205477  0.083541  0.027808  0.124628] ref=[-0.441455  0.205477  0.083541  0.027808  0.124628] max|diff|=2.78e-17 -> OK
+[check] c02_activations: bce_09: ours=[0.105361] ref=[0.105361] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_01: ours=[2.302585] ref=[2.302585] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_05: ours=[0.693147] ref=[0.693147] max|diff|=0.00e+00 -> OK
+[check] c02_activations: bce_099: ours=[4.60517] ref=[4.60517] max|diff|=8.88e-16 -> OK
+[check] c02_activations: BCE with logits vs torch: ours=[1.000000e+03 5.006715e+00 6.931472e-01 5.006715e+00 1.000000e+03] ref=[1.000000e+03 5.006715e+00 6.931472e-01 5.006715e+00 1.000000e+03] max|diff|=0.00e+00 -> OK
+[check] c02_activations: MSE-through-sigmoid gradient vs autograd: ours=[-0.000335 -0.00037  -0.000409 -0.000452 -0.0005   -0.000552] ref=[-0.000335 -0.00037  -0.000409 -0.000452 -0.0005   -0.000552] max|diff|=5.55e-17 -> OK
+[check] c02_activations: Huber vs torch: ours=[2.5   0.5   0.125 0.    0.02  1.5  ] ref=[2.5   0.5   0.125 0.    0.02  1.5  ] max|diff|=0.00e+00 -> OK
+[check] c02_activations: focal with gamma=0 is CE: ours=[0.58242] ref=[0.58242] max|diff|=0.00e+00 -> OK
+[check] c02_activations: label smoothing CE vs torch: ours=[0.73042] ref=[0.73042] max|diff|=1.11e-16 -> OK
+[check] c02_activations: multiclass hinge vs torch multi_margin_loss*(K): ours=[0.52] ref=[0.52] max|diff|=0.00e+00 -> OK
+[check] c02_activations: halving the loss: ours=[0.804719] ref=[0.804719] max|diff|=1.11e-16 -> OK
+[check] c01_perceptron: neuron z: ours=[-0.4] ref=[-0.4] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron sigmoid: ours=[0.401312] ref=[0.401312] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron tanh: ours=[-0.379949] ref=[-0.379949] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: neuron relu: ours=[0.] ref=[0.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: perceptron weights vs sklearn: ours=[4. 3. 0.] ref=[4. 3. 0.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: lr invariance (w scaled by 0.1): ours=[0.4 0.3 0. ] ref=[0.4 0.3 0. ] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: hand XOR net: ours=[0. 1. 1. 0.] ref=[0. 1. 1. 0.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: MLP 784-256-128-10 param count: ours=[235146.] ref=[235146.] max|diff|=0.00e+00 -> OK
+[check] c01_perceptron: two linear layers == one linear layer: ours=[1.961044 2.578578] ref=[1.961044 2.578578] max|diff|=4.44e-16 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=2): ours=[0.      0.00125 0.0025  0.00375 0.005   0.00625] ref=[0.      0.00125 0.0025  0.00375 0.005   0.00625] max|diff|=5.55e-17 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=4): ours=[0.      0.01125 0.0225  0.03375 0.045   0.05625] ref=[0.      0.01125 0.0225  0.03375 0.045   0.05625] max|diff|=6.66e-16 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=8): ours=[0.       0.015392 0.030784 0.046176 0.061569 0.076961] ref=[0.       0.015392 0.030784 0.046176 0.061569 0.076961] max|diff|=1.11e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=16): ours=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] ref=[0.       0.016557 0.033115 0.049672 0.066229 0.082787] max|diff|=1.78e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=32): ours=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] ref=[0.       0.016857 0.033714 0.050572 0.067429 0.084286] max|diff|=2.11e-15 -> OK
+[check] c01_perceptron: ReLU net == piecewise-linear interp (n=64): ours=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] ref=[0.       0.016933 0.033865 0.050798 0.067731 0.084664] max|diff|=2.61e-15 -> OK
