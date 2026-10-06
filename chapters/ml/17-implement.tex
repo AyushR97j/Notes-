@@ -24,7 +24,7 @@ Centre, solve, recover the intercept: the intercept is unpenalised and you never
 streaming data).
 \codefile[logistic regression by batch gradient descent]{gen/ml/snip/c17_implement-logreg.py}
 Standardise inputs first or the step size must be tiny. For production code, compute the sigmoid stably
-(\code{np.exp(-np.logaddexp(0, -z))}) and the loss with log-sum-exp; with separable data and no penalty the
+(\texttt{np.exp(-np.logaddexp(0,~-z))}) and the loss with log-sum-exp; with separable data and no penalty the
 weights diverge (\Cref{ch:logistic}), which is why this check uses noisy labels. Newton/IRLS and softmax regression
 are in \Cref{ch:logistic}, the lasso by coordinate descent in \Cref{ch:biasvar}.
 
@@ -49,7 +49,7 @@ two splits tie (scikit-learn breaks ties by a random feature order).
 \codefile[random forest (bagging mode)]{gen/ml/snip/c17_implement-forest.py}
 Given scikit-learn's own bootstrap draws (\code{estimators_samples_}), our averaged trees reproduce
 \code{RandomForestClassifier(max_features=None)}'s probabilities to the last bit. A real forest additionally draws
-\code{max_features} candidate features at each split; add \code{j in rng.choice(d, m, replace=False)} to the split
+\code{max_features} candidate features at each split; add \texttt{j in rng.choice(d, m, replace=False)} to the split
 loop.
 \codefile[AdaBoost (SAMME, two classes)]{gen/ml/snip/c17_implement-adaboost.py}
 Ten rounds give the same estimator weights and predictions as \code{AdaBoostClassifier}. Gradient boosting for squared

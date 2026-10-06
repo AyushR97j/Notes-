@@ -1,4 +1,4 @@
-RESUME HERE: ch19 done (67 problems, 142 total); next = preface (00-preface.tex), then read-through (pdftotext grep, overfull, visual spot checks), fix list, final build, DONE.
+RESUME HERE: DONE — Classical Machine Learning.pdf: 170 pages, 142 problems (67 in Ch. 19) with hints+solutions, 97 rapid-fire items, 203 library cross-checks passing, 0 overfull >2pt, 0 undefined refs/stubs.
 
 # Classical Machine Learning — progress log
 
@@ -42,7 +42,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - Ch16: condition number ⇔ zig-zag; SGD noise; convergence-rate table.
 
 ## Chapter checklist
-- [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
+- [x] 00 Preface (how to use, what placements ask, sources, reproducibility, dependency chart)
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
 - [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
@@ -62,8 +62,14 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 17 Implement it (c17_implement.py: 11 implementations asserted vs sklearn + 7 in earlier chapters)
 - [x] 18 Rapid-fire (97 items)
 - [x] 19 Problems (67 in ch19; 142 problems in the book; numbers from c19_problems.py)
-- [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
+- [x] Read-through (pdftotext grep for stub/TODO/??/undefined: clean; log: no undefined refs/citations; overfull >2pt: 0), fix list applied, final build
 
 ## Log
 - Session 1: template + test book built; ML skeleton compiles.
 - Lesson: never put [ ] inside a proof's optional title; bold-vector macros are brace-wrapped so \nabla_\x works; use \script{name} for file paths.
+
+- Fix list from the read-through (all applied): preface \trap punctuation; dependency chart edges simplified;
+  \code drops spaces (url) → \texttt for snippets with spaces; 4D solution starts with text before display;
+  appendix hints/solutions set in \small to keep the book under 180 pages.
+- Known limitation: the stmaryrd bold-font substitution warning is harmless (font fallback only).
+- DONE: 170 pages; 142 problems; 97 rapid-fire; 203 checks; all figures TikZ/pgfplots from gen/ml/data/*.dat.
