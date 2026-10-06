@@ -1,0 +1,49 @@
+% Book-specific macros for Deep Learning (shared ones live at the bottom of
+% latex/preamble.tex).
+\DeclareMathOperator{\GELU}{GELU}
+\DeclareMathOperator{\SiLU}{SiLU}
+\DeclareMathOperator{\ELU}{ELU}
+\DeclareMathOperator{\LN}{LN}
+\DeclareMathOperator{\BN}{BN}
+\DeclareMathOperator{\FFN}{FFN}
+\DeclareMathOperator{\MHA}{MHA}
+\DeclareMathOperator{\Attn}{Attention}
+\DeclareMathOperator{\CE}{CE}
+\DeclareMathOperator{\LSE}{LSE}
+\DeclareMathOperator{\PPL}{PPL}
+\DeclareMathOperator{\clip}{clip}
+\newcommand{\dmodel}{d_{\text{model}}}
+\newcommand{\dff}{d_{\text{ff}}}
+\newcommand{\had}{\odot}
+\newcommand{\yhat}{\hat{y}}
+\newcommand{\byhat}{\hat{\bm{y}}}
+\newcommand{\ba}{\bm{a}}
+\newcommand{\bdelta}{\bm{\delta}}
+\newcommand{\bg}{\bm{g}}
+\newcommand{\bmm}{\bm{m}}
+\newcommand{\bv}{\bm{v}}
+\newcommand{\bc}{\bm{c}}
+\newcommand{\bs}{\bm{s}}
+\newcommand{\bo}{\bm{o}}
+\newcommand{\bq}{\bm{q}}
+\newcommand{\bk}{\bm{k}}
+\newcommand{\be}{\bm{e}}
+\newcommand{\Wq}{\W_{\!Q}}
+\newcommand{\Wk}{\W_{\!K}}
+\newcommand{\Wv}{\W_{\!V}}
+\newcommand{\Wo}{\W_{\!O}}
+\newcommand{\pt}[1]{\texttt{#1}}            % code identifier in running text
+\newcommand{\shp}[1]{(#1)}                  % a tensor shape
+\newcommand{\params}{\#\text{params}}
+
+% ---- TikZ styles for network diagrams
+\tikzset{
+	neuron/.style={circle, draw=black!70, fill=white, minimum size=7mm, inner sep=0pt, font=\small},
+	inneuron/.style={neuron, fill=blue!8},
+	hidneuron/.style={neuron, fill=ForestGreen!10},
+	outneuron/.style={neuron, fill=red!8},
+	op/.style={rectangle, rounded corners=2pt, draw=black!70, fill=gray!8, minimum height=6mm, inner sep=3pt, font=\small},
+	blockbox/.style={rectangle, rounded corners=3pt, draw=black!70, minimum height=7mm, minimum width=30mm, inner sep=3pt, font=\small, align=center},
+	flow/.style={-{Stealth[length=2mm]}, thick, black!70},
+	gradflow/.style={-{Stealth[length=2mm]}, thick, red!70!black, dashed},
+}

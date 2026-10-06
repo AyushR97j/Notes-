@@ -1,0 +1,35 @@
+\chapter{A test chapter}
+\section{Lines}
+\prototype{Fit $y = a + bx$ to five points.}
+A \vocab{least-squares line} minimises squared residuals.
+\begin{theorem}[Slope]
+	$\hat b = \sum (x_i-\bar x)(y_i-\bar y)/\sum(x_i-\bar x)^2$.
+\end{theorem}
+\begin{example}[Five points]
+	Slope $\gv{t01_demo/slope}$, intercept $\gv{t01_demo/intercept}$.
+\end{example}
+\codefile[code/test/t01\_demo.py]{gen/test/snip/t01_demo-fit.py}
+\outputfile{gen/test/out/t01_demo-print.txt}
+\begin{remark}
+	\trap Slope is not $\bar y/\bar x$.
+\end{remark}
+\begin{ques}Why squared?\end{ques}
+\begin{moral}Least squares is a projection.\end{moral}
+\begin{algo}[OLS]\begin{enumerate}\ii centre \ii divide\end{enumerate}\end{algo}
+\begin{center}\begin{tikzpicture}
+\begin{axis}[napkinplot, xlabel=$x$, ylabel=$y$]
+\addplot table[x=x,y=y] {gen/test/data/t01_demo-line.dat};
+\addplot[only marks, mark=*] table[x=x,y=y] {gen/test/data/t01_demo-pts.dat};
+\end{axis}\end{tikzpicture}\end{center}
+Stub check: \stub{remove me}. Missing: \gv{nope/x}.
+\section\problemhead
+\begin{problem}[Easy]\onechili
+	Compute the slope.
+	\begin{hint}Centre first.\end{hint}
+	\begin{sol}It is $\gv{t01_demo/slope}$.\end{sol}
+\end{problem}
+\begin{problem}\threechili
+	Prove it.
+	\begin{hint}Differentiate.\end{hint}
+	\begin{sol}Set derivative to zero.\end{sol}
+\end{problem}
