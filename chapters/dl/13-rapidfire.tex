@@ -1,0 +1,205 @@
+\chapter{Rapid-fire}
+\label{ch:rapidfire}
+
+Spoken-style answers of one to three lines, the length an interviewer wants before the
+follow-up. Each points back to the chapter that has the derivation or the numbers. Read the
+question, answer aloud, then compare.
+
+\newcounter{rfc}
+\newcommand{\rf}[1]{\stepcounter{rfc}\item[\arabic{rfc}.] \textbf{#1}\ }
+\newenvironment{rapid}{\begin{itemize}\setlength{\itemsep}{2pt}\small}{\end{itemize}}
+
+\section{Foundations}
+\begin{rapid}
+	\rf{What does a single neuron compute?} An affine function of its inputs, $\w\T\x+b$, passed through a fixed
+	non-linearity. With a sigmoid it is logistic regression.
+	\rf{Why can't a perceptron learn XOR?} Its decision boundary is a hyperplane and XOR's classes are not linearly
+	separable; one hidden layer (OR and NAND, then AND) solves it.
+	\rf{What does the perceptron convergence theorem say?} On linearly separable data with margin $\gamma$ and radius $R$
+	it makes at most $(R/\gamma)^2$ mistakes; on non-separable data it never converges.
+	\rf{Why do we need non-linear activations?} Without them any stack of layers collapses to one affine map.
+	\rf{Is ReLU linear?} Piecewise linear, not linear: $\relu(a)+\relu(b)\ne\relu(a+b)$ in general. ReLU networks are
+	piecewise-linear functions with many pieces.
+	\rf{What does the universal approximation theorem guarantee, and what not?} A wide enough one-hidden-layer network can
+	approximate any continuous function on a compact set; it says nothing about how wide, whether training finds it, or
+	generalisation.
+	\rf{Why go deep rather than wide?} Depth composes features; some functions need exponentially many units in one layer
+	but few in many layers (the sawtooth of \cref{ch:perceptron}).
+	\rf{What increases model capacity?} More layers or units, richer features. Dropout, weight decay and early stopping
+	reduce effective capacity; the learning rate and the amount of data do not change it.
+\end{rapid}
+
+\section{Activations and losses}
+\begin{rapid}
+	\rf{Why ReLU over sigmoid in hidden layers?} No saturation for positive inputs (gradient exactly 1), cheap, sparse;
+	sigmoid's derivative is at most $1/4$, so gradients vanish through depth.
+	\rf{What is a dead ReLU and how do you avoid it?} A unit whose input is negative for all data, so it outputs and passes
+	back zero forever. Lower learning rate, He init, leaky ReLU/GELU, normalisation.
+	\rf{Why is tanh preferred to sigmoid in hidden layers?} Zero-centred outputs and a larger maximum slope (1 vs 1/4).
+	\rf{Why subtract the max in softmax?} Shift invariance makes it exact and prevents overflow of $e^{z}$.
+	\rf{Gradient of softmax plus cross-entropy?} $\bm p-\y$.
+	\rf{Why cross-entropy rather than MSE for classification?} It is the likelihood; its gradient does not vanish when a
+	sigmoid output is confidently wrong; MSE's does.
+	\rf{What should the loss be at initialisation for $K$ classes?} About $\ln K$; anything else suggests a bug.
+	\rf{Sigmoid or softmax for multi-label?} Independent sigmoids with binary cross-entropy; softmax forces labels to compete.
+	\rf{Why pass logits, not probabilities, to the loss?} The fused log-softmax/log-sigmoid is numerically stable; applying
+	softmax first double-squashes.
+	\rf{What does label smoothing do?} Replaces one-hot targets by $(1-\eps)\y+\eps/K$, so the model cannot drive logits to
+	infinity; curbs over-confidence.
+\end{rapid}
+
+\section{Backpropagation and optimisation}
+\begin{rapid}
+	\rf{What is backpropagation?} Reverse-mode automatic differentiation: one backward pass applies the chain rule from the
+	loss to every parameter, reusing intermediate results; cost a small multiple of the forward pass.
+	\rf{Why does training use more memory than inference?} Activations must be stored for the backward pass, plus gradients and
+	optimiser state.
+	\rf{What causes vanishing and exploding gradients?} The backward pass multiplies one Jacobian per layer (or per time step);
+	gains below one shrink exponentially, above one grow exponentially.
+	\rf{Why initialise weights randomly?} Equal weights give equal units with equal gradients forever (symmetry).
+	\rf{Why does gradient descent zig-zag?} Ill-conditioning: the step is limited by the steepest direction, so flat
+	directions progress slowly and steep ones oscillate.
+	\rf{What does momentum do?} Averages gradients over time: consistent directions accelerate (up to $1/(1-\beta)$), oscillating
+	ones cancel.
+	\rf{What is the purpose of Adam?} Per-parameter step sizes scaled by the inverse RMS of recent gradients, combined with
+	momentum: fast, robust progress with little tuning.
+	\rf{Why does Adam need bias correction?} The moment averages start at zero and are biased toward it by $1-\beta^t$; dividing
+	removes the bias, which matters most in the first hundreds of steps.
+	\rf{Adam vs AdamW?} AdamW applies weight decay directly to the weights instead of adding $\lambda\w$ to the gradient, so
+	decay is not rescaled by the adaptive denominator.
+	\rf{Why can Adam generalise worse than SGD?} It can converge to different, often sharper solutions and under-regularises
+	with L2; on many vision tasks tuned SGD with momentum matches or beats it. Not universal.
+	\rf{Why warm up the learning rate?} Early gradients and Adam's second-moment estimates are unreliable; large early steps can
+	diverge, especially in Transformers.
+	\rf{Batch size and learning rate?} Gradient noise variance scales like $1/B$; the linear scaling heuristic raises the learning
+	rate with the batch, up to a critical batch size.
+	\rf{Clip by norm or by value?} By norm: it keeps the gradient's direction. Fixes explosions, not vanishing.
+\end{rapid}
+
+\section{Initialisation, normalisation, regularisation}
+\begin{rapid}
+	\rf{Xavier vs He initialisation?} Xavier: variance $2/(n_\text{in}+n_\text{out})$ for roughly linear activations (tanh); He:
+	$2/n_\text{in}$ for ReLU, which zeroes half its input.
+	\rf{Why does BatchNorm help?} Smoother, better-conditioned optimisation that tolerates larger learning rates; also mild
+	regularisation. ``Internal covariate shift'' is the original but weaker explanation.
+	\rf{BatchNorm at train vs test time?} Training uses batch statistics and updates running averages; inference uses the frozen
+	running averages. Forgetting \pt{model.eval()} is the classic bug.
+	\rf{BatchNorm vs LayerNorm?} BN normalises each feature across the batch; LN normalises each example across its features,
+	so it works with batch size one and variable-length sequences.
+	\rf{Why do Transformers use LayerNorm?} Sequences vary in length, batches can be small, and LN behaves identically in training
+	and inference.
+	\rf{Why is a bias before BatchNorm redundant?} BN subtracts the batch mean, removing any constant; $\beta$ takes its place.
+	\rf{How does dropout work at test time?} With inverted dropout, it does nothing: survivors were already scaled by $1/(1-p)$
+	during training.
+	\rf{Why does dropout regularise?} Units cannot co-adapt, and the network trains an implicit ensemble of thinned sub-networks.
+	\rf{Effect of $\lambda$ in $E+\lambda\sum w^2$?} Larger $\lambda$ shrinks weights: simpler function, higher training error,
+	lower variance; too large underfits.
+	\rf{Overfitting vs underfitting from curves?} Overfitting: training loss falls while validation loss rises (growing gap).
+	Underfitting: both high and close.
+\end{rapid}
+
+\section{CNNs}
+\begin{rapid}
+	\rf{Convolution output size?} $\lfloor(n+2p-d(k-1)-1)/s\rfloor+1$.
+	\rf{Parameters of a conv layer?} $(k^2C_\text{in}+1)\,C_\text{out}$, independent of image size.
+	\rf{Why fewer parameters than a dense layer?} Local connectivity and weight sharing across positions.
+	\rf{Which layers reduce spatial size?} Pooling and strided (or unpadded) convolutions; not ReLU, BN or $1\times1$ convolutions
+	with stride 1.
+	\rf{What does a $1\times1$ convolution do?} Mixes channels at each pixel: changes channel count cheaply (bottlenecks).
+	\rf{Why two $3\times3$ convolutions instead of one $5\times5$?} Same receptive field, $18C^2$ instead of $25C^2$ weights, one
+	more non-linearity.
+	\rf{Depthwise-separable convolution?} A per-channel spatial filter then a $1\times1$ mix; cost ratio
+	$1/C_\text{out}+1/k^2$.
+	\rf{How does ResNet fix degradation?} Blocks learn a residual added to an identity shortcut, so the identity is easy and
+	gradients flow through the shortcut undiminished.
+	\rf{Is degradation overfitting?} No: the deeper plain network has higher training error.
+	\rf{Fine-tuning vs feature extraction?} Feature extraction freezes the backbone and trains a head; fine-tuning also updates the
+	pretrained weights, with a small learning rate.
+	\rf{What is IoU and NMS?} IoU = overlap area over union area; NMS keeps the highest-scoring box and removes others overlapping
+	it beyond a threshold.
+\end{rapid}
+
+\section{RNNs}
+\begin{rapid}
+	\rf{Why feedback connections?} They carry a hidden state across time, so outputs depend on earlier inputs, with a fixed set of
+	weights for any length.
+	\rf{What is BPTT?} Backpropagation through the network unrolled over time steps, summing gradients of the shared weights.
+	\rf{Why do vanilla RNNs struggle with long dependencies?} The gradient is a product of many Jacobians with the same weight
+	matrix and tanh derivatives, so it vanishes or explodes with the time lag.
+	\rf{LSTM gates in one line each?} Forget: what to keep of the cell; input: what to write; output: what to expose; candidate:
+	the content to write.
+	\rf{Why does the LSTM remember?} The cell is updated additively; along it the gradient is multiplied only by the forget gate.
+	\rf{LSTM parameter count?} $4[H(D+H)+H]$ with one bias per gate ($+4H$ more in PyTorch's two-bias convention).
+	\rf{GRU vs LSTM?} Two gates, no separate cell, three weight blocks instead of four; often similar accuracy.
+	\rf{Why LSTMs for time series?} Ordered processing, variable-length history, constant-cost online updates, gated memory of
+	trends.
+	\rf{Teacher forcing and its problem?} Feeding ground-truth previous tokens during training; at inference the model sees its own
+	errors (exposure bias).
+	\rf{Why beam search?} Greedy decoding can miss the most probable sequence; beam search keeps $k$ hypotheses at a cost of $kV$
+	scores per step.
+\end{rapid}
+
+\section{Attention and Transformers}
+\begin{rapid}
+	\rf{Self-attention in one sentence?} Each position's output is a softmax-weighted average of value vectors, weighted by how well its
+	query matches each key.
+	\rf{Why divide by $\sqrt{d_k}$?} Dot products of unit-variance vectors have variance $d_k$; scaling keeps the softmax from
+	saturating and gradients from vanishing.
+	\rf{Why masks?} Causal masks stop positions from seeing future tokens; padding masks stop attention to padding. Both set scores to
+	$-\infty$ before the softmax.
+	\rf{Why multiple heads?} Several attention patterns in different subspaces at the same parameter cost.
+	\rf{Parameters of a multi-head attention block?} $4\dmodel^2+4\dmodel$, independent of the number of heads.
+	\rf{Why positional encodings?} Self-attention is permutation-equivariant; without positions word order is invisible.
+	\rf{What is the FFN in a Transformer for?} Per-position non-linear feature mixing; about two thirds of the parameters.
+	\rf{Pre-LN vs post-LN?} Pre-LN normalises before each sublayer and keeps a clean residual path: more stable, less warm-up
+	sensitive.
+	\rf{Complexity of self-attention?} $O(n^2d)$ time and $O(n^2)$ memory per head; projections are $O(nd^2)$.
+	\rf{What does a KV cache store?} Keys and values of all previous tokens in every layer, so generation computes only the new
+	token's projections.
+	\rf{What is FlashAttention?} Exact attention computed block-wise with an online softmax, never materialising the $n\times n$ matrix;
+	less memory traffic, same FLOPs.
+	\rf{Why Transformers over RNNs for seq2seq?} Parallel training across positions, constant path length between any two tokens,
+	better scaling.
+	\rf{Encoder-only, decoder-only, encoder--decoder?} BERT for understanding, GPT for generation, T5 or the original Transformer for
+	sequence-to-sequence.
+\end{rapid}
+
+\section{LLMs and generative models}
+\begin{rapid}
+	\rf{How does BPE work?} Start from characters (or bytes) and repeatedly merge the most frequent adjacent pair into a new token.
+	\rf{What is perplexity?} The exponential of the per-token cross-entropy: the effective number of choices per token.
+	\rf{Causal LM vs masked LM?} Predict the next token from the left context vs fill masked tokens from both sides.
+	\rf{What does LoRA save?} Trainable parameters, gradients and optimiser state: $r(d_\text{in}+d_\text{out})$ per matrix instead of
+	$d_\text{in}d_\text{out}$. Not inference cost after merging.
+	\rf{What is fine-tuning?} Continuing training of a pretrained model on task data, all or some of its weights, with a small
+	learning rate.
+	\rf{RLHF vs DPO?} RLHF trains a reward model on preferences and optimises the policy with RL under a KL penalty; DPO optimises a
+	preference loss directly, no reward model or RL loop.
+	\rf{Temperature, top-$k$, top-$p$?} Temperature sharpens or flattens; top-$k$ keeps the $k$ most likely tokens; top-$p$ keeps the
+	smallest set with total probability $\ge p$.
+	\rf{What does quantisation trade?} Memory and bandwidth for precision; outliers hurt per-tensor scales.
+	\rf{What does an MoE layer buy?} Many parameters with the compute of a few: each token uses only its top-$k$ experts.
+	\rf{What is RAG?} Retrieve relevant documents by embedding similarity and put them in the prompt, grounding the answer.
+	\rf{Why do LLMs hallucinate?} They are trained to produce probable text, not true text; grounding, abstention and verification
+	reduce it.
+	\rf{VAE objective?} Reconstruction log-likelihood minus KL from the approximate posterior to the prior (the ELBO).
+	\rf{Reparameterisation trick?} Write $\z=\bmu+\bm\sigma\had\bm\eps$ so sampling becomes a differentiable function of the encoder's
+	outputs.
+	\rf{GAN optimum?} $D^\star=p_\text{data}/(p_\text{data}+p_g)$; the generator then minimises a Jensen--Shannon divergence.
+	\rf{Diffusion in one line?} Learn to predict the noise added to data at a random noise level; sample by denoising from pure noise.
+	\rf{Contrastive learning?} Pull embeddings of positive pairs together and push other pairs apart with a softmax over similarities
+	(InfoNCE).
+\end{rapid}
+
+\section{Practice}
+\begin{rapid}
+	\rf{First thing to do when a model will not train?} Overfit a single small batch; if that fails, the bug is in the code.
+	\rf{Why \pt{zero\_grad()}?} PyTorch accumulates gradients; without it each step uses the sum of all past gradients.
+	\rf{Why \pt{torch.no\_grad()} in evaluation?} No graph is built: less memory, faster.
+	\rf{Gradient accumulation?} Sum gradients of several micro-batches (each loss divided by their number) before one step to emulate a
+	larger batch.
+	\rf{Mixed precision and loss scaling?} Compute in fp16/bf16 with fp32 master weights; scale the loss so small fp16 gradients do not
+	underflow (not needed for bf16).
+	\rf{Memory per parameter for Adam training?} About 16 bytes in mixed precision, before activations.
+	\rf{How do you make results reproducible?} Seed everything, deterministic algorithms, fixed versions; report variation over seeds.
+\end{rapid}

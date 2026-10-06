@@ -1,0 +1,222 @@
+\chapter{Practice and PyTorch}
+\label{ch:pytorch}
+
+Knowing the maths is half of an ML-engineer interview; the other half is whether you can make
+a model train and know why it does not. This chapter is the working knowledge: tensors and
+broadcasting, the canonical training loop, the bugs that do not crash but quietly ruin results
+(each demonstrated with numbers), a debugging routine, distributed and mixed-precision training
+in concept, and one page each on graphs, reinforcement learning and time series.
+
+\section{Tensors, modules and the training loop}
+\prototype{\pt{(B,1) - (B,)} broadcasts to a $\gv{c11_pytorch/bc_shape}$ matrix, and an MSE that should be
+$\gv{c11_pytorch/bc_right}$ comes out as $\gv{c11_pytorch/bc_wrong}$.}
+
+\subsection{Tensors and broadcasting}
+A tensor has a shape, a dtype and a device; operations between tensors of different shapes
+\vocab{broadcast}: align shapes from the right; each pair of dimensions must be equal or one of them $1$
+(or missing), and size-1 dimensions are stretched. $\shp{3,1}+\shp{1,4}$ gives $\gv{c11_pytorch/bc1}$;
+$\shp{2,3}+\shp{3}$ gives $\gv{c11_pytorch/bc3}$; $\shp{2,3}+\shp{2}$ raises a \pt{\gv{c11_pytorch/bc_err}}.
+Broadcasting is what makes \pt{X @ W.T + b} work for a batch; it is also the source of the nastiest shape bug:
+predictions of shape $\shp{B,1}$ minus targets of shape $\shp{B}$ silently become $\shp{B,B}$, and the loss is
+the mean over all pairs. In the prototype, perfect predictions get an MSE of $\gv{c11_pytorch/bc_wrong}$.
+(\pt{F.mse\_loss} warns about this; a hand-written loss does not.)
+
+\subsection{Modules, autograd, the loop}
+An \pt{nn.Module} holds parameters (registered automatically when assigned as attributes) and defines
+\pt{forward}; autograd records operations on tensors with \pt{requires\_grad} and \pt{loss.backward()} fills
+\pt{.grad}; a \pt{Dataset} returns single examples, a \pt{DataLoader} batches, shuffles and loads them in
+worker processes. The loop every interviewer expects you to write from memory:
+
+\codefile[\script{c11_pytorch}]{gen/dl/snip/c11_pytorch-loop.py}
+
+Five lines carry most of the bugs: \pt{model.train()}/\pt{model.eval()}, \pt{zero\_grad()}, what goes into
+the loss, \pt{torch.no\_grad()} for evaluation, and \pt{shuffle=True}.
+
+\section{The silent-bug catalogue}
+\prototype{Training on label-sorted data without shuffling: validation accuracy $\gv{c11_pytorch/sorted_acc}\%$
+after one epoch, against $\gv{c11_pytorch/shuf_acc}\%$ with shuffling.}
+
+Every row below was run by \script{c11_pytorch} on a 20-feature binary classification task with an MLP
+(BatchNorm and dropout included).
+\begin{center}
+	\small
+	\begin{tabular}{p{0.3\linewidth}p{0.6\linewidth}}
+		\toprule
+		bug & what the script measured \\
+		\midrule
+		forgetting \pt{model.eval()} &
+		validation accuracy $\gv{c11_pytorch/acc_trainmode}\%$ instead of $\gv{c11_pytorch/acc_eval}\%$; two
+		forward passes on the same input differ by up to $\gv{c11_pytorch/nondet}$ in a logit (dropout is
+		random, BN uses batch statistics); a single example raises a \pt{\gv{c11_pytorch/bn1}} \\
+		softmax before \pt{CrossEntropyLoss} &
+		same accuracy on this easy task ($\gv{c11_pytorch/sm_bad_acc}\%$ vs $\gv{c11_pytorch/sm_ok_acc}\%$) but the
+		loss cannot go below $\gv{c11_pytorch/sm_floor}$ (it ends at $\gv{c11_pytorch/sm_bad_loss}$ vs
+		$\gv{c11_pytorch/sm_ok_loss}$): probabilities in $[0,1]$ used as logits, gradients squashed, confidence
+		meaningless \\
+		softmax over the wrong \pt{dim} &
+		``probabilities'' whose rows sum to $\gv{c11_pytorch/dim_rowsum}$ (normalised over the batch instead of the
+		classes) \\
+		$\shp{B,1}$ vs $\shp{B}$ targets & loss of a perfect model $\gv{c11_pytorch/bc_wrong}$ instead of $0$ \\
+		forgetting \pt{zero\_grad()} & the second backward pass exactly doubles the gradient (asserted): updates use
+		the sum of all past gradients \\
+		no shuffling (sorted labels) & $\gv{c11_pytorch/sorted_acc}\%$ vs $\gv{c11_pytorch/shuf_acc}\%$ after one
+		epoch: every batch has one class, the model chases the last one \\
+		label leakage & a feature that is the label plus noise gives $\gv{c11_pytorch/leak_val}\%$ validation accuracy
+		(honest features: $\gv{c11_pytorch/noleak_val}\%$), and collapses in deployment where the label is unknown \\
+		resuming without optimiser state & weights after 20 more steps differ by up to $\gv{c11_pytorch/ckpt_noopt_diff}$
+		from uninterrupted training (Adam's moments were reset) \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+Others worth naming: evaluating without \pt{torch.no\_grad()} (memory grows), \pt{.item()} or \pt{.numpy()}
+inside the forward pass (cuts the graph), in-place operations on tensors needed for backward, data augmentation
+applied to the validation set, normalising with statistics computed on the full dataset including the test split,
+mismatched tokeniser or image preprocessing between training and serving, and learning-rate schedulers stepped per
+batch instead of per epoch (\cref{ch:optim}).
+
+\section{Debugging a model that does not learn}
+\prototype{Thirty-two examples, 200 Adam steps: the training loss must reach almost zero ($\gv{c11_pytorch/one_batch_loss}$
+here); if it does not, the bug is in the code, not in the data.}
+
+\begin{algo}[Debugging routine]
+	\begin{enumerate}
+		\ii Check the initial loss: about $\ln K$ for $K$ balanced classes (\cref{ch:activations}).
+		\ii \vocab{Overfit one batch}: turn off regularisation and fit a single small batch to near-zero loss. Failure
+		means a bug in the model, loss, labels or optimiser wiring.
+		\ii Check shapes and dtypes at every stage; print one batch and its labels; visualise inputs after
+		augmentation.
+		\ii Check gradients: non-zero and finite for every parameter after \pt{backward()}; their norms per layer
+		(vanishing or exploding, \cref{ch:backprop}).
+		\ii Tune the learning rate first (a sweep over powers of ten), then the schedule, then regularisation.
+		\ii Compare with a trivial baseline (majority class, linear model) and grow the model only after the small
+		version works.
+	\end{enumerate}
+\end{algo}
+
+\subsection{Reproducibility}
+Seed Python, NumPy and PyTorch (and every \pt{DataLoader} generator and worker); the same seed gives identical initial
+weights (asserted; a different seed differs by up to $\gv{c11_pytorch/diffseed}$). For bitwise reproducibility also
+request deterministic algorithms (some GPU kernels are non-deterministic by default) and fix library versions; even
+then, results differ across hardware. Report the spread over several seeds, not one lucky run.
+
+\subsection{Checkpointing}
+Save everything needed to continue exactly: model and optimiser \pt{state\_dict}s, the scheduler, the epoch or step,
+and the random-generator states.
+\codefile[\script{c11_pytorch}]{gen/dl/snip/c11_pytorch-ckpt.py}
+Resuming from this checkpoint reproduces uninterrupted training bit for bit (asserted); dropping the optimiser state
+does not (previous table).
+
+\section{Scaling up: precision, memory, many GPUs}
+\prototype{Mixed-precision training with Adam keeps about $\gv{c11_pytorch/mem_bytes}$ bytes per parameter, so a 7B-parameter
+model needs about $\gv{c11_pytorch/mem_7b}$\,GB before counting activations.}
+
+\subsection{Mixed precision}
+\begin{center}
+	\small
+	\begin{tabular}{lccc}
+		\toprule
+		format & largest value & machine epsilon & smallest normal \\
+		\midrule
+		fp32 & $\gv{c11_pytorch/fp32_max}$ & $\gv{c11_pytorch/fp32_eps}$ & $\gv{c11_pytorch/fp32_tiny}$ \\
+		fp16 & $\gv{c11_pytorch/fp16_max}$ & $\gv{c11_pytorch/fp16_eps}$ & $\gv{c11_pytorch/fp16_tiny}$ \\
+		bf16 & $\gv{c11_pytorch/bf16_max}$ & $\gv{c11_pytorch/bf16_eps}$ & $\gv{c11_pytorch/bf16_tiny}$ \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+(from \pt{torch.finfo}). Half precision halves memory and runs much faster on tensor cores. fp16 has a narrow range: a
+gradient of $10^{-8}$ becomes $0$ in fp16 (it is below the smallest subnormal); multiplying the loss by $65536$ before
+\pt{backward} and dividing afterwards recovers it ($\gv{c11_pytorch/fp16_scaled}$), which is what \vocab{loss scaling}
+(\pt{GradScaler}) automates. bf16 keeps fp32's range with fewer mantissa bits, so it needs no loss scaling but is
+coarser: a $256\times256$ matrix product in bf16 has a worst error of $\gv{c11_pytorch/bf16_mm_err}$ against
+$\gv{c11_pytorch/fp32_mm_err}$ in fp32. Mixed precision (\pt{torch.autocast}) runs matrix products in half precision
+while keeping fp32 master weights, reductions and the optimiser in fp32.
+
+\subsection{Where training memory goes}
+Per parameter, mixed-precision Adam stores fp16 weights (2 bytes) and gradients (2), plus fp32 master weights (4) and
+two moments (4 + 4): about 16 bytes. Activations come on top and scale with batch size, sequence length and depth;
+gradient checkpointing trades recomputation for them. This arithmetic is why LoRA and quantised bases (\cref{ch:llm})
+make fine-tuning feasible on one GPU.
+
+\subsection{Data parallelism and gradient accumulation}
+\vocab{Distributed data parallel} (DDP): every GPU holds a full replica, processes a different slice of the batch,
+and the gradients are averaged with an all-reduce before the identical optimiser step on every replica; the effective
+batch is per-GPU batch times number of GPUs. When the model does not fit on one GPU, \vocab{sharded} data parallelism
+(FSDP/ZeRO) splits parameters, gradients and optimiser state across GPUs, and tensor or pipeline parallelism split the
+layers themselves. \vocab{Gradient accumulation} emulates a large batch on one device: run $k$ micro-batches, add
+their gradients (each loss divided by $k$), then step. The script asserts that four micro-batches of 8 give exactly
+the gradient of one batch of 32 (true for a mean loss without BatchNorm, whose statistics do depend on the micro-batch).
+
+\section{Three more families, one page each}
+\prototype{A two-feature graph of four nodes, one GCN layer: every node's new features mix its neighbours' features,
+weighted by $1/\sqrt{d_id_j}$.}
+
+\subsection{Graph neural networks}
+Data with relations (molecules, social and road networks, recommendation) are graphs. A \vocab{message-passing} layer
+updates each node from its neighbours,
+\[ \h_i'=\phi\Bigl(\h_i,\ \mathrm{AGG}_{j\in\mathcal N(i)}\,\psi(\h_i,\h_j)\Bigr), \]
+with a permutation-invariant aggregation (sum, mean, max). The graph convolutional network (GCN) layer is the simplest:
+\codefile[\script{c11_pytorch}]{gen/dl/snip/c11_pytorch-gcn.py}
+On a 4-node graph the output features are $\begin{psmallmatrix}\gv{c11_pytorch/gcn_h1}\end{psmallmatrix}$; the script checks
+the matrix form against an explicit per-node message sum and that relabelling the nodes relabels the output
+(permutation equivariance, as for self-attention, which is message passing on a complete graph). $k$ layers see
+$k$-hop neighbourhoods; too many layers \vocab{over-smooth} all nodes to similar vectors.
+
+\subsection{Reinforcement learning}
+An agent in state $s$ takes action $a$, receives reward $r$, and seeks to maximise expected discounted return
+$\sum_t\gamma^tr_t$. \vocab{Policy gradient} (REINFORCE) increases the log-probability of actions in proportion to the
+return they led to: $\nabla J=\E[\nabla\log\pi_\theta(a\mid s)\,G]$, usually with a baseline subtracted to reduce variance.
+On a three-armed bandit with success probabilities $0.2,0.5,0.8$, 2000 REINFORCE updates from a uniform policy end at
+$\pi=(\gv{c11_pytorch/rl_pi})$. \vocab{DQN} learns action values with a network and regresses $Q(s,a)$ toward the Bellman
+target $y=r+\gamma\max_{a'}Q_\text{target}(s',a')$, e.g.\ $y=1+0.9\cdot5=\gv{c11_pytorch/dqn_target}$ when the next state's
+values are $(2,5,3)$; experience replay and a slowly updated target network stabilise it. RLHF (\cref{ch:llm}) is policy
+optimisation with a learned reward.
+
+\subsection{Deep models for time series}
+Frame forecasting as supervised learning with sliding windows: from a series of length $100$, windows of $W=\gv{c11_pytorch/ts_W}$
+inputs and $H=\gv{c11_pytorch/ts_H}$ targets give $100-W-H+1=\gv{c11_pytorch/ts_nwin}$ examples. Models: 1-D CNNs (causal,
+dilated convolutions for long receptive fields), LSTMs (\cref{ch:rnn}), and Transformers over patches of the series. The traps
+are not architectural: split by time (never shuffle across the split), compute normalisation statistics on the training
+period only, and beat seasonal-naive and gradient-boosting baselines before claiming anything.
+
+\begin{moral}
+	Shuffle, \pt{zero\_grad}, logits into the loss, \pt{eval()} and \pt{no\_grad()} for evaluation, checkpoint the
+	optimiser too; when stuck, overfit one batch first.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	\pt{preds} has shape $\shp{64,1}$ and \pt{target} has shape $\shp{64}$. What is the shape of \pt{(preds - target) ** 2},
+	and how do you fix it?
+	\begin{hint}Broadcast from the right.\end{hint}
+	\begin{sol}$\shp{64,64}$. Use \pt{preds.squeeze(1)} (or \pt{target.unsqueeze(1)}) so both are $\shp{64}$ or both $\shp{64,1}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Your validation accuracy changes every time you evaluate the same checkpoint on the same data. Name two likely causes.
+	\begin{hint}Which layers are random or batch-dependent?\end{hint}
+	\begin{sol}The model is in training mode (dropout active, BatchNorm using batch statistics), or the evaluation data pipeline
+	applies random augmentation. Call \pt{model.eval()} and use deterministic preprocessing.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	You can fit a batch of 8 on your GPU but want the gradient of a batch of 64. Write the accumulation loop, and say what
+	breaks if the model has BatchNorm.
+	\begin{hint}Divide the loss.\end{hint}
+	\begin{sol}
+		\begin{pycode}
+opt.zero_grad()
+for x, y in micro_batches:          # 8 micro-batches of 8
+    (loss_fn(model(x), y) / 8).backward()
+opt.step()
+		\end{pycode}
+		The gradients add up to the mean-loss gradient of the 64 examples. BatchNorm still normalises with statistics of 8
+		examples, so the result is not identical to a true batch of 64 (use GroupNorm/LayerNorm or accept the difference).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Estimate the memory for weights, gradients and Adam state when training a 1.3B-parameter model in mixed precision.
+	\begin{hint}About 16 bytes per parameter.\end{hint}
+	\begin{sol}$1.3\times10^9\cdot16\approx\gv{c11_pytorch/p_13b}$\,GB, plus activations.\end{sol}
+\end{problem}

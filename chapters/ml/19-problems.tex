@@ -1,5 +1,503 @@
 \chapter{Problems}
 \label{ch:problems}
-\section{Problems}
-\stub{Problems}
+\bigproblemset
+Sixty-seven problems in the shapes that online assessments use: one-minute numericals, ``which statements are
+true'' multi-selects, and short derivations. They are original; every number in the solutions is produced by
+\script{c19_problems}. Hints and full solutions are in the appendices (each problem links to both). Aim for a
+minute or two per numerical with only a basic calculator.
 
+\section{Regression and regularisation}
+\prototype{Fit a line to five points in under two minutes.}
+
+\begin{problem}[Least-squares line]\onechili
+	Fit $y=b_0+b_1x$ to $(2,3),(4,5),(6,6),(8,9),(10,12)$. Give $b_1$, $b_0$, the prediction at $x=7$ and $R^2$.
+	\begin{hint}$\bar x=6$, $\bar y=7$; $b_1=\sum(x-\bar x)(y-\bar y)/\sum(x-\bar x)^2$.\end{hint}
+	\begin{sol}$\sum(x-\bar x)(y-\bar y)=\gv{c19_problems/p1_sxy}$, $\sum(x-\bar x)^2=\gv{c19_problems/p1_sxx}$, so
+		$b_1=\gv{c19_problems/p1_b1}$, $b_0=7-1.1\cdot6=\gv{c19_problems/p1_b0}$. At $x=7$: $\gv{c19_problems/p1_pred}$.
+		$R^2=\gv{c19_problems/p1_r2}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Correlation from a slope]\onechili
+	A regression of $y$ on $x$ has slope $1.5$; $s_x=4$, $s_y=10$. Find $r$ and the fraction of variance explained.
+	\begin{hint}$b_1=r\,s_y/s_x$.\end{hint}
+	\begin{sol}$r=1.5\cdot4/10=\gv{c19_problems/p2_r}$; $R^2=r^2=\gv{c19_problems/p2_r2}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Scoring a line]\onechili
+	The line $\hat y=1+2x$ is evaluated at $x=0,1,2,3$ with targets $1.5,2.5,5.5,6.5$. Compute MSE and MAE.
+	\begin{hint}Residuals are $\pm0.5$.\end{hint}
+	\begin{sol}Every residual has magnitude $0.5$: MSE $=\gv{c19_problems/p3_mse}$, MAE $=\gv{c19_problems/p3_mae}$.\end{sol}
+\end{problem}
+
+\begin{problem}[One-feature ridge]\onechili
+	Centred data with $\sum x_iy_i=12$ and $\sum x_i^2=8$. Give the OLS slope and the ridge slope for $\lambda=4$.
+	\begin{hint}$\sum xy/(\sum x^2+\lambda)$.\end{hint}
+	\begin{sol}OLS $=\gv{c19_problems/p4_ols}$; ridge $=12/12=\gv{c19_problems/p4_ridge}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Soft thresholding]\onechili
+	With an orthonormal design the OLS coefficients are $(1.8,-0.3,0.6)$. Give the lasso solution with threshold
+	$\lambda=0.5$ and the ridge solution $\hat w/(1+\lambda)$ with $\lambda=0.5$.
+	\begin{hint}$\sign(z)\max(\abs z-\lambda,0)$.\end{hint}
+	\begin{sol}Lasso $(\gv{c19_problems/p5_out})$; ridge $(\gv{c19_problems/p5_ridge})$. Only lasso zeroes a
+		coefficient.\end{sol}
+\end{problem}
+
+\begin{problem}[Adjusted $R^2$]\onechili
+	$n=30$. Model A: 2 features, $R^2=0.62$. Model B: 6 features, $R^2=0.66$. Compare adjusted $R^2$.
+	\begin{hint}$1-(1-R^2)(n-1)/(n-p-1)$.\end{hint}
+	\begin{sol}A: $\gv{c19_problems/p6_a}$; B: $\gv{c19_problems/p6_b}$. A is preferred: four extra features bought
+		too little.\end{sol}
+\end{problem}
+
+\begin{problem}[The augmented error]\onechili
+	For $E_{\text{aug}}(\w)=E_{\text{in}}(\w)+\lambda\norm{\w}^2$, which are true? (a) $\lambda=0$ gives the
+	unregularised fit. (b) Large $\lambda$ lowers training error. (c) Large $\lambda$ increases bias. (d) $\lambda$ should
+	be chosen to minimise $E_{\text{in}}$. (e) As $\lambda\to\infty$ the weights go to zero.
+	\begin{hint}Two are false.\end{hint}
+	\begin{sol}True: (a), (c), (e). False: (b) --- training error can only rise; (d) --- minimising $E_{\text{in}}$
+		always picks $\lambda=0$; use validation.\end{sol}
+\end{problem}
+
+\section{Linear classifiers, Bayes and neighbours}
+\prototype{A neuron's output from its weights, bias and activation.}
+
+\begin{problem}[A neuron's output]\onechili
+	Weights $(1.2,-0.7,0.5)$, bias $-0.4$, input $(1,2,3)$. Compute the weighted sum and the output under sigmoid,
+	tanh and ReLU.
+	\begin{hint}$z=1.2-1.4+1.5-0.4$.\end{hint}
+	\begin{sol}$z=\gv{c19_problems/p8_z}$; sigmoid $\gv{c19_problems/p8_p}$, tanh $\gv{c19_problems/p8_tanh}$, ReLU
+		$\gv{c19_problems/p8_relu}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Log-loss]\onechili
+	Labels $(1,0,1,0)$, predicted $\Prob(y=1)$: $(0.9,0.2,0.6,0.7)$. Compute the mean log-loss and say which example
+	dominates.
+	\begin{hint}Per-example loss is $-\ln$ of the probability given to the true class.\end{hint}
+	\begin{sol}Per-example losses $(\gv{c19_problems/p9_terms})$, mean $\gv{c19_problems/p9_ll}$. The fourth example,
+		confidently wrong, contributes most.\end{sol}
+\end{problem}
+
+\begin{problem}[Odds]\onechili
+	A churn model has coefficient $-0.35$ on ``years as customer''. A customer at some tenure has churn probability
+	$0.10$. What is it two years later, other features fixed?
+	\begin{hint}Odds multiply by $e^{-0.7}$.\end{hint}
+	\begin{sol}Odds $1/9$ times $\gv{c19_problems/p10_or}$; probability $\gv{c19_problems/p10_p}$.\end{sol}
+\end{problem}
+
+\begin{problem}[A logistic gradient step]\twochili
+	Features $(1,x)$, weights $(0,0.5)$, data $(x=2,y=1)$ and $(x=-1,y=0)$. Compute both predicted probabilities, the
+	mean log-loss gradient, and the weights after one step with learning rate 1.
+	\begin{hint}$\nabla=\frac1n\sum(p_i-y_i)(1,x_i)$.\end{hint}
+	\begin{sol}$p=(\gv{c19_problems/p11_p})$; gradient $(\gv{c19_problems/p11_g})$; new weights
+		$(\gv{c19_problems/p11_w})$.\end{sol}
+\end{problem}
+
+\begin{problem}[Softmax and cross-entropy]\onechili
+	Logits $(2,1,-1)$. Give the softmax probabilities and the cross-entropy if the true class is the second; and if it is
+	the first.
+	\begin{hint}Divide each $e^{z}$ by $e^2+e^1+e^{-1}$.\end{hint}
+	\begin{sol}$(\gv{c19_problems/p12_sm})$; CE $=-\ln0.2595=\gv{c19_problems/p12_ce}$; for class 1,
+		$\gv{c19_problems/p12_ce0}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Perceptron update]\onechili
+	Weights (bias first) $(0.5,-1,0.2)$, example $\x=(1,1,2)$ with bias feature, label $+1$. Is it a mistake? Give the
+	updated weights.
+	\begin{hint}Check the sign of $y\w\T\x$.\end{hint}
+	\begin{sol}$y\w\T\x=\gv{c19_problems/p13_m}\le0$: a mistake. New weights $\w+y\x=(\gv{c19_problems/p13_w})$.\end{sol}
+\end{problem}
+
+\begin{problem}[XOR, multi-select]\onechili
+	Which are true? (a) A single perceptron can represent XOR. (b) Logistic regression on $(x_1,x_2)$ can reach 100\%
+	on XOR. (c) Adding $x_1x_2$ as a feature makes XOR linearly separable. (d) A two-layer network with two hidden units
+	can represent XOR. (e) XOR is linearly separable after any rotation of the input.
+	\begin{hint}Separability is unaffected by rotations.\end{hint}
+	\begin{sol}(c) and (d) only.\end{sol}
+\end{problem}
+
+\begin{problem}[Naive Bayes with smoothing]\twochili
+	Positive reviews contain 40 tokens, negative 50; vocabulary 30. Counts: ``great'' 8 (pos), 2 (neg); ``plot'' 3
+	(pos), 4 (neg). Equal priors. With Laplace smoothing, find $\Prob(\text{pos}\mid\text{``great plot''})$.
+	\begin{hint}$(\text{count}+1)/(\text{tokens}+30)$.\end{hint}
+	\begin{sol}Pos: $\frac{9}{70}=\gv{c19_problems/p15_pos_great}$, $\frac{4}{70}=\gv{c19_problems/p15_pos_plot}$; neg:
+		$\frac3{80}=\gv{c19_problems/p15_neg_great}$, $\frac5{80}=\gv{c19_problems/p15_neg_plot}$. Scores
+		$\gv{c19_problems/p15_pos}$ and $\gv{c19_problems/p15_neg}$; posterior $\gv{c19_problems/p15_post}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Gaussian class-conditionals]\twochili
+	Class A: $\Normal(4,1)$, prior $0.6$. Class B: $\Normal(7,2^2)$, prior $0.4$. Find $\Prob(A\mid x=5)$.
+	\begin{hint}Compare $\pi_k\phi_k(5)$.\end{hint}
+	\begin{sol}$0.6\,\phi(5;4,1)=\gv{c19_problems/p16_d1}$, $0.4\,\phi(5;7,4)=\gv{c19_problems/p16_d2}$; posterior
+		$\gv{c19_problems/p16_post}$.\end{sol}
+\end{problem}
+
+\begin{problem}[$k$-NN by hand]\onechili
+	Class 0: $(1,2),(2,3),(3,1)$; class 1: $(6,5),(7,7),(5,6)$. Classify $(3.5,3.8)$ with $k=1,3,5$ (Euclidean).
+	\begin{hint}Distances in the order listed: $\gv{c19_problems/p17_d}$.\end{hint}
+	\begin{sol}Sorted: $(2,3)$ [0], $(5,6)$ [1], $(6,5)$ [1], $(3,1)$ [0], $(1,2)$ [0]. $k=1$: class
+		$\gv{c19_problems/p17_k1}$; $k=3$: $\gv{c19_problems/p17_k3}$; $k=5$: $\gv{c19_problems/p17_k5}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Distances]\onechili
+	For $\bm a=(2,-1,3)$, $\bm b=(0,1,4)$ give Euclidean, Manhattan, Chebyshev distance and cosine similarity.
+	\begin{hint}Differences $(2,-2,-1)$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p18_e}$, $\gv{c19_problems/p18_m}$, $\gv{c19_problems/p18_ch}$; cosine
+		$9/(\sqrt{14}\sqrt{17})=\gv{c19_problems/p18_cos}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Curse of dimensionality]\onechili
+	Data uniform in $[0,1]^{50}$. What edge length must a sub-cube have to contain 5\% of the data?
+	\begin{hint}$\text{edge}^{50}=0.05$.\end{hint}
+	\begin{sol}$0.05^{1/50}=\gv{c19_problems/p19_e}$: 94\% of each axis.\end{sol}
+\end{problem}
+
+\section{SVMs, trees and ensembles}
+\prototype{Information gain of a split; an XGBoost leaf.}
+
+\begin{problem}[Margin]\onechili
+	A linear SVM has $\w=(1,-2,2)$, $b=0.5$. Street width? Is $(1,1,1)$ a support vector?
+	\begin{hint}$2/\norm{\w}$; support vectors have $y f(\x)\le1$.\end{hint}
+	\begin{sol}$\norm{\w}=3$, width $\gv{c19_problems/p20_w}$. $f(1,1,1)=\gv{c19_problems/p20_f}>1$: outside the street,
+		$\alpha=0$, not a support vector (if its label is $+1$).\end{sol}
+\end{problem}
+
+\begin{problem}[Kernels]\onechili
+	For $\x=(1,2)$, $\z=(2,-1)$: compute $(\x\T\z+2)^2$ and the RBF kernel with $\gamma=0.5$.
+	\begin{hint}$\x\T\z=0$, $\norm{\x-\z}^2=10$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p21_k}$; $e^{-5}=\gv{c19_problems/p21_rbf}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Hinge losses]\onechili
+	Scores $f=(2,0.5,-0.3,-1.5)$ with labels $(+,+,+,-)$. Compute each hinge loss and the mean; which points are
+	support vectors?
+	\begin{hint}$\max(0,1-yf)$.\end{hint}
+	\begin{sol}$(\gv{c19_problems/p22_h})$, mean $\gv{c19_problems/p22_mean}$. Points 2 and 3 (inside the street or
+		misclassified) are support vectors; points 1 and 4 are not.\end{sol}
+\end{problem}
+
+\begin{problem}[Information gain]\onechili
+	A node has 9 positives and 7 negatives. A split sends $(7,1)$ left and $(2,6)$ right. Compute the information gain.
+	\begin{hint}Parent entropy is close to 1.\end{hint}
+	\begin{sol}$\Ent=\gv{c19_problems/p23_H}$; children $\gv{c19_problems/p23_HL}$ and $\gv{c19_problems/p23_HR}$, each
+		weight $\frac12$; $\IG=\gv{c19_problems/p23_IG}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Gini decrease]\onechili
+	Parent $(10,10)$ split into $(9,3)$ and $(1,7)$. Compute the weighted child Gini and the decrease.
+	\begin{hint}$G=1-\sum p_k^2$.\end{hint}
+	\begin{sol}Parent $\gv{c19_problems/p24_par}$; children $0.375$ and $0.21875$, weighted
+		$\gv{c19_problems/p24_split}$; decrease $\gv{c19_problems/p24_dec}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Best threshold]\twochili
+	$x=1,\dots,6$ with labels $0,0,0,1,0,1$. Find the Gini-optimal threshold.
+	\begin{hint}Try midpoints; a pure child helps.\end{hint}
+	\begin{sol}$x\le\gv{c19_problems/p25_t}$ with weighted Gini $\gv{c19_problems/p25_g}$ (left pure, right $(1,0,1)$).\end{sol}
+\end{problem}
+
+\begin{problem}[Regression split]\onechili
+	$x=1,\dots,5$, $y=(3,4,3,10,11)$. Best split and leaf values by squared error?
+	\begin{hint}The jump is between $x=3$ and $4$.\end{hint}
+	\begin{sol}$x\le\gv{c19_problems/p26_t}$; leaves $\gv{c19_problems/p26_l}$ and $\gv{c19_problems/p26_r}$; remaining SSE
+		$\gv{c19_problems/p26_sse}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Bootstrap, $n=10$]\onechili
+	Probability that a given row is absent from a bootstrap sample of 10 rows? Expected number of distinct rows?
+	\begin{hint}$(1-1/n)^n$ and linearity of expectation.\end{hint}
+	\begin{sol}$0.9^{10}=\gv{c19_problems/p27_abs}$; $10(1-0.9^{10})=\gv{c19_problems/p27_uniq}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Duplicates in a bootstrap]\twochili
+	With $n=5$, what is the probability that a given row appears exactly twice?
+	\begin{hint}Binomial$(5,1/5)$.\end{hint}
+	\begin{sol}$\binom52(0.2)^2(0.8)^3=\gv{c19_problems/p28}$.\end{sol}
+\end{problem}
+
+\begin{problem}[An AdaBoost round]\onechili
+	Eight equally weighted points; the first stump misclassifies two. Find $\eps$, $\alpha$ and the new weights.
+	\begin{hint}After normalising, mistakes carry half the weight.\end{hint}
+	\begin{sol}$\eps=0.25$, $\alpha=\frac12\ln3=\gv{c19_problems/p29_a}$; each mistake $\gv{c19_problems/p29_wrong}$,
+		each correct point $\frac1{12}=\gv{c19_problems/p29_right}$.\end{sol}
+\end{problem}
+
+\begin{problem}[AdaBoost weights, multi-select]\onechili
+	Which are true? (a) A learner with $\eps=0.1$ gets $\alpha\approx1.10$. (b) A learner with $\eps=0.5$ gets
+	$\alpha=0$. (c) A learner with $\eps=0.7$ gets negative $\alpha$ (its votes are flipped). (d) AdaBoost minimises the
+	exponential loss stagewise. (e) AdaBoost is robust to label noise.
+	\begin{hint}$\alpha=\frac12\ln\frac{1-\eps}{\eps}$.\end{hint}
+	\begin{sol}(a) true ($\gv{c19_problems/p30_a01}$), (b) true, (c) true, (d) true, (e) false: the exponential loss
+		piles weight on mislabelled points.\end{sol}
+\end{problem}
+
+\begin{problem}[Gradient boosting by hand]\twochili
+	Targets $10,14,18,30$ at $x=0,1,2,3$; squared loss; stumps; $\nu=0.1$. Give $F_0$, the first residuals, the first
+	stump's predictions and $F_1$.
+	\begin{hint}The stump splits off the large residual.\end{hint}
+	\begin{sol}$F_0=\gv{c19_problems/p31_F0}$; residuals $(\gv{c19_problems/p31_r})$; stump $(\gv{c19_problems/p31_u})$;
+		$F_1=(\gv{c19_problems/p31_F1})$.\end{sol}
+\end{problem}
+
+\begin{problem}[XGBoost leaf weights and gain]\twochili
+	Squared loss ($h_i=1$), $\lambda=1$, $\gamma=0$. A split sends gradients $(-3,-2,-4)$ left and $(1,2)$ right. Compute
+	both leaf weights and the gain (with the $\frac12$).
+	\begin{hint}$w=-G/(H+\lambda)$.\end{hint}
+	\begin{sol}$G_L=-9,H_L=3$: $w_L=\gv{c19_problems/p32_wL}$. $G_R=3,H_R=2$: $w_R=\gv{c19_problems/p32_wR}$. Gain
+		$\frac12[\frac{81}4+\frac93-\frac{36}6]=\gv{c19_problems/p32_gain}$.\end{sol}
+\end{problem}
+
+\begin{problem}[XGBoost, log-loss leaf]\twochili
+	A leaf holds three examples with current probabilities $0.2,0.3,0.6$ and labels $1,1,0$; $\lambda=1$. Compute $G$,
+	$H$ and the leaf weight.
+	\begin{hint}$g=p-y$, $h=p(1-p)$.\end{hint}
+	\begin{sol}$G=\gv{c19_problems/p33_G}$, $H=\gv{c19_problems/p33_H}$, $w=0.9/1.61=\gv{c19_problems/p33_w}$ (in log-odds).\end{sol}
+\end{problem}
+
+\begin{problem}[Forest variance]\onechili
+	Trees have variance $9$ and pairwise correlation $0.4$. Variance of an average of 100 trees? Of infinitely many?
+	\begin{hint}$\rho\sigma^2+(1-\rho)\sigma^2/B$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p34_100}$; limit $\gv{c19_problems/p34_inf}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Bagging versus boosting, multi-select]\onechili
+	(a) Bagging trains learners in parallel. (b) Random forests mainly reduce bias. (c) Boosting usually uses weak, shallow
+	learners. (d) More trees can overfit a gradient-boosting model. (e) A random forest decorrelates trees by sampling
+	features at each split.
+	\begin{hint}One is false.\end{hint}
+	\begin{sol}All true except (b): forests mainly reduce variance.\end{sol}
+\end{problem}
+
+\begin{problem}[Feature importance, multi-select]\twochili
+	(a) MDI importance can rank a random continuous feature above a useful binary one. (b) Permutation importance on
+	held-out data avoids that bias. (c) Two perfectly correlated useful features each get full MDI credit. (d) High
+	importance proves causal influence. (e) A leaked ID column can top an importance ranking.
+	\begin{hint}Think about split opportunities and shared credit.\end{hint}
+	\begin{sol}True: (a), (b), (e). False: (c) --- they split the credit; (d) --- importance is predictive, not causal.\end{sol}
+\end{problem}
+
+\section{Unsupervised learning}
+\prototype{One $k$-means iteration; a PCA projection.}
+
+\begin{problem}[A $k$-means iteration]\onechili
+	Points $1,3,4,10,11,15$; centroids $3$ and $11$. Do one assignment and update; compute inertia before and after.
+	\begin{hint}$\{1,3,4\}$ and $\{10,11,15\}$.\end{hint}
+	\begin{sol}New centroids $\gv{c19_problems/p37_c1}$ and $\gv{c19_problems/p37_c2}$; inertia
+		$\gv{c19_problems/p37_i0}\to\gv{c19_problems/p37_i1}$.\end{sol}
+\end{problem}
+
+\begin{problem}[$k$-means stopping, multi-select]\onechili
+	$k$-means may stop when: (a) no assignment changes; (b) centroid movement is below a tolerance; (c) inertia is zero;
+	(d) the maximum iteration count is reached; (e) all clusters have equal size.
+	\begin{hint}Two are not stopping criteria.\end{hint}
+	\begin{sol}(a), (b), (d). Zero inertia happens only in degenerate cases; equal sizes is never a criterion.\end{sol}
+\end{problem}
+
+\begin{problem}[Silhouette]\twochili
+	Clusters $\{(0,0),(0,2)\}$ and $\{(4,0),(4,2)\}$. Compute the silhouette of $(0,0)$.
+	\begin{hint}$a=2$; $b$ averages distances 4 and $\sqrt{20}$.\end{hint}
+	\begin{sol}$b=\gv{c19_problems/p39_b}$, $s=(b-a)/b=\gv{c19_problems/p39_s}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Linkage]\onechili
+	Points $2,3,7,8,15$ on a line. Give the merge heights under single and complete linkage.
+	\begin{hint}Merge $\{2,3\}$ and $\{7,8\}$ first.\end{hint}
+	\begin{sol}Single: $\gv{c19_problems/p40_single}$. Complete: $\gv{c19_problems/p40_complete}$.\end{sol}
+\end{problem}
+
+\begin{problem}[PCA eigenvalues]\onechili
+	Covariance $\begin{psmallmatrix}5&2\\2&2\end{psmallmatrix}$. Find the principal variances, PC1, and the variance
+	explained by PC1.
+	\begin{hint}Trace 7, determinant 6.\end{hint}
+	\begin{sol}$\lambda=\gv{c19_problems/p41_l1},\gv{c19_problems/p41_l2}$; PC1 $=(\gv{c19_problems/p41_v})=(2,1)/\sqrt5$;
+		explained $\gv{c19_problems/p41_evr}$.\end{sol}
+\end{problem}
+
+\begin{problem}[PCA projection]\onechili
+	With PC1 from the previous problem and centred point $(3,1)$, compute its first principal component score.
+	\begin{hint}Dot product with the unit vector.\end{hint}
+	\begin{sol}$(3\cdot2+1)/\sqrt5=\gv{c19_problems/p42_z}$.\end{sol}
+\end{problem}
+
+\begin{problem}[PCA, multi-select]\onechili
+	(a) PCA needs centring. (b) PCA on height in cm and weight in kg should standardise first. (c) PC1 is the direction of
+	largest variance. (d) The top components are always the most predictive of a target. (e) Components are orthogonal.
+	\begin{hint}PCA never sees the target.\end{hint}
+	\begin{sol}All true except (d).\end{sol}
+\end{problem}
+
+\begin{problem}[GMM responsibility]\twochili
+	Equal weights; components $\Normal(0,1)$ and $\Normal(3,2^2)$. Responsibility of component 1 for $x=2$?
+	\begin{hint}Include the $1/\sigma$ factor of each density.\end{hint}
+	\begin{sol}$\gv{c19_problems/p44_r1}$: $x=2$ is two standard deviations from component 1 but only half a standard
+		deviation from component 2.\end{sol}
+\end{problem}
+
+\begin{problem}[Association rule]\onechili
+	500 baskets: 150 contain tea, 200 contain biscuits, 60 both. Support, confidence (tea $\Rightarrow$ biscuits) and
+	lift? Useful?
+	\begin{hint}Lift compares with the base rate of biscuits.\end{hint}
+	\begin{sol}Support $\gv{c19_problems/p45_sup}$, confidence $\gv{c19_problems/p45_conf}$, lift $\gv{c19_problems/p45_lift}$:
+		tea buyers buy biscuits at exactly the base rate --- no association, despite 40\% confidence.\end{sol}
+\end{problem}
+
+\section{Evaluation, statistics and data}
+\prototype{Precision and recall from a confusion matrix in sixty seconds.}
+
+\begin{problem}[Confusion matrix]\onechili
+	TP $=70$, FP $=30$, FN $=10$, TN $=890$. Accuracy, precision, recall, specificity, F1?
+	\begin{hint}Precision $70/100$, recall $70/80$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p46_acc}$, $\gv{c19_problems/p46_p}$, $\gv{c19_problems/p46_r}$, $\gv{c19_problems/p46_spec}$,
+		$\gv{c19_problems/p46_f1}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Macro versus micro]\twochili
+	Class A: TP 90, FP 10, FN 10. Class B: TP 5, FP 5, FN 15. Compute per-class F1, macro-F1 and micro-F1.
+	\begin{hint}F1 $=2TP/(2TP+FP+FN)$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p47_f1a}$ and $\gv{c19_problems/p47_f1b}$; macro $\gv{c19_problems/p47_macro}$; micro
+		(pooled) $\gv{c19_problems/p47_micro}$. Micro hides the failing minority class.\end{sol}
+\end{problem}
+
+\begin{problem}[AUC by counting]\onechili
+	Positives score $0.8,0.7,0.4$; negatives $0.6,0.3,0.2$. Compute AUC.
+	\begin{hint}Nine pairs.\end{hint}
+	\begin{sol}Only $(0.4,0.6)$ is misordered: $8/9=\gv{c19_problems/p48_auc}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Moving the threshold, multi-select]\onechili
+	Lowering a classifier's threshold: (a) raises or keeps recall; (b) raises or keeps the false-positive rate; (c) always
+	raises precision; (d) changes the ROC curve; (e) moves the operating point along the ROC curve.
+	\begin{hint}The curve is fixed by the scores.\end{hint}
+	\begin{sol}(a), (b), (e) true; (c) false; (d) false.\end{sol}
+\end{problem}
+
+\begin{problem}[Prevalence]\twochili
+	TPR $0.8$, FPR $0.1$. Precision at prevalence 20\%? At 1\%?
+	\begin{hint}$\frac{0.8\pi}{0.8\pi+0.1(1-\pi)}$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p50_a}$; $\gv{c19_problems/p50_b}$.\end{sol}
+\end{problem}
+
+\begin{problem}[AIC and BIC]\twochili
+	$n=200$. Model A: 4 parameters, $\ln\hat L=-210$. Model B: 9 parameters, $\ln\hat L=-201$. Which does each criterion
+	pick?
+	\begin{hint}$\ln200\approx5.30$.\end{hint}
+	\begin{sol}AIC: $\gv{c19_problems/p51_aic_a}$ vs $\gv{c19_problems/p51_aic_b}$ --- B. BIC: $\gv{c19_problems/p51_bic_a}$ vs
+		$\gv{c19_problems/p51_bic_b}$ --- A.\end{sol}
+\end{problem}
+
+\begin{problem}[Counting fits]\onechili
+	Grid search over $4\times3$ settings with 5-fold CV, then a refit on all training data. How many model fits? With an
+	outer 3-fold loop for nested CV (each outer fold refits too)?
+	\begin{hint}$12\times5+1$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p52_fits}$; nested: $3\times65=\gv{c19_problems/p52_nested}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Leakage, multi-select]\twochili
+	Which leak? (a) Standardising with the mean of the full dataset before CV. (b) Feature selection inside a pipeline.
+	(c) Random split of daily sales. (d) A ``refund issued'' flag to predict fraud. (e) SMOTE applied only to training
+	folds.
+	\begin{hint}Three leak.\end{hint}
+	\begin{sol}(a), (c), (d) leak; (b) and (e) are correct practice.\end{sol}
+\end{problem}
+
+\begin{problem}[TF-IDF]\onechili
+	$N=500$ documents; ``latency'' appears in 25 of them and 4 times in a given document. Textbook IDF (natural log),
+	tf-idf, and scikit-learn's smoothed IDF?
+	\begin{hint}$\ln(N/\text{df})$ and $\ln\frac{1+N}{1+\text{df}}+1$.\end{hint}
+	\begin{sol}$\ln20=\gv{c19_problems/p54_idf}$; tf-idf $\gv{c19_problems/p54_tfidf}$; smoothed $\gv{c19_problems/p54_sk}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Target encoding]\onechili
+	A city has 4 rows with mean target $0.75$; global mean $0.2$; smoothing $m=10$. Encoded value?
+	\begin{hint}$(n\bar y_c+m\bar y)/(n+m)$.\end{hint}
+	\begin{sol}$(3+2)/14=\gv{c19_problems/p55_a}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Scaling one value]\onechili
+	A feature has mean 70, standard deviation 8, minimum 40 and maximum 100. Standardise and min--max scale the value 82.
+	\begin{hint}$(x-\mu)/\sigma$ and $(x-\min)/(\max-\min)$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p56_z}$ and $\gv{c19_problems/p56_mm}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Confidence interval]\onechili
+	162 of 900 users clicked. 95\% Wald interval for the click rate?
+	\begin{hint}$\hat p=0.18$.\end{hint}
+	\begin{sol}SE $=\gv{c19_problems/p57_se}$; $[\gv{c19_problems/p57_lo},\gv{c19_problems/p57_hi}]$.\end{sol}
+\end{problem}
+
+\begin{problem}[$z$-test]\onechili
+	IQ-like scores have $\sigma=15$. A sample of 100 has mean 103. Test $\mu=100$ two-sided.
+	\begin{hint}SE $=1.5$.\end{hint}
+	\begin{sol}$z=\gv{c19_problems/p58_z}$, $p=\gv{c19_problems/p58_p}$: reject at 5\%, not at 1\%.\end{sol}
+\end{problem}
+
+\begin{problem}[Chi-square]\twochili
+	Variant A: 40 of 100 converted; variant B: 20 of 100. $\chi^2$ test of independence without continuity correction.
+	\begin{hint}Expected counts under independence: $30,70,30,70$.\end{hint}
+	\begin{sol}$\chi^2=\gv{c19_problems/p59_chi}$, 1 d.f., $p=\gv{c19_problems/p59_p}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Multiple comparisons]\onechili
+	Ten independent true-null tests at $\alpha=0.05$: probability of at least one false positive? Bonferroni threshold?
+	\begin{hint}$1-0.95^{10}$.\end{hint}
+	\begin{sol}$\gv{c19_problems/p60_fwer}$; $\gv{c19_problems/p60_bonf}$ per test.\end{sol}
+\end{problem}
+
+\begin{problem}[Learning rate]\onechili
+	For $f(\x)=\frac12\x\T\A\x$ with eigenvalues of $\A$ equal to $1$ and $6$, what is the largest stable constant step?
+	\begin{hint}$2/\lambda_{\max}$.\end{hint}
+	\begin{sol}$\eta<2/6=\gv{c19_problems/p61_eta}$.\end{sol}
+\end{problem}
+
+\section{Short derivations}
+\prototype{Show it in five lines.}
+
+\begin{problem}[Sigmoid derivative and log-loss gradient]\twochili
+	Show $\sigma'(z)=\sigma(z)(1-\sigma(z))$ and hence $\partial\ell/\partial z=\sigma(z)-y$ for the log-loss.
+	\begin{hint}Differentiate $(1+e^{-z})^{-1}$.\end{hint}
+	\begin{sol}$\sigma'=e^{-z}/(1+e^{-z})^2=\sigma\cdot(1-\sigma)$. For $\ell=-y\log\sigma-(1-y)\log(1-\sigma)$:
+		$\ell'=-y(1-\sigma)+(1-y)\sigma=\sigma-y$.\end{sol}
+\end{problem}
+
+\begin{problem}[The 63.2 percent]\twochili
+	Show that $1-(1-1/n)^n\to1-e^{-1}$ and evaluate it at $n=100$.
+	\begin{hint}Take logs and use $\log(1-u)=-u+O(u^2)$.\end{hint}
+	\begin{sol}$n\log(1-1/n)=n(-1/n-1/(2n^2)-\dots)\to-1$, so $(1-1/n)^n\to e^{-1}$. At $n=100$:
+		$\gv{c19_problems/p63_100}$.\end{sol}
+\end{problem}
+
+\begin{problem}[Ridge closed form]\twochili
+	Derive the minimiser of $\norm{\y-\X\w}^2+\lambda\norm{\w}^2$ and show it is unique for $\lambda>0$.
+	\begin{hint}Set the gradient to zero; check the Hessian.\end{hint}
+	\begin{sol}Gradient $-2\X\T(\y-\X\w)+2\lambda\w=0$ gives $(\X\T\X+\lambda\I)\w=\X\T\y$. The Hessian
+		$2(\X\T\X+\lambda\I)$ has eigenvalues at least $2\lambda>0$, so the objective is strictly convex and the
+		minimiser unique.\end{sol}
+\end{problem}
+
+\begin{problem}[Why $k$-means terminates]\twochili
+	Prove that Lloyd's algorithm stops after finitely many iterations.
+	\begin{hint}Monotone decrease plus finitely many partitions.\end{hint}
+	\begin{sol}The assignment step minimises inertia over assignments for fixed centroids; the update step minimises it
+		over centroids for fixed assignments (the mean minimises a sum of squared distances). So inertia never increases.
+		There are finitely many partitions of $n$ points into $k$ clusters, and a partition determines the centroids, so
+		unless the partition repeats --- at which point nothing changes and the algorithm stops --- inertia strictly
+		decreases through distinct partitions, which cannot go on forever.\end{sol}
+\end{problem}
+
+\begin{problem}[AUC as a probability]\threechili
+	Explain why the area under the empirical ROC curve equals the fraction of positive--negative pairs ranked correctly
+	(no ties).
+	\begin{hint}Sweep the threshold down through the sorted scores.\end{hint}
+	\begin{sol}Sorting by score and lowering the threshold, each positive moves the curve up by $1/P$ and each negative
+		right by $1/N$. A negative step adds a column of area equal to (current TPR)$/N$, where TPR counts positives scored
+		above that negative. Summing over negatives gives $\frac1{PN}\sum_{\text{neg}}\#\{\text{pos above it}\}$, the
+		fraction of correctly ordered pairs.\end{sol}
+\end{problem}
+
+\begin{problem}[MAP shrinkage]\twochili
+	With prior $\mathrm{Beta}(a,b)$ and $h$ successes in $n$ trials, show the MAP estimate lies between the MLE $h/n$ and
+	the prior mode, and moves towards the MLE as $n$ grows.
+	\begin{hint}Write the MAP as a weighted average.\end{hint}
+	\begin{sol}$\hat p=\frac{h+a-1}{n+a+b-2}=\frac{n}{n+a+b-2}\cdot\frac hn+\frac{a+b-2}{n+a+b-2}\cdot\frac{a-1}{a+b-2}$:
+		a convex combination of the MLE and the prior mode with weight $n/(n+a+b-2)\to1$ on the MLE.\end{sol}
+\end{problem}

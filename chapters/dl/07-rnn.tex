@@ -1,0 +1,405 @@
+\chapter{Recurrent networks}
+\label{ch:rnn}
+
+An MLP or a CNN maps a fixed-size input to an output. Text, speech, sensor streams and
+prices arrive as sequences of varying length, where the meaning of an element depends on
+what came before. Recurrent networks handle this with a loop: a hidden state carried from
+step to step. OAs ask why feedback connections help, why LSTMs suit time series, and LSTM
+parameter counts; interviews ask for the LSTM equations, why gradients vanish through
+time, and why Transformers have largely replaced RNNs.
+
+\section{The vanilla RNN}
+\prototype{A one-unit RNN with $w_x=0.5$, $w_h=0.8$ reads $(1,0.5,-1)$ and its state goes
+$\gv{c07_rnn/h1}\to\gv{c07_rnn/h2}\to\gv{c07_rnn/h3}$.}
+
+\subsection{Recurrence}
+A \vocab{recurrent neural network} keeps a hidden state $\h_t\in\RR^H$ and updates it with
+the same weights at every step:
+\[
+	\h_t=\tanh\bigl(\W_{xh}\x_t+\W_{hh}\h_{t-1}+\bb_h\bigr),\qquad
+	\byhat_t=\W_{hy}\h_t+\bb_y,\qquad \h_0=\zero.
+\]
+The \vocab{feedback connection} $\W_{hh}\h_{t-1}$ is what makes it recurrent: $\h_t$ is a
+summary of $\x_1,\dots,\x_t$, so the output at time $t$ can depend on the whole past. Because the
+weights are shared across time (weight sharing again, now along the time axis), the same network
+handles any sequence length with a fixed number of parameters.
+
+\begin{center}
+\begin{tikzpicture}[x=1.9cm,y=1.2cm]
+	\node[hidneuron, minimum size=8mm] (h0) at (0,0) {$\h_0$};
+	\foreach \t in {1,2,3} {
+		\node[hidneuron, minimum size=8mm] (h\t) at (\t,0) {$\h_\t$};
+		\node[inneuron, minimum size=8mm] (x\t) at (\t,-1.3) {$\x_\t$};
+		\node[outneuron, minimum size=8mm] (y\t) at (\t,1.3) {$\byhat_\t$};
+		\draw[flow] (x\t) -- node[right, font=\scriptsize] {$\W_{xh}$} (h\t);
+		\draw[flow] (h\t) -- node[right, font=\scriptsize] {$\W_{hy}$} (y\t);
+	}
+	\foreach \a/\b in {0/1,1/2,2/3} { \draw[flow] (h\a) -- node[above, font=\scriptsize] {$\W_{hh}$} (h\b); }
+	\node (dots) at (4,0) {$\cdots$};
+	\draw[flow] (h3) -- (dots);
+\end{tikzpicture}
+\end{center}
+The unrolled graph is a deep feed-forward network with one layer per time step and tied weights.
+
+\begin{example}[Three steps by hand]
+	$H=1$, $w_x=0.5$, $w_h=0.8$, no bias, inputs $1,\ 0.5,\ -1$:
+	$h_1=\tanh(0.5)=\gv{c07_rnn/h1}$;
+	$h_2=\tanh(0.25+0.8\cdot\gv{c07_rnn/h1})=\tanh(\gv{c07_rnn/pre2})=\gv{c07_rnn/h2}$;
+	$h_3=\tanh(-0.5+0.8\cdot\gv{c07_rnn/h2})=\tanh(\gv{c07_rnn/pre3})=\gv{c07_rnn/h3}$.
+	Identical to \pt{nn.RNN} with these weights.
+\end{example}
+
+\begin{remark}
+	\trap ``Why are feedback connections used in RNNs?'' Not to speed up training and not to
+	reduce overfitting: they let the network carry information from earlier inputs to later
+	steps (memory), so outputs can depend on context and sequences of any length are handled with
+	a fixed set of weights.
+\end{remark}
+
+\subsection{Parameter counts}
+An RNN layer has $\W_{xh}\in\RR^{H\times D}$, $\W_{hh}\in\RR^{H\times H}$ and a bias, so
+$H(D+H)+H$ parameters. PyTorch keeps two bias vectors (\pt{bias\_ih} and \pt{bias\_hh}),
+giving $H(D+H)+2H$; say which convention you use. For $D=10$, $H=20$: $\gv{c07_rnn/n_rnn}$ in
+PyTorch. The output layer $\W_{hy}$ is counted separately.
+
+\section{Backpropagation through time}
+\prototype{In the example above $\partial h_3/\partial h_1=w_h^2(1-h_3^2)(1-h_2^2)=\gv{c07_rnn/dh3dh1}$:
+every step back multiplies by $w_h$ and a $\tanh$ derivative.}
+
+Training unrolls the network over the sequence and backpropagates through the unrolled graph:
+\vocab{backpropagation through time} (BPTT). Since the weights are shared, the gradient for
+$\W_{hh}$ is the sum of its gradients at every step. The gradient reaching an early state is
+\[
+	\pd{\Loss_T}{\h_k}=\Bigl(\prod_{t=k+1}^{T}\W_{hh}\T\diag\bigl(1-\h_t^2\bigr)\Bigr)\pd{\Loss_T}{\h_T},
+\]
+the product of Jacobians of \cref{ch:backprop}, now with the \emph{same} matrix $\W_{hh}$ repeated
+$T-k$ times. If the largest singular value of $\W_{hh}$ times the $\tanh$ factor is below one the
+product shrinks exponentially in the time lag (vanishing); if it is above one it can grow
+exponentially (exploding).
+
+\begin{example}[Gradient through 60 steps]
+	$H=64$, $\W_{hh}$ random and rescaled to spectral radius $\rho$, Gaussian inputs; norm of
+	$\partial(\sum\h_{60})/\partial\h_t$ at lag $59$ relative to lag $0$:
+	$\gv{c07_rnn/gd_05}$ for $\rho=0.5$, $\gv{c07_rnn/gd_09}$ for $\rho=0.9$,
+	$\gv{c07_rnn/gd_15}$ for $\rho=1.5$, $\gv{c07_rnn/gd_30}$ for $\rho=3$.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.62\linewidth, height=0.38\linewidth, xlabel={time lag $T-t$},
+		ylabel={$\log_{10}$ relative gradient norm}, legend pos=outer north east, legend style={font=\scriptsize}]
+		\addplot table[x=lag,y=r05] {gen/dl/data/c07_rnn-graddecay.dat}; \addlegendentry{$\rho=0.5$}
+		\addplot table[x=lag,y=r09] {gen/dl/data/c07_rnn-graddecay.dat}; \addlegendentry{$\rho=0.9$}
+		\addplot table[x=lag,y=r15] {gen/dl/data/c07_rnn-graddecay.dat}; \addlegendentry{$\rho=1.5$}
+		\addplot table[x=lag,y=r30] {gen/dl/data/c07_rnn-graddecay.dat}; \addlegendentry{$\rho=3$}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	Note that $\rho=1.5$ still vanishes: large weights saturate the $\tanh$, whose derivative then
+	shrinks the product. A vanilla RNN sits between two cliffs.
+\end{example}
+
+Remedies: \vocab{gradient clipping} by norm for explosions (\cref{ch:optim}; standard for RNNs);
+\vocab{truncated BPTT}, which backpropagates only $k$ steps into the past (cheaper, but blind to
+longer dependencies); orthogonal initialisation of $\W_{hh}$; and, above all, gated architectures.
+
+\section{LSTM and GRU}
+\prototype{An LSTM's cell state is updated additively, $\bc_t=\bm f_t\had\bc_{t-1}+\bm i_t\had\bm g_t$,
+so the gradient along the cell path is multiplied only by the forget gate.}
+
+\subsection{The LSTM cell}
+The \vocab{long short-term memory} \cite{lstm} adds a \vocab{cell state} $\bc_t$ and three gates,
+each a sigmoid in $(0,1)$ computed from $\x_t$ and $\h_{t-1}$:
+\begin{align*}
+	\bm i_t &= \sigma(\W_i\x_t+\U_i\h_{t-1}+\bb_i) && \text{input gate: how much to write}\\
+	\bm f_t &= \sigma(\W_f\x_t+\U_f\h_{t-1}+\bb_f) && \text{forget gate: how much to keep}\\
+	\bm g_t &= \tanh(\W_g\x_t+\U_g\h_{t-1}+\bb_g) && \text{candidate content}\\
+	\bm o_t &= \sigma(\W_o\x_t+\U_o\h_{t-1}+\bb_o) && \text{output gate: how much to expose}\\
+	\bc_t &= \bm f_t\had\bc_{t-1}+\bm i_t\had\bm g_t, \qquad \h_t=\bm o_t\had\tanh(\bc_t).
+\end{align*}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm, gate/.style={rectangle, draw=black!70, fill=yellow!15, minimum width=7mm, minimum height=5mm, font=\scriptsize},
+	pt/.style={circle, draw=black!70, fill=white, inner sep=0.5pt, minimum size=4.5mm, font=\scriptsize}]
+	\draw[rounded corners=6pt, fill=gray!5] (0,0) rectangle (8,4);
+	\node[gate] (fg) at (1.5,1.0) {$\sigma$};
+	\node[gate] (ig) at (3.0,1.0) {$\sigma$};
+	\node[gate] (gg) at (4.2,1.0) {$\tanh$};
+	\node[gate] (og) at (5.6,1.0) {$\sigma$};
+	\node[font=\scriptsize, below=1pt of fg] {$\bm f$};
+	\node[font=\scriptsize, below=1pt of ig] {$\bm i$};
+	\node[font=\scriptsize, below=1pt of gg] {$\bm g$};
+	\node[font=\scriptsize, below=1pt of og] {$\bm o$};
+	\node[pt] (mf) at (1.5,3.2) {$\times$};
+	\node[pt] (plus) at (3.6,3.2) {$+$};
+	\node[pt] (mi) at (3.6,2.2) {$\times$};
+	\node[pt] (th) at (6.6,2.4) {\tiny$\tanh$};
+	\node[pt] (mo) at (6.6,1.6) {$\times$};
+	\node (cin) at (-0.9,3.2) {$\bc_{t-1}$};
+	\node (cout) at (8.9,3.2) {$\bc_t$};
+	\node (hin) at (-0.9,0.4) {$\h_{t-1}$};
+	\node (hout) at (8.9,0.4) {$\h_t$};
+	\node (xin) at (0.8,-0.8) {$\x_t$};
+	\draw[flow] (cin) -- (mf); \draw[flow] (mf) -- (plus); \draw[flow] (plus) -- (cout);
+	\draw[thick, black!70] (hin) -- (5.6,0.4);
+	\draw[flow] (xin) |- (0.8,0.4);
+	\foreach \g in {fg,ig,gg,og} { \draw[flow] (\g |- 0,0.4) -- (\g); }
+	\draw[flow] (fg) -- (mf);
+	\draw[flow] (ig) |- (mi); \draw[flow] (gg) |- (mi); \draw[flow] (mi) -- (plus);
+	\draw[flow] (6.6,3.2) -- (th); \draw[flow] (th) -- (mo); \draw[flow] (og) |- (mo);
+	\draw[flow] (mo) |- (7.5,0.4) -- (hout);
+	\node[font=\scriptsize, ForestGreen!60!black] at (5.6,3.72) {cell state: the gradient highway};
+\end{tikzpicture}
+\end{center}
+
+\begin{example}[One LSTM step with a scalar state]
+	$x_t=1$, $h_{t-1}=0$, $c_{t-1}=0.5$; input weights $0.5,1,1,0.5$ for $i,f,g,o$, all other
+	weights and biases $0$. Then $i=\sigma(0.5)=\gv{c07_rnn/s_i}$, $f=\sigma(1)=\gv{c07_rnn/s_f}$,
+	$g=\tanh(1)=\gv{c07_rnn/s_g}$, $o=\sigma(0.5)=\gv{c07_rnn/s_o}$;
+	$c_t=\gv{c07_rnn/s_f}\cdot0.5+\gv{c07_rnn/s_i}\cdot\gv{c07_rnn/s_g}=\gv{c07_rnn/s_c}$ and
+	$h_t=\gv{c07_rnn/s_o}\tanh(\gv{c07_rnn/s_c})=\gv{c07_rnn/s_h}$.
+\end{example}
+
+\codefile[\script{c07_rnn}]{gen/dl/snip/c07_rnn-lstm_cell.py}
+
+The script checks this cell on random weights against \pt{nn.LSTMCell} (PyTorch stacks the gates in
+the order $i,f,g,o$ in one $\shp{4H,D}$ matrix).
+
+\begin{proposition}[Why the LSTM remembers]
+	Along the cell path, $\partial\bc_t/\partial\bc_{t-1}=\diag(\bm f_t)$ (holding the gates fixed),
+	so the gradient from $\bc_T$ to $\bc_k$ is the elementwise product $\prod_{t=k+1}^T\bm f_t$. If the
+	network keeps $\bm f_t\approx\one$, information and gradients survive many steps, with no
+	repeated matrix product and no $\tanh$ squashing in between.
+\end{proposition}
+With $f=0.95$ the signal after 50 steps is $0.95^{50}=\gv{c07_rnn/f095_50}$, while a vanilla RNN path
+whose per-step factor is at most $0.5$ gives at most $0.5^{50}=\gv{c07_rnn/tanh_bound_50}$. The gates
+are learned, so the network decides what to remember. The gradient through $\h$ still vanishes; the
+additive cell path is the bypass, the same idea as the ResNet shortcut, applied in time.
+
+\begin{example}[Influence of the first input, at initialisation]
+	Ratio of the average gradient of the final state with respect to $\x_1$ to that with respect to
+	$\x_T$ ($H=32$), as the sequence length $T$ grows. At $T=20$: vanilla RNN $\gv{c07_memory/rnn_20}$,
+	LSTM with PyTorch's default initialisation $\gv{c07_memory/lstm_20}$, LSTM with forget-gate bias
+	$3$ ($f\approx\sigma(3)=\gv{c07_memory/sig3}$ at the start) $\gv{c07_memory/lstmf3_20}$.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.62\linewidth, height=0.38\linewidth, xlabel={sequence length $T$},
+		ylabel={$\log_{10}$ influence ratio}, legend pos=south west, legend style={font=\scriptsize}]
+		\addplot+[mark=*] table[x=T,y=rnn] {gen/dl/data/c07_memory-memory.dat}; \addlegendentry{vanilla RNN}
+		\addplot+[mark=square*] table[x=T,y=lstm] {gen/dl/data/c07_memory-memory.dat}; \addlegendentry{LSTM, default init}
+		\addplot+[mark=triangle*] table[x=T,y=lstmf3] {gen/dl/data/c07_memory-memory.dat}; \addlegendentry{LSTM, forget bias 3}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	The architecture makes long memory \emph{possible}; at a default initialisation the forget gate
+	sits near $\sigma(0)=\gv{c07_memory/sig0}$ and the LSTM forgets as fast as the RNN. Initialising
+	the forget-gate bias to a positive value (commonly $1$ or more) is a standard trick for this reason.
+\end{example}
+
+\subsection{GRU}
+The \vocab{gated recurrent unit} \cite{gru} merges the cell and hidden state and uses two gates:
+\begin{align*}
+	\bm r_t &= \sigma(\W_r\x_t+\U_r\h_{t-1}+\bb_r), \qquad
+	\bm z_t = \sigma(\W_z\x_t+\U_z\h_{t-1}+\bb_z),\\
+	\bm n_t &= \tanh\bigl(\W_n\x_t+\bm r_t\had(\U_n\h_{t-1}+\bb_{hn})+\bb_{in}\bigr), \qquad
+	\h_t = (1-\bm z_t)\had\bm n_t+\bm z_t\had\h_{t-1}.
+\end{align*}
+The update gate $\bm z$ interpolates between keeping the old state and writing the candidate (the
+same additive path); the reset gate $\bm r$ decides how much of the past feeds the candidate. Fewer
+parameters than an LSTM and often similar accuracy. (Conventions differ on whether $\bm z$ or
+$1-\bm z$ multiplies $\h_{t-1}$; the code follows PyTorch and is checked against \pt{nn.GRUCell}.)
+
+\codefile[\script{c07_rnn}]{gen/dl/snip/c07_rnn-gru_cell.py}
+
+\subsection{Counting parameters}
+\begin{proposition}
+	With input size $D$ and hidden size $H$, one layer has (PyTorch convention, two bias vectors per
+	gate block):
+	\[ \text{RNN: } H(D+H)+2H,\quad \text{GRU: } 3\bigl[H(D+H)+2H\bigr],\quad
+	\text{LSTM: } 4\bigl[H(D+H)+2H\bigr]. \]
+	With a single bias per gate replace $2H$ by $H$. A stacked layer $l>1$ has input size $H$ (or $2H$
+	if the layer below is bidirectional); a bidirectional layer doubles the count.
+\end{proposition}
+
+\begin{example}[LSTM counts, asserted against \pt{nn.LSTM}]
+	\begin{center}
+		\small
+		\begin{tabular}{lrr}
+			\toprule
+			configuration & PyTorch count & one-bias count \\
+			\midrule
+			LSTM, $D=100$, $H=128$ & $\gv{c07_rnn/lstm_100_128}$ & $\gv{c07_rnn/lstm_100_128_one}$ \\
+			GRU, $D=100$, $H=128$ & $\gv{c07_rnn/gru_100_128}$ & \\
+			RNN, $D=100$, $H=128$ & $\gv{c07_rnn/rnn_100_128}$ & \\
+			LSTM, $D=10$, $H=20$ & $\gv{c07_rnn/n_lstm}$ & $\gv{c07_rnn/n_lstm_onebias}$ \\
+			LSTM, 2 layers & $\gv{c07_rnn/n_lstm2}$ & \\
+			LSTM, bidirectional & $\gv{c07_rnn/n_bilstm}$ & \\
+			LSTM, 2 layers, bidirectional & $\gv{c07_rnn/n_bilstm2}$ & \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	An LSTM has exactly four times the parameters of a vanilla RNN of the same size, a GRU three times.
+\end{example}
+
+\begin{remark}
+	\trap In PyTorch, \pt{nn.LSTM} expects input of shape $\shp{T,B,D}$ unless \pt{batch\_first=True}.
+	With \pt{batch\_first=True}, 2 layers, bidirectional, $H=20$ and a batch of $4$ sequences of length
+	$7$, the output has shape $\shp{\gv{c07_rnn/shape_o}}$ (both directions concatenated, last layer
+	only) while $\h_n$ has shape $\shp{\gv{c07_rnn/shape_h}}$ (layers $\times$ directions first,
+	\emph{not} batch first). Feeding $\shp{B,T,D}$ without the flag silently treats the batch as time.
+\end{remark}
+
+\section{Sequence-to-sequence, teacher forcing and beam search}
+\prototype{A decoder whose most likely first token leads to unlikely continuations: greedy decoding
+finds a sequence of probability $\gv{c07_rnn/greedy_p}$, beam search with width 2 finds
+$\gv{c07_rnn/beam2_p}$.}
+
+\subsection{Architectures}
+Recurrent layers can be \vocab{stacked} (the hidden sequence of one layer is the input of the next)
+and made \vocab{bidirectional} (one RNN reads left to right, another right to left, and their states
+are concatenated), which helps whenever the whole input is available, as in tagging or encoding a
+sentence, but not for generating text left to right. Input/output patterns: many-to-one
+(classification), many-to-many aligned (tagging), and many-to-many unaligned, the
+\vocab{encoder--decoder} or \vocab{seq2seq} model: an encoder RNN reads the source into a final state,
+which initialises a decoder RNN that generates the target one token at a time, feeding back each
+generated token. Squeezing a whole sentence into one fixed vector is the bottleneck that attention
+(\cref{ch:transformer}) removes.
+
+\subsection{Teacher forcing}
+During training the decoder is fed the \emph{true} previous token rather than its own prediction:
+\vocab{teacher forcing}. It makes training stable and parallel across time steps (for the loss), but
+at inference the model must consume its own outputs, a distribution it never saw during training
+(\vocab{exposure bias}); early mistakes can compound. Scheduled sampling, which gradually feeds the
+model's own predictions during training, is one mitigation.
+
+\subsection{Beam search}
+Decoding should find $\argmax_{\y}\prod_tP(y_t\mid y_{<t},\x)$, but the number of sequences is
+$V^T$. \vocab{Greedy} decoding takes the best token at each step; \vocab{beam search} keeps the $k$
+best partial sequences (by total log-probability) at each step.
+
+\codefile[\script{c07_rnn}]{gen/dl/snip/c07_rnn-beam.py}
+
+\begin{example}[Greedy is not optimal]
+	Tokens $a,b,c$; $P(\text{first})=(0.5,0.4,0.1)$; after $a$ the next token is $a,b,c$ with
+	probabilities $(0.4,0.3,0.3)$, after $b$ $(0.9,0.05,0.05)$, after $c$ $(0.34,0.33,0.33)$; three
+	steps. Greedy picks $a$ first and returns \pt{\gv{c07_rnn/greedy_seq}} with probability
+	$\gv{c07_rnn/greedy_p}$. Beam search with $k=2$ keeps $b$ alive and returns
+	\pt{\gv{c07_rnn/beam2_seq}} with probability $\gv{c07_rnn/beam2_p}$, which brute-force enumeration
+	of all $27$ sequences confirms is the optimum. With $k=V^T$ beam search is exhaustive (asserted).
+\end{example}
+Beam search favours short outputs (each extra token multiplies by a probability below one), so scores
+are usually length-normalised. For open-ended generation, sampling methods (\cref{ch:llm}) produce
+less repetitive text than beam search.
+
+\section{RNNs for time series, and where Transformers win}
+\prototype{Forecasting tomorrow's load from the last 60 days of hourly readings.}
+
+Why LSTMs suit time series: they process observations in order with a state that summarises the
+past, handle variable-length histories, update the forecast online in $O(1)$ per new observation
+without reprocessing history, and their gates can keep slow trends while reacting to recent changes.
+They need comparatively little data and memory. In practice, for many tabular forecasting problems
+strong baselines (seasonal naive, exponential smoothing, gradient-boosted trees on lag features) are
+hard to beat, and should be tried first.
+
+Where Transformers (\cref{ch:transformer}) beat RNNs:
+\begin{itemize}
+	\ii \textbf{Parallelism}: an RNN must compute $\h_1,\h_2,\dots$ one after another; self-attention
+	processes all positions of a training sequence at once, so it uses GPUs far better.
+	\ii \textbf{Path length}: information between positions $i$ and $j$ passes through $|i-j|$
+	recurrent steps in an RNN but one attention step in a Transformer, so long-range dependencies are
+	easier to learn.
+	\ii \textbf{Scaling}: with enough data and compute, Transformers keep improving with size.
+\end{itemize}
+Their cost: attention is quadratic in sequence length, and generation needs a growing KV cache rather
+than a fixed-size state; this is why recurrent-style and state-space models remain active research for
+very long sequences.
+
+\begin{remark}
+	\trap ``LSTMs solve the vanishing gradient problem completely.'' They mitigate it along the cell
+	path when the forget gate stays open; with $f<1$ the signal still decays geometrically, and the
+	gradient through $\h$ still vanishes. LSTMs also do not fix \emph{exploding} gradients: clip them.
+\end{remark}
+
+\section{CTC, briefly}
+\prototype{The alignment \pt{hh-e-ll-ll-oo} collapses to \pt{\gv{c07_rnn/collapse_demo}}: merge
+repeats, then delete blanks.}
+
+In speech or handwriting recognition the input sequence (audio frames) is much longer than the label
+sequence and the alignment is unknown. \vocab{Connectionist temporal classification} \cite{ctc} lets the
+network emit, per frame, a distribution over labels plus a \vocab{blank} symbol. An \vocab{alignment}
+(one symbol per frame) maps to a label sequence by merging repeated symbols and then deleting blanks;
+the blank is what allows genuine double letters (\pt{l-l}). The CTC loss is
+$-\log\sum_{\text{alignments }\pi\to\y}\prod_tP(\pi_t\mid\x)$, computed by dynamic programming.
+
+\codefile[\script{c07_rnn}]{gen/dl/snip/c07_rnn-ctc.py}
+
+\begin{example}[CTC by brute force]
+	Four frames, symbols $\{-,a,b\}$, target $ab$. Of the $\gv{c07_rnn/ctc_total}$ possible alignments
+	exactly $\gv{c07_rnn/ctc_npaths}$ collapse to $ab$: \pt{\gv{c07_rnn/ctc_paths}}. Summing their
+	probabilities under random per-frame softmaxes gives a loss of $\gv{c07_rnn/ctc_loss}$, equal to
+	\pt{F.ctc\_loss} (which uses the dynamic programme instead of enumeration).
+\end{example}
+
+\begin{moral}
+	An RNN is a deep network unrolled in time with tied weights; its gradients are repeated matrix
+	products, hence vanishing and exploding. LSTM and GRU add an additive, gated memory path; Transformers
+	replace recurrence with attention for parallelism and short paths.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	How many parameters does a single-layer LSTM with input size 50 and hidden size 64 have (PyTorch
+	convention)? A GRU of the same size?
+	\begin{hint}$4[H(D+H)+2H]$ and $3[\cdot]$.\end{hint}
+	\begin{sol}
+		$H(D+H)+2H=64\cdot114+128=\gv{c07_rnn/pa_blk}$. LSTM: $\gv{c07_rnn/pa_lstm}$; GRU:
+		$\gv{c07_rnn/pa_gru}$ (both checked in PyTorch).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A bidirectional single-layer LSTM with hidden size 64 feeds a linear layer that classifies the final
+	output into 5 classes. What is the input size of the linear layer, and how many parameters does it have?
+	\begin{hint}The two directions are concatenated.\end{hint}
+	\begin{sol}$2\cdot64=128$ inputs; $128\cdot5+5=\gv{c07_rnn/pb_lin}$ parameters.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	For the scalar RNN $h_t=\tanh(w h_{t-1}+u x_t)$, show $|\partial h_T/\partial h_k|\le|w|^{T-k}$ and
+	conclude what happens for $|w|<1$. Why does $|w|>1$ not guarantee an explosion?
+	\begin{hint}$|\tanh'|\le1$.\end{hint}
+	\begin{sol}
+		$\partial h_t/\partial h_{t-1}=w(1-h_t^2)$ with $0<1-h_t^2\le1$, so the product of $T-k$ factors has
+		absolute value at most $|w|^{T-k}$, which vanishes geometrically for $|w|<1$. For $|w|>1$ the factors
+		$1-h_t^2$ can be small (saturation), so the product may still shrink: large weights push the $\tanh$
+		into its flat region.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Why is a bidirectional LSTM unsuitable for next-word prediction, but fine for named-entity tagging?
+	\begin{hint}What does the backward direction see?\end{hint}
+	\begin{sol}
+		The backward RNN at position $t$ has read the tokens after $t$; for next-word prediction that leaks the
+		answer (and is unavailable at generation time). In tagging the whole sentence is given, and the right
+		context legitimately helps.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	In an LSTM, what values of the forget gate $\bm f$ and input gate $\bm i$ make the cell copy its previous
+	content unchanged, and what values make it overwrite the content completely? Which gate's bias would you
+	initialise to a positive value, and why?
+	\begin{hint}$\bc_t=\bm f\had\bc_{t-1}+\bm i\had\bm g$.\end{hint}
+	\begin{sol}
+		Copy: $\bm f=\one$, $\bm i=\zero$. Overwrite: $\bm f=\zero$, $\bm i=\one$ (then $\bc_t=\bm g_t$). Initialise
+		the forget-gate bias positive so that $\bm f$ starts near $1$: the cell remembers by default and gradients
+		flow through many steps early in training.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	With $V=10{,}000$ tokens and output length $20$, how many sequences does exhaustive decoding consider?
+	How many partial hypotheses does beam search with $k=5$ score at each step?
+	\begin{hint}Each beam is extended by every token.\end{hint}
+	\begin{sol}$V^T=10^{80}$ sequences. Beam search scores $kV=\gv{c07_rnn/pf_beam}$ extensions per step and keeps $5$.\end{sol}
+\end{problem}

@@ -1,4 +1,4 @@
-RESUME HERE: ch13 done; next = ch14 Statistics interviewers ask (~6 pages, scipy.stats).
+RESUME HERE: DONE — Classical Machine Learning.pdf: 170 pages, 142 problems (67 in Ch. 19) with hints+solutions, 97 rapid-fire items, 203 library cross-checks passing, 0 overfull >2pt, 0 undefined refs/stubs.
 
 # Classical Machine Learning — progress log
 
@@ -42,7 +42,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - Ch16: condition number ⇔ zig-zag; SGD noise; convergence-rate table.
 
 ## Chapter checklist
-- [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
+- [x] 00 Preface (how to use, what placements ask, sources, reproducibility, dependency chart)
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
 - [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
@@ -56,14 +56,20 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
 - [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
 - [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
-- [ ] 14 Statistics
-- [ ] 15 Data prep ★
-- [ ] 16 Optimisation
-- [ ] 17 Implement it
-- [ ] 18 Rapid-fire (80–100)
-- [ ] 19 Problems (≥60)
-- [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
+- [x] 14 Statistics (c14_stats.py, c14_problems.py)
+- [x] 15 Data prep ★ (c15_dataprep.py incl. SMOTE + target-encoding leakage; c15_problems.py)
+- [x] 16 Optimisation (c16_optim.py, c16_problems.py)
+- [x] 17 Implement it (c17_implement.py: 11 implementations asserted vs sklearn + 7 in earlier chapters)
+- [x] 18 Rapid-fire (97 items)
+- [x] 19 Problems (67 in ch19; 142 problems in the book; numbers from c19_problems.py)
+- [x] Read-through (pdftotext grep for stub/TODO/??/undefined: clean; log: no undefined refs/citations; overfull >2pt: 0), fix list applied, final build
 
 ## Log
 - Session 1: template + test book built; ML skeleton compiles.
 - Lesson: never put [ ] inside a proof's optional title; bold-vector macros are brace-wrapped so \nabla_\x works; use \script{name} for file paths.
+
+- Fix list from the read-through (all applied): preface \trap punctuation; dependency chart edges simplified;
+  \code drops spaces (url) → \texttt for snippets with spaces; 4D solution starts with text before display;
+  appendix hints/solutions set in \small to keep the book under 180 pages.
+- Known limitation: the stmaryrd bold-font substitution warning is harmless (font fallback only).
+- DONE: 170 pages; 142 problems; 97 rapid-fire; 203 checks; all figures TikZ/pgfplots from gen/ml/data/*.dat.

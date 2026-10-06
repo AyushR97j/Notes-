@@ -1,0 +1,520 @@
+\chapter{Problems}
+\label{ch:problems}
+\bigproblemset
+
+Seventy-three problems in the shape of online assessments and technical rounds: one-minute
+numerics, chains of shapes and counts, ``which statements are true'', and short derivations.
+Every number in the hints and solutions is computed (and where possible cross-checked against
+PyTorch) by \script{c14_problems}. Time yourself: a chili-free OA item should take under two
+minutes.
+
+\section{Neurons, activations and losses}
+
+\begin{problem}\onechili
+	A neuron has inputs $(2,-1,0.5)$, weights $(0.3,0.8,-1.2)$ and bias $0.5$. Give its output with a ReLU and with a
+	sigmoid transfer function.
+	\begin{hint}Weighted sum first.\end{hint}
+	\begin{sol}$z=0.6-0.8-0.6+0.5=\gv{c14_problems/p1_z}$; ReLU $\gv{c14_problems/p1_relu}$; sigmoid $\gv{c14_problems/p1_sig}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many parameters does a $64\to128\to64\to10$ fully connected network have?
+	\begin{hint}$(n_\text{in}+1)n_\text{out}$ per layer.\end{hint}
+	\begin{sol}$\gv{c14_problems/p2_a}+\gv{c14_problems/p2_b}+\gv{c14_problems/p2_c}=\gv{c14_problems/p2}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which Boolean functions of two inputs can a single perceptron compute: AND, OR, NAND, XOR, XNOR?
+	\begin{hint}Draw the four points.\end{hint}
+	\begin{sol}AND, OR and NAND (linearly separable). XOR and XNOR need a hidden layer.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A perceptron with $\w=(1,-1)$, $b=0$, learning rate 1 sees $\x=(2,1)$ with label $y=-1$. Does it update, and to what?
+	\begin{hint}Update if $y(\w\T\x+b)\le0$.\end{hint}
+	\begin{sol}Margin $y(\w\T\x+b)=\gv{c14_problems/p4_marg}\le0$, so it updates: $\w=\gv{c14_problems/p4_w}$,
+	$b=\gv{c14_problems/p4_b}$. The new margin on this point is $\gv{c14_problems/p4_marg2}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which statements are true? (a) A deeper network has at least the representational capacity of a shallower one of the same
+	width. (b) A larger learning rate increases capacity. (c) Dropout increases capacity. (d) Adding training data increases
+	capacity. (e) Removing all activations makes any depth equivalent to one linear layer.
+	\begin{hint}Two are true.\end{hint}
+	\begin{sol}(a) and (e). Learning rate and data change what is learned, not what can be represented; dropout reduces
+	effective capacity.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Compute $\softmax(1,2,3)$ and the cross-entropy if the true class is the third.
+	\begin{hint}Subtract the max first if you like.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p6_p})$; $\CE=-\ln p_3=\gv{c14_problems/p6_ce}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A 5-class model outputs logits $(0.5,1.5,-0.5,2.0,0)$ and the true class is 2. Give the predicted class, its confidence, the
+	probability of the true class, and the loss.
+	\begin{hint}Exponentiate, sum, divide.\end{hint}
+	\begin{sol}$e^{\z}=(\gv{c14_problems/p7_e})$, sum $\gv{c14_problems/p7_sum}$. Predicted class $\gv{c14_problems/p7_pred}$ with
+	confidence $\gv{c14_problems/p7_pmax}$; $p_2=\gv{c14_problems/p7_p1}$; $\CE=\gv{c14_problems/p7_ce}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A binary classifier outputs $p=0.8$. Give the BCE loss when the label is $0$ and when it is $1$.
+	\begin{hint}$-\log(1-p)$ and $-\log p$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p8_y0}$ and $\gv{c14_problems/p8_y1}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Compute $\sigma'(0)$ and $\sigma'(2)$. What does the first number imply for a 10-layer sigmoid network?
+	\begin{hint}$\sigma'=\sigma(1-\sigma)$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p9_0}$ and $\gv{c14_problems/p9_2}$. Each layer multiplies the backpropagated gradient by at most
+	$0.25$ from the activation alone: at most $0.25^{10}\approx10^{-6}$ over ten layers.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Classify each as an activation function, a loss or an output map: tanh, hinge, softmax, GELU, Huber, sigmoid, KL divergence, ELU.
+	\begin{hint}Losses compare predictions with targets.\end{hint}
+	\begin{sol}Activations: tanh, GELU, ELU (and sigmoid in hidden layers). Losses: hinge, Huber, KL divergence. Output maps:
+	softmax, sigmoid.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	For logits $(2,0)$ give the probability of the first class at temperatures $1$, $0.5$ and $2$.
+	\begin{hint}$\sigma(2/T)$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p11_10}$, $\gv{c14_problems/p11_05}$, $\gv{c14_problems/p11_20}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	With label smoothing $\eps=0.2$ and $K=4$ classes, what is the target vector for true class 1, and the loss for a prediction
+	$(0.7,0.1,0.1,0.1)$? Compare with the unsmoothed loss.
+	\begin{hint}$(1-\eps)\y+\eps/K$.\end{hint}
+	\begin{sol}Target $(\gv{c14_problems/p12_q})$; smoothed loss $\gv{c14_problems/p12_ce}$ (equal to PyTorch's
+	\code{label_smoothing=0.2}), unsmoothed $\gv{c14_problems/p12_ce_hard}$.\end{sol}
+\end{problem}
+
+\section{Backpropagation and optimisation}
+
+\begin{problem}\twochili
+	A 1-1-1 network: $z_1=w_1x+b_1$, $h=\relu(z_1)$, $\hat y=w_2h+b_2$, loss $\frac12(\hat y-y)^2$, with $x=2$, $w_1=0.5$, $b_1=0$,
+	$w_2=-1$, $b_2=0.5$, $y=1$. Do one forward pass, one backward pass and one SGD step with $\eta=0.1$.
+	\begin{hint}$\delta_2=\hat y-y$, $\delta_1=\delta_2w_2\,\ind{z_1>0}$.\end{hint}
+	\begin{sol}Forward: $z_1=\gv{c14_problems/p13_z1}$, $h=\gv{c14_problems/p13_h1}$, $\hat y=\gv{c14_problems/p13_yh}$,
+	$\Loss=\gv{c14_problems/p13_L}$. Backward: $\delta_2=\gv{c14_problems/p13_d2}$, $\partial\Loss/\partial w_2=\gv{c14_problems/p13_gw2}$,
+	$\partial\Loss/\partial b_2=\gv{c14_problems/p13_d2}$, $\delta_1=\gv{c14_problems/p13_d1}$, $\partial\Loss/\partial w_1=\gv{c14_problems/p13_gw1}$,
+	$\partial\Loss/\partial b_1=\gv{c14_problems/p13_gb1}$ (all equal to autograd). Update: $w_1=\gv{c14_problems/p13_w1n}$,
+	$b_1=\gv{c14_problems/p13_b1n}$, $w_2=\gv{c14_problems/p13_w2n}$, $b_2=\gv{c14_problems/p13_b2n}$; the loss drops to
+	$\gv{c14_problems/p13_Ln}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A sigmoid neuron without bias has $\w=(0.1,-0.2)$, input $\x=(1,2)$, label $1$ and BCE loss. Give $\partial\Loss/\partial\w$.
+	\begin{hint}$(\sigma(z)-y)\x$.\end{hint}
+	\begin{sol}$\sigma(-0.3)=\gv{c14_problems/p14_p}$, so the gradient is $(\gv{c14_problems/p14_g})$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Give $\partial\CE/\partial\z$ for logits $(1,2,3)$ and true class 1.
+	\begin{hint}$\bm p-\y$.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p15_g})$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A batch of 16 passes through a linear layer $128\to64$. Give the shapes of $\W$, $\partial\Loss/\partial\W$, the layer output and
+	$\partial\Loss/\partial\X$.
+	\begin{hint}A gradient has the shape of its variable.\end{hint}
+	\begin{sol}$\W$ and its gradient: $\shp{64,128}$; output and its gradient: $\shp{16,64}$; $\partial\Loss/\partial\X$: $\shp{16,128}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Give an upper bound on how much six sigmoid activations can shrink a backpropagated gradient (ignoring weights).
+	\begin{hint}$\max\sigma'=1/4$.\end{hint}
+	\begin{sol}$(1/4)^6=\gv{c14_problems/p17}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Estimate $f'(2)$ for $f(w)=w^3$ with $h=0.01$ using the centred and the forward difference. Which is closer to $12$, and why?
+	\begin{hint}Truncation errors $O(h^2)$ and $O(h)$.\end{hint}
+	\begin{sol}Centred $\gv{c14_problems/p18_num}$, forward $\gv{c14_problems/p18_fwd}$. The centred difference cancels the
+	$h f''$ term, leaving an $O(h^2)$ error.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	SGD with momentum (PyTorch convention), $\eta=0.1$, $\beta=0.9$, starts at $\theta=0$ and sees a constant gradient $1$. Give
+	$\theta$ after three steps.
+	\begin{hint}$v\gets0.9v+g$, $\theta\gets\theta-\eta v$.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p19})$, matching \pt{torch.optim.SGD}: each step is larger than the last because the velocity
+	accumulates toward $g/(1-\beta)=10$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Adam with $\eta=0.01$ and default betas starts at $\theta=1$ and sees gradients $0.2$ then $-0.1$. Give $\theta$ after each step.
+	\begin{hint}The first step is $\eta\,\sign(g)$.\end{hint}
+	\begin{sol}After step 1: $\gv{c14_problems/p20_th1}$. Step 2: $m=\gv{c14_problems/p20_m2}$, $v=\gv{c14_problems/p20_v2}$,
+	$\hat m=\gv{c14_problems/p20_mh2}$, $\hat v=\gv{c14_problems/p20_vh2}$, so $\theta=\gv{c14_problems/p20_th2}$ (as \pt{torch.optim.Adam}):
+	the parameter keeps moving down, more slowly, although the gradient changed sign.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	RMSProp with $\alpha=0.9$, $\eta=0.01$, $\eps=0$ sees a first gradient of $2$. What is the step?
+	\begin{hint}No bias correction in RMSProp.\end{hint}
+	\begin{sol}$v=0.1\cdot4=\gv{c14_problems/p21_v}$; step $0.01\cdot2/\sqrt{0.4}=\gv{c14_problems/p21_step}$ (checked in PyTorch).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A dataset has $45{,}000$ examples; batch size $64$; $20$ epochs. How many iterations per epoch and in total?
+	\begin{hint}Round up.\end{hint}
+	\begin{sol}$\gv{c14_problems/p22_it}$ per epoch, $\gv{c14_problems/p22_tot}$ in total.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Cosine decay from $0.2$ to $0$ over $120$ epochs: what is the learning rate at epoch $30$?
+	\begin{hint}$\frac12\eta_0(1+\cos(\pi t/T))$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p23}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Linear warm-up to $3\times10^{-4}$ over $500$ steps: learning rate at step $100$?
+	\begin{hint}Proportional.\end{hint}
+	\begin{sol}$\gv{c14_problems/p24}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Clip the gradient $(1,2,2)$ to norm $1.5$.
+	\begin{hint}Its norm is $3$.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p25})$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A quadratic loss has Hessian eigenvalues $0.5$ and $8$. Give the largest stable step for gradient descent, the best fixed step, and the
+	resulting contraction factor per step.
+	\begin{hint}$2/\lambda_{\max}$, $2/(\lambda_{\min}+\lambda_{\max})$, $(\kappa-1)/(\kappa+1)$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p26_max}$, $\gv{c14_problems/p26_opt}$, $\gv{c14_problems/p26_rate}$: slow, because
+	$\kappa=16$.\end{sol}
+\end{problem}
+
+\section{Initialisation, normalisation, regularisation}
+
+\begin{problem}\onechili
+	Give the He-normal standard deviation for fan-in $512$ and the Xavier-uniform bound for a $300\to100$ layer.
+	\begin{hint}$\sqrt{2/n_\text{in}}$; $\sqrt{6/(n_\text{in}+n_\text{out})}$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p27_he}$ and $\gv{c14_problems/p27_xav}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	BatchNorm in training mode receives $(2,4,6,8)$ for one feature, with $\gamma=2$, $\beta=1$. Give the outputs.
+	\begin{hint}Biased variance.\end{hint}
+	\begin{sol}$\mu=5$, $\sigma^2=\gv{c14_problems/p28_var}$; outputs $(\gv{c14_problems/p28_y})$, as \pt{nn.BatchNorm1d}.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many learnable parameters and buffers does \pt{BatchNorm2d(128)} have?
+	\begin{hint}$\gamma$, $\beta$; running mean and variance.\end{hint}
+	\begin{sol}$\gv{c14_problems/p29_p}$ parameters and $\gv{c14_problems/p29_b}$ running-statistic buffers (plus a step counter).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Apply LayerNorm (no affine) to $(2,4,6)$.
+	\begin{hint}Normalise across the three features.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p30})$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	With inverted dropout $p=0.25$, by what factor are kept activations scaled during training, and what happens at test time?
+	\begin{hint}Keep probability $0.75$.\end{hint}
+	\begin{sol}By $1/0.75=\gv{c14_problems/p31_scale}$; nothing at test time.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	The loss is $E(w)+\lambda w^2$ with $\lambda=0.05$. At $w=2$ the data gradient is $0.5$. Give $w$ after one SGD step with $\eta=0.1$.
+	\begin{hint}Add $2\lambda w$.\end{hint}
+	\begin{sol}$2-0.1(0.5+0.2)=\gv{c14_problems/p32}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which are true? (a) BatchNorm uses batch statistics at inference. (b) LayerNorm works with batch size 1. (c) Dropout is a no-op at
+	inference with inverted dropout. (d) Weight decay and L2 regularisation are identical under Adam. (e) He initialisation preserves
+	activation variance in ReLU networks.
+	\begin{hint}Three are true.\end{hint}
+	\begin{sol}(b), (c), (e).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Training accuracy $99\%$, validation $71\%$, and validation loss rising since epoch 6 of 40. Name the problem and three remedies.
+	\begin{hint}Gap and trend.\end{hint}
+	\begin{sol}Overfitting. Early stopping at the best epoch; augmentation, weight decay or dropout; more data or a smaller model.\end{sol}
+\end{problem}
+
+\section{Convolutional networks}
+
+\begin{problem}\twochili
+	A $128\times128\times3$ image passes through: conv $7\times7$, 64 filters, stride 2, padding 3; max-pool $3\times3$, stride 2, padding 1;
+	conv $3\times3$, 128 filters, padding 1; conv $3\times3$, 256 filters, stride 2, padding 1. Give each output shape, each parameter count
+	and the total.
+	\begin{hint}Shapes from the formula, parameters $(k^2C_\text{in}+1)C_\text{out}$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p35_s0}$ ($\gv{c14_problems/p35_p0}$); $\gv{c14_problems/p35_s1}$ ($\gv{c14_problems/p35_p1}$);
+	$\gv{c14_problems/p35_s2}$ ($\gv{c14_problems/p35_p2}$); $\gv{c14_problems/p35_s3}$ ($\gv{c14_problems/p35_p3}$); total
+	$\gv{c14_problems/p35_tot}$, all checked in PyTorch.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Output size of a $3\times3$ convolution with dilation 3, no padding, stride 1, on a $32\times32$ input?
+	\begin{hint}Effective kernel $d(k-1)+1=7$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p36}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Parameters of a $5\times5$ convolution from 32 to 64 channels with bias, and its MACs for a $28\times28$ output.
+	\begin{hint}$k^2C_\text{in}C_\text{out}H_oW_o$ MACs.\end{hint}
+	\begin{sol}$\gv{c14_problems/p37_p}$ parameters; $\gv{c14_problems/p37_mac}$ MACs.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Receptive field of four $3\times3$ convolutions (stride 1), then a $2\times2$ max-pool (stride 2), then a $3\times3$ convolution.
+	\begin{hint}$r\mathrel{+}=(k-1)j$, $j\mathrel{*}=s$.\end{hint}
+	\begin{sol}$r$: $3,5,7,9$; pool: $10$, $j=2$; last conv: $10+2\cdot2=\gv{c14_problems/p38}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Compare the parameters of 10 dense neurons on a flattened $32\times32\times3$ image with 10 convolution filters of size $3\times3$.
+	\begin{hint}Weight sharing.\end{hint}
+	\begin{sol}Dense: $\gv{c14_problems/p39_fc}$; convolution: $\gv{c14_problems/p39_conv}$, independent of image size.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Parameters (no bias) of a depthwise-separable $3\times3$ convolution from 256 to 512 channels, and of a standard one.
+	\begin{hint}$9C_\text{in}+C_\text{in}C_\text{out}$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p40}$ vs $\gv{c14_problems/p40_std}$, about $\gv{c14_problems/p40_ratio}\times$ fewer.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A $7\times7\times512$ feature map feeds a 1000-way classifier. Count the classifier's parameters with global average pooling and with
+	flattening.
+	\begin{hint}GAP leaves 512 numbers.\end{hint}
+	\begin{sol}GAP: $\gv{c14_problems/p41}$; flatten: $\gv{c14_problems/p41_fc}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Output size of a transposed convolution with $k=4$, $s=2$, $p=1$ on a $7\times7$ input?
+	\begin{hint}$(n-1)s-2p+k$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p42}$: it doubles the size.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Parameters of a $1\times1$ convolution from 512 to 128 channels with bias? What does it change?
+	\begin{hint}$C_\text{in}C_\text{out}+C_\text{out}$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p43}$; it changes the number of channels, not the spatial size.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	IoU of boxes $(0,0,4,6)$ and $(2,3,6,9)$ (corners $x_1,y_1,x_2,y_2$).
+	\begin{hint}Overlap is $2\times3$.\end{hint}
+	\begin{sol}Intersection $\gv{c14_problems/p44_i}$, union $\gv{c14_problems/p44_u}$, IoU $\gv{c14_problems/p44}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which statements are true? (a) Max pooling has learnable weights. (b) A $1\times1$ convolution with stride 1 reduces spatial size.
+	(c) Weight sharing is why a CNN has fewer parameters than a dense network on images. (d) ResNet's identity shortcuts add parameters.
+	(e) Fine-tuning updates pretrained weights.
+	\begin{hint}Two are true.\end{hint}
+	\begin{sol}(c) and (e).\end{sol}
+\end{problem}
+
+\section{Recurrent networks}
+
+\begin{problem}\onechili
+	Parameter counts (PyTorch convention) of a single-layer LSTM and GRU with input 32 and hidden 64.
+	\begin{hint}One gate block is $H(D+H)+2H$.\end{hint}
+	\begin{sol}Block $\gv{c14_problems/p45_blk}$; LSTM $\gv{c14_problems/p45_lstm}$; GRU $\gv{c14_problems/p45_gru}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Parameters of a 2-layer bidirectional LSTM with input 16 and hidden 32.
+	\begin{hint}Layer 2's input is $2H$.\end{hint}
+	\begin{sol}Layer 1: $\gv{c14_problems/p46_l1}$; layer 2: $\gv{c14_problems/p46_l2}$; total $\gv{c14_problems/p46}$ (PyTorch agrees).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A scalar RNN $h_t=\tanh(x_t+0.5h_{t-1})$, $h_0=0$, reads $1,0,0$. Give $h_1,h_2,h_3$. What does the sequence show?
+	\begin{hint}Unroll.\end{hint}
+	\begin{sol}$(\gv{c14_problems/p47})$: the memory of the input fades geometrically.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A decoder has $P(a)=0.6$, $P(b)=0.4$ at step 1; after $a$ the next token is $a$ or $b$ with $0.55/0.45$, after $b$ with $0.9/0.1$. Compare
+	greedy decoding with beam search of width 2 over two steps.
+	\begin{hint}Enumerate the four sequences.\end{hint}
+	\begin{sol}Greedy: \pt{\gv{c14_problems/p48_greedy}} with probability $\gv{c14_problems/p48_gp}$. Beam 2 keeps both first tokens and finds
+	\pt{\gv{c14_problems/p48_best}} with $\gv{c14_problems/p48_bp}$, the optimum.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	\pt{nn.LSTM(10, 20, batch\_first=True, bidirectional=True)} receives input of shape $\shp{8,12,10}$. Shapes of the output and of $\h_n$?
+	\begin{hint}Directions concatenate in the output.\end{hint}
+	\begin{sol}Output $\shp{\gv{c14_problems/p49_o}}$; $\h_n$ $\shp{\gv{c14_problems/p49_h}}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which are true? (a) LSTMs remove vanishing gradients entirely. (b) Gradient clipping addresses exploding gradients. (c) Teacher forcing
+	feeds the model its own predictions during training. (d) A GRU has fewer parameters than an LSTM of the same size. (e) BPTT sums the
+	gradients of shared weights over time steps.
+	\begin{hint}Three are true.\end{hint}
+	\begin{sol}(b), (d), (e).\end{sol}
+\end{problem}
+
+\section{Attention and Transformers}
+
+\begin{problem}\twochili
+	Self-attention on three tokens with $\Q=\K=\begin{psmallmatrix}1&1\\2&0\\0&1\end{psmallmatrix}$, $\V=\begin{psmallmatrix}1&0\\0&1\\1&1\end{psmallmatrix}$,
+	$d_k=2$. Compute the scores, weights and output for token 1.
+	\begin{hint}Row 1 of $\Q\K\T/\sqrt2$.\end{hint}
+	\begin{sol}Scores $(\gv{c14_problems/p50_s})$; weights $(\gv{c14_problems/p50_a})$; output $(\gv{c14_problems/p50_o})$ (PyTorch agrees).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Parameters of multi-head attention with $\dmodel=384$ and $6$ heads; head size?
+	\begin{hint}$4d^2+4d$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p51}$; $d_k=\gv{c14_problems/p51_dk}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Parameters of one Transformer encoder layer with $\dmodel=256$, $\dff=1024$.
+	\begin{hint}Attention, FFN, two LayerNorms.\end{hint}
+	\begin{sol}$\gv{c14_problems/p52_att}+\gv{c14_problems/p52_ffn}+1{,}024=\gv{c14_problems/p52}$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	A decoder-only model: 6 Transformer layers with $\dmodel=512$, 8 heads and $\dff=2048$ (PyTorch's encoder layer used with a causal mask), vocabulary $32{,}000$,
+	512 learned positions, tied output layer, a final LayerNorm. Count its parameters.
+	\begin{hint}Embeddings plus six layers plus $2d$.\end{hint}
+	\begin{sol}Embeddings $\gv{c14_problems/p53_emb}$; each layer $\gv{c14_problems/p53_layer}$; total about $\gv{c14_problems/p53_tot}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Memory of the attention probabilities of one layer for $n=2048$ tokens and 16 heads in fp16, batch 1?
+	\begin{hint}$n^2h\cdot2$ bytes.\end{hint}
+	\begin{sol}$\gv{c14_problems/p54}$\,MiB, the motivation for FlashAttention.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	KV-cache size for 12 layers, 12 heads of size 64, 1024 tokens, batch 4, fp16.
+	\begin{hint}$2\cdot L\cdot h\cdot d_h\cdot T\cdot B\cdot2$ bytes.\end{hint}
+	\begin{sol}$\gv{c14_problems/p55}$\,MiB.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	How many entries of a $4\times4$ causal attention mask are blocked, and which?
+	\begin{hint}Strict upper triangle.\end{hint}
+	\begin{sol}$\gv{c14_problems/p56}$: every $(i,j)$ with $j>i$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Sinusoidal encoding for position $2$ with $\dmodel=4$.
+	\begin{hint}Frequencies $1$ and $1/100$.\end{hint}
+	\begin{sol}$(\sin2,\cos2,\sin0.02,\cos0.02)=(\gv{c14_problems/p57})$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which are true? (a) Scaling by $\sqrt{d_k}$ keeps attention logits at unit variance. (b) The number of heads changes the parameter count
+	of multi-head attention. (c) A KV cache stores queries. (d) Self-attention without positional encodings is permutation-equivariant. (e)
+	Attention cost grows quadratically with sequence length.
+	\begin{hint}Three are true.\end{hint}
+	\begin{sol}(a), (d), (e).\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Explain in three sentences why the Transformer replaced the RNN for machine translation.
+	\begin{hint}Parallelism, path length, scaling.\end{hint}
+	\begin{sol}Self-attention processes all positions of a sentence in parallel during training, while an RNN must step through time. Any two
+	positions interact through one attention operation instead of a chain of recurrent steps, so long-range dependencies are easier to learn
+	and gradients do not vanish across the sentence. Together these let much larger models be trained on much more data, and quality kept
+	improving with scale.\end{sol}
+\end{problem}
+
+\section{LLMs and generative models}
+
+\begin{problem}\onechili
+	LoRA with $r=4$ on four $2048\times2048$ matrices in each of 24 layers: trainable parameters, and the fraction of those matrices.
+	\begin{hint}$r(d+d)$ per matrix.\end{hint}
+	\begin{sol}$\gv{c14_problems/p58_lora}$ of $\gv{c14_problems/p58_full}$, i.e.\ $\gv{c14_problems/p58_pct}\%$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A language model's per-token cross-entropy is $2.0$ nats. What is its perplexity?
+	\begin{hint}$e^{\CE}$.\end{hint}
+	\begin{sol}$\gv{c14_problems/p59}$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Next-token probabilities $(0.5,0.2,0.15,0.1,0.05)$; top-$p$ sampling with $p=0.8$. Which tokens remain, and with what probabilities?
+	\begin{hint}Cumulative sums $(\gv{c14_problems/p60_cum})$.\end{hint}
+	\begin{sol}The first $\gv{c14_problems/p60_n}$, renormalised: $(\gv{c14_problems/p60})$.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Weight memory of a 13-billion-parameter model in fp16, int8 and 4-bit?
+	\begin{hint}Bytes per parameter.\end{hint}
+	\begin{sol}$\gv{c14_problems/p61_16}$\,GB, $\gv{c14_problems/p61_8}$\,GB, $\gv{c14_problems/p61_4}$\,GB.\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A VAE encoder outputs $\bmu=(0.5,-0.5)$, $\bm\sigma=(1,0.5)$. Compute the KL term against $\Normal(\zero,\I)$.
+	\begin{hint}Sum the per-dimension closed form.\end{hint}
+	\begin{sol}$\gv{c14_problems/p62_a}+\gv{c14_problems/p62_b}=\gv{c14_problems/p62}$ (\pt{torch.distributions} agrees).\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Which are true? (a) LoRA reduces inference latency after merging. (b) Masked language modelling uses context on both sides. (c) Raising
+	the temperature makes sampling more random. (d) BLEU measures factual correctness. (e) RAG can reduce hallucination by grounding answers in
+	retrieved text.
+	\begin{hint}Three are true.\end{hint}
+	\begin{sol}(b), (c), (e).\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Derive the optimal discriminator of a GAN for fixed generator density $p_g$.
+	\begin{hint}Maximise $a\log D+b\log(1-D)$ pointwise.\end{hint}
+	\begin{sol}$V=\int\bigl[p_\text{data}\log D+p_g\log(1-D)\bigr]\dd\x$; the integrand's derivative in $D$ is $p_\text{data}/D-p_g/(1-D)$, zero at
+	$D^\star=p_\text{data}/(p_\text{data}+p_g)$, and the second derivative is negative.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Derive the gradient of the skip-gram negative-sampling loss with respect to the centre vector $\vv_c$.
+	\begin{hint}$\frac{d}{dz}\log\sigma(z)=1-\sigma(z)$.\end{hint}
+	\begin{sol}$\partial\Loss/\partial\vv_c=-(1-\sigma(\uu_o\T\vv_c))\uu_o+\sum_j(1-\sigma(-\uu_{n_j}\T\vv_c))\uu_{n_j}$: pull toward the context
+	vector, push away from the negatives (\cref{ch:generative} checks it against autograd).\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Show that the BatchNorm output is unchanged if every input in the batch is multiplied by $c>0$ and shifted by $d$, and conclude what this
+	means for the gradient with respect to the inputs.
+	\begin{hint}$\mu\to c\mu+d$, $\sigma\to c\sigma$ (ignoring $\eps$).\end{hint}
+	\begin{sol}$(cx_i+d-(c\mu+d))/(c\sigma)=(x_i-\mu)/\sigma$. Because the output is invariant along the directions $\one$ (shift) and $\x$
+	(scale), the input gradient is orthogonal to both: it sums to zero and has zero inner product with $\hat\x$.\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Show that the softmax Jacobian is $\diag(\bm p)-\bm p\bm p\T$ and that its rows sum to zero.
+	\begin{hint}Differentiate $p_i=e^{z_i}/\sum_ke^{z_k}$.\end{hint}
+	\begin{sol}$\partial p_i/\partial z_j=p_i\delta_{ij}-e^{z_i}e^{z_j}/(\sum_ke^{z_k})^2=p_i(\delta_{ij}-p_j)$. Row sum:
+	$p_i(1-\sum_jp_j)=0$, because the probabilities always sum to one.\end{sol}
+\end{problem}
+
+\begin{problem}\threechili
+	Prove that two stacked $3\times3$ convolutions (stride 1, no non-linearity between them) are equivalent to one $5\times5$ convolution, and
+	explain why the stacked version is still preferred.
+	\begin{hint}Convolution is associative: $K_2\star(K_1\star X)=(K_2*K_1)\star X$.\end{hint}
+	\begin{sol}Each output of the second layer is a linear combination of a $3\times3$ window of first-layer outputs, each of which is a linear
+	combination of a $3\times3$ input window; the union of windows is $5\times5$ and the composite weights form a $5\times5$ kernel (the
+	convolution of the two kernels). With a ReLU in between this equivalence breaks, which is the point: the stack has more non-linearity and,
+	per channel pair, $18$ instead of $25$ weights, though it can only express rank-constrained $5\times5$ kernels.\end{sol}
+\end{problem}
+
+\begin{problem}\threechili
+	Show that adding a constant $c$ to every logit leaves cross-entropy unchanged, and that scaling every logit by $a>1$ lowers the loss of a
+	correct (arg-max) prediction. What does this imply for training with cross-entropy on separable data?
+	\begin{hint}$\CE=\LSE(\z)-z_y$.\end{hint}
+	\begin{sol}$\LSE(\z+c)-(z_y+c)=\LSE(\z)-z_y$. If $z_y$ is the strict maximum, $\LSE(a\z)-az_y=\log\sum_ke^{a(z_k-z_y)}$ decreases in $a$
+	because every exponent with $k\ne y$ is negative and becomes more negative. On separable data the loss can therefore always be reduced by
+	scaling the weights up: without regularisation the weights grow without bound, which is one reason for weight decay and label smoothing.\end{sol}
+\end{problem}

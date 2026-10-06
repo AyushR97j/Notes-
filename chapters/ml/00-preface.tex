@@ -1,2 +1,99 @@
 \chapter*{Preface}
-\stub{preface}
+\addcontentsline{toc}{chapter}{Preface}
+\markboth{Preface}{Preface}
+
+This book is for a student preparing for machine-learning questions in Indian campus placements --- the
+on-campus online assessments and technical interviews at IITs, NITs and IIITs --- who wants to understand the
+material well enough to derive it, compute it by hand under time pressure, implement it from a blank file, and
+survive three ``why?''s in a row. Its companion, \otherbook{Deep Learning}, takes over where this one stops.
+
+\section*{What placements actually ask}
+A collection of 49 non-coding ML/DL questions from real company papers (Info Edge, Fujitsu's papers for IISc and
+IIT Kharagpur, Qualcomm's for IISc, and EXL) breaks down as: deep learning 22, supervised models 9,
+optimisation, loss and regularisation 7, preprocessing, NLP and miscellaneous 6, unsupervised 3, evaluation 1,
+probability and statistics 1. The online assessments mix three formats: one-line concept MCQs, numericals meant to
+be done by hand in a minute (fit a line to five points, $r^2$ from $r$, the 63\% bootstrap coverage, an IDF, a
+split's information gain), and ``which statements are true'' multi-selects (convexity of $\sin x$ and $\abs x$, what
+$\lambda$ does, bagging versus boosting, pitfalls of tree importances, $k$-means stopping conditions, why standardise
+before PCA). Interviews go deeper and decide the offer: rounds have covered means, distributions, correlation and
+covariance, $t$-, $z$- and p-values, confusion matrices, regression and trees; ML-engineer loops ask for derivations
+and NumPy implementations with follow-ups several levels deep. Topics absent from those 49 questions are \emph{not}
+skipped here; they are simply given less space.
+
+\section*{How each topic is built}
+Every topic gets four layers:
+\begin{enumerate}
+	\ii \textbf{intuition}, with an everyday analogy where one helps;
+	\ii \textbf{the precise definition or derivation};
+	\ii \textbf{a worked numerical in the shape an OA would set}, computed by code;
+	\ii \textbf{the trap} an interviewer or question-setter plants, in a green remark marked \trap
+\end{enumerate}
+The typography follows Evan Chen's \emph{An Infinitely Large Napkin}: each section opens with a
+\emph{prototypical example} in red; new terms appear in \vocab{blue}; theorems sit in blue boxes, worked examples
+in red boxes, remarks behind a green bar, quick questions behind a black bar, and a one-line \textbf{moral} in a
+green frame closes a topic. Chapter-end problems carry one to three chili peppers for difficulty
+(\chili\ easy, \chili\chili\ medium, \chili\chili\chili\ hard); hints and solutions are in the appendices, and every
+problem links to both. Chapter~\ref{ch:rapid} is a rapid-fire oral drill; Chapter~\ref{ch:problems} is a set of
+OA-style problems.
+
+\section*{How to read it}
+The chapters depend on each other roughly as below. Chapter~\ref{ch:maths} is a toolkit to consult rather than
+read straight through. For a two-week sprint before an OA, read the starred chapters (setup, linear and logistic
+regression, bias--variance, SVM, trees, ensembles, unsupervised, evaluation, data preparation), do the problems,
+then drill the rapid-fire chapter aloud.
+\begin{center}
+	\begin{tikzpicture}[node distance=0.55cm and 0.5cm, font=\scriptsize,
+			b/.style={draw, rounded corners, fill=blue!5, minimum width=1.9cm, minimum height=0.55cm, align=center},
+			s/.style={b, fill=orange!12}, ->, >=Stealth]
+		\node[s] (c1) {1 Setup};
+		\node[b, right=of c1] (c2) {2 Maths};
+		\node[s, below=of c1] (c3) {3 Linear reg.};
+		\node[s, right=of c3] (c4) {4 Bias--variance};
+		\node[s, right=of c4] (c5) {5 Logistic};
+		\node[b, below=of c3] (c6) {6 Generative};
+		\node[b, right=of c6] (c7) {7 $k$-NN};
+		\node[s, right=of c7] (c8) {8 SVM};
+		\node[s, below=of c6] (c9) {9 Trees};
+		\node[s, right=of c9] (c10) {10 Ensembles};
+		\node[s, right=of c10] (c11) {11 Unsupervised};
+		\node[b, below=of c9] (c12) {12 Semi-sup.};
+		\node[s, right=of c12] (c13) {13 Evaluation};
+		\node[b, right=of c13] (c14) {14 Statistics};
+		\node[s, below=of c12] (c15) {15 Data prep};
+		\node[b, right=of c15] (c16) {16 Optimisation};
+		\node[b, right=of c16] (c17) {17--19 Practice};
+		\draw (c1) -- (c3); \draw (c2) -- (c4); \draw (c3) -- (c4); \draw (c4) -- (c5);
+		\draw (c3) -- (c6); \draw (c4) -- (c7); \draw (c5) -- (c8);
+		\draw (c6) -- (c9); \draw (c9) -- (c10); \draw (c7) -- (c11);
+		\draw (c10) -- (c13); \draw (c13) -- (c14); \draw (c11) -- (c12);
+		\draw (c12) -- (c15); \draw (c15) -- (c16); \draw (c16) -- (c17);
+	\end{tikzpicture}
+\end{center}
+{\small Orange: topics that appeared in the OA papers described above.}
+
+\section*{Sources}
+The material is standard and is written here from the author's own understanding, then checked numerically. For
+deeper reading: James, Witten, Hastie and Tibshirani's \emph{An Introduction to Statistical Learning}
+\cite{islr}; Hastie, Tibshirani and Friedman's \emph{The Elements of Statistical Learning} \cite{esl}; Bishop's
+\emph{Pattern Recognition and Machine Learning} \cite{bishop}; Murphy's \emph{Probabilistic Machine Learning}
+\cite{murphy}; Shalev-Shwartz and Ben-David's \emph{Understanding Machine Learning} \cite{ssbd}; Chen and Guestrin
+on XGBoost \cite{xgboost}; Friedman on gradient boosting \cite{friedman2001}. Other papers are cited where a
+specific result is used. No benchmark numbers or model sizes are quoted from memory; everything numerical is
+computed.
+
+\section*{Reproducibility}
+Every worked numerical, table, plotted curve and quoted program output in this book is produced by one of
+$\gv{summary/scripts}$ Python scripts in \fpath{code/ml/}, run by \fpath{build.sh}, and inserted into the \LaTeX{}
+source automatically --- nothing is typed in by hand. Every from-scratch implementation is checked against the
+reference library (scikit-learn, SciPy, XGBoost, LightGBM, PyTorch) with an explicit \code{np.allclose} assertion;
+this build passed all $\gv{summary/checks}$ such checks, and a single mismatch stops the build. Seeds are fixed and
+everything runs on a CPU in seconds. Versions used for this build: Python $\gv{a00_versions/python}$, NumPy
+$\gv{a00_versions/numpy}$, SciPy $\gv{a00_versions/scipy}$, scikit-learn $\gv{a00_versions/sklearn}$, XGBoost
+$\gv{a00_versions/xgboost}$, LightGBM $\gv{a00_versions/lightgbm}$, PyTorch \texttt{\gv{a00_versions/torch}},
+Matplotlib $\gv{a00_versions/matplotlib}$ (used only to extract contour lines; every figure is drawn with TikZ and
+pgfplots). The book contains $\gv{summary/problems}$ problems with hints and solutions. To rebuild: \texttt{./build.sh ml}.
+
+The page layout, theorem boxes and problem/solution machinery are adapted from the source of \emph{An Infinitely
+Large Napkin} (GPL v3; see \fpath{latex/NOTICE.md}); none of its text is reused.
+
+\hfill --- Philospher

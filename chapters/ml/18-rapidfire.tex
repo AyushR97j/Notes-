@@ -1,5 +1,263 @@
 \chapter{Rapid-fire}
 \label{ch:rapid}
-\section{Rapid-fire answers}
-\stub{Rapid-fire answers}
+Ninety-seven questions in the form they are actually asked across the table, with answers you could say in under
+twenty seconds. Each points back to the chapter that justifies it. Cover the answers and test yourself; if an
+answer surprises you, read the chapter, not the answer.
 
+
+{\small
+	\section{Setup, maths and linear models}
+	\prototype{``Is $R^2=0.64$ good?'' --- ``It means 64\% of the variance of $y$ is explained by a linear fit; whether
+		that is good depends on the noise in the problem.''}
+
+	\rf{Loss versus risk?} Loss scores one prediction; risk is its expectation over the data distribution;
+	empirical risk is the average over your sample, which ERM minimises.
+
+	\rf{What is the generalisation gap?} Test (or validation) error minus training error. A large gap means
+	overfitting; a small gap with high error means underfitting.
+
+	\rf{Why three splits instead of two?} Choosing among models on the validation set biases its score upwards;
+	the test set must play no part in any choice so its score stays unbiased.
+
+	\rf{What is Bayes error?} The error of the best possible classifier for the distribution --- the irreducible
+	floor set by overlap of the classes, not the error of naive Bayes.
+
+	\rf{Why is the 0-1 loss not used for training?} It is non-convex and piecewise constant, so its gradient is
+	zero almost everywhere; we minimise convex surrogates (log, hinge, exponential) that upper-bound it.
+
+	\rf{Is $\max$ of convex functions convex? $\min$?} Max yes (epigraph is an intersection); min generally no ---
+	it can have two separate valleys.
+
+	\rf{Is $\sin x$ convex? $\abs x$?} $\sin x$ no (the chord from $0$ to $\pi$ lies below it); $\abs x$ yes, though not
+	differentiable at $0$.
+
+	\rf{$r=-0.8$; what is $R^2$ of a simple linear fit?} $0.64$; the sign disappears.
+
+	\rf{Covariance versus correlation?} Covariance has units and depends on scale; correlation is covariance divided
+	by both standard deviations, unit-free, in $[-1,1]$, linear association only.
+
+	\rf{Zero correlation means independence?} No: $y=x^2$ with symmetric $x$ has $r=0$ and total dependence.
+
+	\rf{Least squares from MLE?} Gaussian noise makes the negative log-likelihood proportional to the sum of squared
+	residuals.
+
+	\rf{Ridge from a prior?} MAP with a zero-mean Gaussian prior on the weights; $\lambda=\sigma^2/\tau^2$. Laplace prior
+	gives lasso.
+
+	\rf{Normal equations?} $\X\T\X\w=\X\T\y$; the residual is orthogonal to the column space of $\X$.
+
+	\rf{Why not invert $\X\T\X$?} Forming it squares the condition number; solve with QR or SVD.
+
+	\rf{When is $\X\T\X$ singular?} Perfect collinearity or more features than rows; ridge fixes it.
+
+	\rf{What does multicollinearity damage?} The variance and interpretability of individual coefficients, not the
+	predictions in the data range. Diagnose with VIF.
+
+	\rf{Can $R^2$ be negative?} On test data, yes: worse than predicting the training mean. On training data with an
+	intercept, no.
+
+	\rf{Why adjusted $R^2$?} Plain $R^2$ never falls when you add features, even noise; adjusted $R^2$ penalises the
+	count.
+
+	\rf{Gauss--Markov in one line?} With zero-mean, uncorrelated, equal-variance errors, OLS is the minimum-variance
+	linear unbiased estimator --- biased estimators like ridge can still have lower MSE.
+
+	\section{Regularisation and classifiers}
+	\prototype{``Increase $\lambda$: what happens to training error?'' --- ``It cannot go down.''}
+
+	\rf{Bias--variance decomposition?} Expected squared test error $=$ noise $+$ bias$^2+$ variance.
+
+	\rf{More data reduces bias or variance?} Variance. It cannot fix a model class that cannot represent the truth.
+
+	\rf{Effect of $\lambda$ in $E+\lambda\sum w^2$?} Larger $\lambda$: smaller weights, higher bias, lower variance,
+	training error up. $\lambda\to0$: unregularised fit; $\lambda\to\infty$: constant prediction.
+
+	\rf{Why does lasso give zeros and ridge not?} The $\ell_1$ subgradient at $0$ is an interval, so small
+	coefficients are thresholded to exactly zero; the $\ell_2$ penalty's derivative vanishes at $0$ and only shrinks.
+
+	\rf{When elastic net?} Correlated groups of features: lasso picks one arbitrarily, elastic net shares weight and
+	stays sparse.
+
+	\rf{Must you scale before ridge or lasso?} Yes: the penalty treats all coefficients alike, so units matter.
+
+	\rf{What is double descent?} Test error peaks where the model can just interpolate ($p\approx n$) and falls again as
+	parameters grow, for minimum-norm solutions.
+
+	\rf{Is logistic regression a linear classifier?} Yes; its boundary $\w\T\x+b=0$ is a hyperplane.
+
+	\rf{Gradient of log-loss?} $\X\T(\bm p-\y)/n$ --- prediction minus target, times input.
+
+	\rf{Why not MSE for logistic regression?} Non-convex in the weights and its gradient vanishes when the model is
+	confidently wrong; log-loss is the Bernoulli likelihood and convex.
+
+	\rf{What does a coefficient of $0.7$ mean in logistic regression?} One unit of that feature multiplies the odds by
+	$e^{0.7}\approx2$.
+
+	\rf{What happens with perfectly separable data?} The unregularised MLE does not exist; weights grow forever.
+	Regularise.
+
+	\rf{OvR versus OvO for 10 classes?} 10 versus 45 binary classifiers; softmax regression needs neither.
+
+	\rf{Can a perceptron learn XOR?} No; XOR is not linearly separable. Add a feature $x_1x_2$ or a hidden layer.
+
+	\rf{Naive Bayes' assumption?} Features are conditionally independent given the class.
+
+	\rf{Why Laplace smoothing?} An unseen word would make the whole product zero; adding pseudo-counts is a MAP
+	estimate under a Dirichlet prior.
+
+	\rf{Why are naive Bayes probabilities bad but its accuracy fine?} Correlated features are double-counted, pushing
+	probabilities to the extremes, but the argmax is often still right.
+
+	\rf{LDA versus QDA?} Shared covariance gives a linear boundary; class-specific covariances give a quadratic one with
+	many more parameters.
+
+	\rf{$k=1$ in $k$-NN?} Zero training error, highest variance. Large $k$: smoother, more bias.
+
+	\rf{What is the curse of dimensionality?} In high dimensions distances concentrate and neighbourhoods stop being
+	local, so distance-based methods need exponentially more data.
+
+	\rf{Why do KD-trees fail in high dimensions?} The query ball crosses most splitting planes, so pruning stops working.
+
+	\section{SVMs, trees and ensembles}
+	\prototype{``Bagging versus boosting?'' --- ``Parallel averaging to cut variance versus sequential correction to cut
+		bias.''}
+
+	\rf{What are support vectors?} Training points with non-zero dual weight: on the margin, inside it, or misclassified.
+	Only they define the boundary.
+
+	\rf{What does $C$ do in an SVM?} Penalty on margin violations; large $C$ means narrow margin and low bias, small $C$
+	wide margin and more regularisation.
+
+	\rf{What does $\gamma$ do in an RBF kernel?} Inverse length scale: large $\gamma$ makes boundaries wiggle around
+	individual points.
+
+	\rf{Kernel trick?} The dual needs only inner products; a kernel computes $\phi(\x)\T\phi(\z)$ without forming
+	$\phi$.
+
+	\rf{What makes a function a valid kernel?} Every Gram matrix it produces is symmetric positive semi-definite.
+
+	\rf{Why the dual?} Kernels, sparsity in $\alpha$, and one variable per example.
+
+	\rf{Is the hinge loss convex?} Yes, though not differentiable at margin 1.
+
+	\rf{Entropy of a 50/50 node? Gini?} 1 bit; 0.5.
+
+	\rf{Why gain ratio?} Information gain favours many-valued features (an ID column gives perfect gain).
+
+	\rf{Do trees need feature scaling?} No; splits are invariant to monotone transforms.
+
+	\rf{Can a regression tree extrapolate?} No; leaves predict averages of training targets.
+
+	\rf{How do you prune?} Pre-prune with depth and leaf-size limits, or cost-complexity prune with $\alpha$ chosen by CV.
+
+	\rf{Probability a row is in a bootstrap sample?} $1-(1-1/n)^n\to1-1/e\approx63.2\%$.
+
+	\rf{Does a random forest reduce bias?} No --- variance, by averaging decorrelated deep trees.
+
+	\rf{Can more trees overfit a random forest?} No; error stabilises. More boosting rounds can overfit.
+
+	\rf{What decorrelates a forest's trees?} Bootstrap rows plus a random subset of features at each split.
+
+	\rf{What is OOB error?} Error on each row using only trees that did not see it; a free validation estimate.
+
+	\rf{What is wrong with MDI importance?} It is biased towards high-cardinality and noisy continuous features and
+	splits credit among correlated ones; use permutation importance on held-out data.
+
+	\rf{AdaBoost's learner weight?} $\alpha=\frac12\ln\frac{1-\eps}{\eps}$; misclassified points are up-weighted by
+	$e^{\alpha}$.
+
+	\rf{Gradient boosting in one sentence?} Fit each new tree to the negative gradient of the loss at the current
+	predictions and add a shrunken copy.
+
+	\rf{XGBoost leaf weight and gain?} $w^\star=-G/(H+\lambda)$; gain $=\frac12[\frac{G_L^2}{H_L+\lambda}+
+	\frac{G_R^2}{H_R+\lambda}-\frac{G^2}{H+\lambda}]-\gamma$.
+
+	\rf{What do $\lambda$ and $\gamma$ do in XGBoost?} $\lambda$ shrinks leaf values; $\gamma$ is the minimum gain needed
+	for a split.
+
+	\rf{How does XGBoost handle missing values?} Each split learns a default direction for them.
+
+	\rf{LightGBM versus XGBoost?} Histogram splits and leaf-wise growth by default, plus gradient-based sampling and
+	feature bundling; usually faster, can overfit small data.
+
+	\rf{Learning rate versus number of trees?} Smaller rate needs more trees and generalises better; use early stopping.
+
+	\section{Unsupervised, evaluation and data}
+	\prototype{``Accuracy is 97\%. Good?'' --- ``What is the positive rate? If it is 3\%, a constant predictor scores the
+		same.''}
+
+	\rf{When does $k$-means stop?} When assignments stop changing (or centroids move less than a tolerance, or
+	iterations run out). It always stops, at a local minimum.
+
+	\rf{Why $k$-means++?} Spreads initial centroids, avoiding bad local minima, with a provable approximation bound.
+
+	\rf{$k$-means assumptions?} Roughly spherical, similar-sized clusters in a Euclidean space; scale features first.
+
+	\rf{DBSCAN over $k$-means when?} Arbitrary shapes, unknown $k$, outliers to flag.
+
+	\rf{EM in one line?} E-step: compute responsibilities; M-step: weighted MLE; likelihood never decreases.
+
+	\rf{Why standardise before PCA?} PCA maximises variance, so the feature with the largest units dominates otherwise.
+
+	\rf{PCA versus ICA?} PCA finds uncorrelated directions of maximal variance; ICA finds statistically independent,
+	non-Gaussian sources.
+
+	\rf{Can you read cluster distances off a t-SNE plot?} No; it preserves local neighbourhoods, not global geometry.
+
+	\rf{Lift?} Confidence divided by the consequent's support; above 1 means positive association.
+
+	\rf{Precision versus recall?} Of flagged, how many are right; of actual positives, how many are flagged.
+
+	\rf{F1?} Harmonic mean of precision and recall; $F_\beta$ weights recall $\beta$ times as much.
+
+	\rf{Macro versus micro F1?} Macro averages per-class F1 equally; micro pools counts and equals accuracy for
+	single-label multiclass.
+
+	\rf{What does AUC measure?} The probability that a random positive is scored above a random negative.
+
+	\rf{ROC or PR curve for rare positives?} PR; ROC looks excellent because false positives are few relative to a huge
+	negative class.
+
+	\rf{Is a high-AUC model calibrated?} Not necessarily; AUC ignores calibration. Use reliability plots, Platt or
+	isotonic scaling.
+
+	\rf{Cross-validating a time series?} Forward-chaining splits; never shuffle.
+
+	\rf{Give three kinds of leakage.} Preprocessing on all data before splitting; features from after the outcome;
+	the same entity in train and test.
+
+	\rf{Why nested CV?} The best inner CV score is optimistic; the outer loop estimates the whole tuning procedure.
+
+	\rf{AIC versus BIC?} Both are $-2\ln\hat L$ plus a penalty; BIC's $k\ln n$ is harsher and picks smaller models.
+
+	\rf{What is a p-value?} The probability, if the null hypothesis is true, of data at least as extreme as observed.
+	Not the probability the null is true.
+
+	\rf{Type I versus Type II?} False positive versus false negative; power is $1-$Type II rate.
+
+	\rf{Paired or two-sample $t$?} Paired when the same units are measured twice; it removes between-unit variation.
+
+	\rf{Twenty tests at 5\%?} About a 64\% chance of at least one false positive; use Bonferroni or Benjamini--Hochberg.
+
+	\rf{Simpson's paradox?} A trend in every subgroup reverses in the aggregate because of a confounder.
+
+	\rf{Which models need scaling?} $k$-NN, SVM, $k$-means, PCA, regularised and gradient-trained linear models and
+	neural nets; not trees.
+
+	\rf{Target encoding risk?} Leakage: encode out-of-fold and smooth, or validation scores lie.
+
+	\rf{Missing values?} Ask why they are missing; impute inside folds, add an indicator when missingness may be
+	informative, or use models that handle them natively.
+
+	\rf{When should SMOTE be applied?} Only inside training folds, never before splitting or to test data.
+
+	\rf{What does IDF do?} Down-weights terms that occur in many documents: $\log(N/\text{df})$.
+
+	\rf{Why does momentum help?} It averages out oscillating gradient components, improving the dependence on the
+	condition number from $\kappa$ to $\sqrt\kappa$.
+
+	\rf{Why decay the SGD step?} With a constant step SGD hovers in a noise ball around the optimum.
+
+	\rf{Newton versus gradient descent?} Newton uses curvature and converges quadratically near the optimum but costs
+	$O(d^3)$ per step; L-BFGS approximates it cheaply.
+}

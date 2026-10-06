@@ -1,26 +1,225 @@
 \chapter{Data Preparation and Feature Engineering}
 \label{ch:dataprep}
+In practice, more model quality comes from features and clean data than from the choice of algorithm, and
+most production bugs live here. OA papers test the crisp parts (which models need scaling, target versus
+one-hot encoding, IDF arithmetic, missing values); interviews test judgement (``this feature is 40\% missing,
+what do you do?'').
+
 \section{Scaling}
-\stub{Scaling}
+\prototype{Wine data: $k$-NN at 66\% accuracy before standardising, 96\% after.}
+\begin{itemize}
+	\ii \vocab{Standardisation} $(x-\mu)/\sigma$: zero mean, unit variance; the default.
+	\ii \vocab{Min--max} $(x-\min)/(\max-\min)$ to $[0,1]$: bounded inputs (pixels, some neural nets); one
+	outlier squashes everything else.
+	\ii \vocab{Robust} $(x-\text{median})/\text{IQR}$: resistant to outliers.
+\end{itemize}
+For the column $10,12,11,13,12,100$:
+\begin{itemize}
+	\ii standardised: $\gv{c15_dataprep/sc_std}$;
+	\ii min--max: $\gv{c15_dataprep/sc_mm}$ --- the five ordinary values are crushed near 0;
+	\ii robust: $\gv{c15_dataprep/sc_rob}$ --- they stay spread and the outlier is obviously extreme.
+\end{itemize} Log or Box--Cox transforms handle skew before
+scaling.
+
+\begin{example}[Who needs scaling]
+	5-fold accuracy on the wine data, raw versus standardised inside a pipeline:
+	\begin{center}
+		\small
+		\begin{tabular}{lcc}
+			\toprule
+			model & raw & standardised \\ \midrule
+			\gv{c15_dataprep/scale_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Distance- and margin-based models ($k$-NN, SVM, $k$-means), variance-based PCA, and penalised or
+	gradient-trained linear models depend on scale (logistic regression also needed far more iterations
+	unscaled). Trees and tree ensembles split on thresholds and are invariant to any monotone rescaling.
+	Unpenalised OLS gives the same predictions either way.
+\end{example}
 
 \section{Encoding categoricals}
-\stub{Encoding categoricals}
+\prototype{A ``city'' column with 1500 distinct values and a churn label.}
+\begin{itemize}
+	\ii \vocab{One-hot}: one binary column per level (drop one to avoid the dummy-variable trap in unpenalised
+	linear models). Safe and interpretable; dimension explodes with cardinality and rare levels are noisy.
+	\ii \vocab{Ordinal/label encoding}: integers $0,1,2,\dots$. Fine for trees and for genuinely ordered
+	categories (small $<$ medium $<$ large); for linear models it invents a spurious order and spacing.
+	\ii \vocab{Frequency encoding}, \vocab{feature hashing} (hash levels into a fixed number of columns;
+	collisions are the price of bounded memory, useful for huge or streaming vocabularies), learned
+	\vocab{embeddings} (neural nets).
+	\ii \vocab{Target (mean) encoding}: replace a level by a (smoothed) mean of the target over rows with that
+	level --- one dense column regardless of cardinality.
+\end{itemize}
+
+\subsection{Target encoding and its leakage}
+With $n_c$ rows in level $c$, level mean $\bar y_c$, global mean $\bar y$ and smoothing $m$:
+\[ \mathrm{TE}(c)=\frac{n_c\bar y_c+m\,\bar y}{n_c+m}, \]
+a shrinkage towards the global mean that is strong for rare levels (the Beta-prior estimate of
+\Cref{ch:maths} again). A level seen 3 times, always positive, with $\bar y=\gv{c15_dataprep/te_gmean}$ and
+$m=\gv{c15_dataprep/te_m}$, encodes to $\gv{c15_dataprep/te_a}$, not $1$ (matches scikit-learn's
+\code{TargetEncoder(smooth=10)}).
+
+\begin{example}[The leak, measured]
+	4000 rows; the label depends only on a numeric feature $x$; a 1500-level ``ID-like'' category is pure noise.
+	Logistic regression on $x$ alone: test AUC $\gv{c15_dataprep/base_te_auc}$. Add the category, target-encoded
+	with means computed on the full training set (each row's own label included): \emph{training} AUC
+	$\gv{c15_dataprep/leak_tr_auc}$, coefficient on the encoding $\gv{c15_dataprep/leak_coef}$, \emph{test} AUC
+	$\gv{c15_dataprep/leak_te_auc}$ --- worse than ignoring the column. With levels of about three rows, the
+	encoding largely \emph{is} the row's own label. Cross-fitted (out-of-fold) encoding, as
+	\code{TargetEncoder.fit_transform} does, gives training AUC $\gv{c15_dataprep/oof_tr_auc}$, test AUC
+	$\gv{c15_dataprep/oof_te_auc}$ and a near-zero coefficient ($\gv{c15_dataprep/oof_coef}$): the noise is
+	correctly ignored.
+\end{example}
+
+\begin{remark}
+	\trap ``Target encoding always beats one-hot for high cardinality.'' Only if done out-of-fold (or with
+	CatBoost's ordered statistics) and with smoothing; naive target encoding is a textbook leak that inflates
+	validation scores and hurts production. One-hot plus regularisation is the safe baseline; for trees, ordinal
+	or native categorical handling is often enough.
+\end{remark}
 
 \section{Missing values and outliers}
-\stub{Missing values and outliers}
+\prototype{28\% of applicants skip the income question --- mostly high earners.}
+Missingness mechanisms: \vocab{MCAR} (completely at random: deleting rows only costs data), \vocab{MAR}
+(depends on observed features: model-based imputation works), \vocab{MNAR} (depends on the missing value itself:
+the fact of missingness is information). Options: drop rows (small, MCAR), drop columns (mostly empty and
+uninformative), mean/median/mode imputation (fast, shrinks variance and distorts correlations), $k$-NN or
+iterative model-based imputation, a \emph{missing-indicator} column, or models that handle \texttt{NaN} natively
+(XGBoost, LightGBM, recent scikit-learn trees). Fit imputers on training folds only.
+
+\begin{example}[Missingness is a feature]
+	Income missing for $\gv{c15_dataprep/miss_frac}$ of applicants, more often for high earners; the target rises
+	with income. Mean imputation alone: test AUC $\gv{c15_dataprep/miss_auc_mean}$ (and the income standard
+	deviation drops from $\gv{c15_dataprep/miss_sd_before}$ to $\gv{c15_dataprep/miss_sd_after}$). Mean imputation
+	plus an \code{is_missing} indicator: $\gv{c15_dataprep/miss_auc_ind}$.
+\end{example}
+
+\vocab{Outliers}: flag with the IQR rule (outside $[Q_1-1.5\,\mathrm{IQR},\,Q_3+1.5\,\mathrm{IQR}]$; for the column
+above $Q_1=\gv{c15_dataprep/iqr_q1}$, $Q_3=\gv{c15_dataprep/iqr_q3}$, upper fence $\gv{c15_dataprep/iqr_hi}$, so 100 is
+flagged), $z$-scores (fragile: the outlier inflates $\sigma$), or isolation forests (\Cref{ch:unsup}). Then decide:
+data error (fix or drop), genuine extreme (keep; use robust losses, log transforms or winsorising), or the
+signal itself (fraud).
 
 \section{Feature selection}
-\stub{Feature selection}
+\prototype{50 features, 5 informative: which methods find them?}
+\vocab{Filter} methods score features one at a time (correlation, ANOVA $F$, mutual information, $\chi^2$): fast,
+ignore interactions and redundancy. \vocab{Wrapper} methods search subsets using a model (forward/backward
+selection, recursive feature elimination): expensive, can overfit the validation data. \vocab{Embedded} methods
+select while fitting (lasso, tree importances). On 600 rows with 5 informative of 50 features: mutual
+information picks $\gv{c15_dataprep/fs_mi_hit}$ of the 5 in its top 5, RFE with logistic regression
+$\gv{c15_dataprep/fs_rfe_hit}$ of 5, and an $\ell_1$ logistic regression keeps $\gv{c15_dataprep/fs_l1_n}$ features
+including $\gv{c15_dataprep/fs_l1_hit}$ true ones. Any selection that looks at labels must run inside the CV loop
+(\Cref{ch:eval}).
 
 \section{Imbalance}
-\stub{Imbalance}
+\prototype{5\% positives; SMOTE before cross-validation reports F1 0.94.}
+Options, in order of preference: choose the metric and threshold properly (PR curves, cost-based threshold,
+\Cref{ch:logistic}); class weights (\code{class_weight="balanced"}, \code{scale_pos_weight}); resampling ---
+random under-sampling of the majority, random over-sampling, or \vocab{SMOTE} (synthetic minority points
+interpolated between a minority point and one of its minority neighbours):
+\codefile[code/ml/c15\_dataprep.py: SMOTE in ten lines]{gen/ml/snip/c15_dataprep-smote.py}
+\begin{example}[SMOTE leakage]
+	1000 rows, 5\% positives, 3-NN classifier. SMOTE the whole dataset, then cross-validate: F1
+	$\gv{c15_dataprep/smote_wrong}$. SMOTE only inside each training fold, evaluate on untouched folds: F1
+	$\gv{c15_dataprep/smote_right}$. In the leaky version synthetic points sit in the validation folds between
+	their own parents in the training folds, and 3-NN finds them trivially.
+\end{example}
+\begin{remark}
+	\trap Resample \emph{only the training data}, never the validation or test data (their class balance must
+	match deployment), and remember resampling changes predicted probabilities. SMOTE also interpolates in
+	feature space, which is meaningless for categorical features and risky in high dimensions.
+\end{remark}
 
 \section{Text features and TF-IDF}
-\stub{Text features and TF-IDF}
+\prototype{Three short documents; why does ``the'' get a low weight and ``cat'' a high one?}
+Bag-of-words counts word occurrences (optionally $n$-grams). \vocab{TF-IDF} reweights a term's count in a
+document by its rarity across the corpus:
+\[ \text{tf-idf}(t,d)=\text{tf}(t,d)\cdot\IDF(t),\qquad \IDF(t)=\log\frac{N}{\text{df}(t)}\ \ \text{(textbook)}, \]
+with $N$ documents and $\text{df}(t)$ the number containing $t$. scikit-learn's default is the smoothed
+$\IDF(t)=\ln\frac{1+N}{1+\text{df}(t)}+1$, followed by L2-normalising each document vector.
+\begin{example}[IDF by hand]
+	Documents: ``the cat sat on the mat'', ``the dog sat on the log'', ``cats and dogs'' ($N=3$). ``the'' appears in
+	$\gv{c15_dataprep/df_the}$ documents: textbook IDF $\ln(3/2)=\gv{c15_dataprep/idft_the}$, smoothed
+	$\ln(4/3)+1=\gv{c15_dataprep/idfs_the}$. ``cat'' appears in $\gv{c15_dataprep/df_cat}$: $\ln3=
+		\gv{c15_dataprep/idft_cat}$, smoothed $\ln2+1=\gv{c15_dataprep/idfs_cat}$ (note ``cats'' is a different token
+	without stemming). In document 1, ``the'' occurs twice: unnormalised tf-idf $2\times1.2877=
+		\gv{c15_dataprep/tfidf0_the}$ against $\gv{c15_dataprep/tfidf0_cat}$ for ``cat''. The smoothed IDFs and the
+	normalised matrix match \code{TfidfVectorizer}. With $\log_{10}$ the textbook IDF of ``cat'' would be
+	$\gv{c15_dataprep/idf_log10_cat}$: always state the base.
+\end{example}
+TF-IDF vectors are sparse and high-dimensional, compared with cosine similarity and fed to linear models or
+naive Bayes; they ignore word order beyond $n$-grams and know no synonyms --- the gap embeddings fill.
 
-\section{Time series}
-\stub{Time series}
+\section{Time series in one page}
+\prototype{Forecast tomorrow's orders from the last 30 days.}
+A time series is not i.i.d.: values are autocorrelated, may trend and have seasonality. \vocab{Stationarity}
+(constant mean, variance and autocorrelation over time) is assumed by classical models; differencing
+$y_t-y_{t-1}$ removes trends, seasonal differencing $y_t-y_{t-s}$ removes seasonality, and the augmented
+Dickey--Fuller test checks for a unit root. \vocab{ARIMA}$(p,d,q)$ = autoregression on $p$ lags + $d$
+differences + a moving average of $q$ past errors; read $p$ from the partial autocorrelation and $q$ from the
+autocorrelation plots. For ML models, build lag features, rolling statistics (computed only from the past),
+calendar features and holiday flags, then validate with forward-chaining splits (\Cref{ch:eval}); remember tree
+ensembles cannot extrapolate a trend, so model differences or detrend first.
 
-\section{Recommenders}
-\stub{Recommenders}
+\section{Recommenders in one page}
+\prototype{Five users, four items, a sparse rating matrix: predict the blanks.}
+\vocab{Content-based} recommenders use item features; \vocab{collaborative filtering} uses the rating matrix
+itself: neighbourhood methods (item--item cosine similarity of rating columns) or \vocab{matrix factorisation}
+$R\approx\U\V\T$ with $k$-dimensional user and item factors, fitted on observed entries only
+\cite{koren2009}:
+\[ \min_{\U,\V}\sum_{(u,i)\text{ observed}}(r_{ui}-\uu_u\T\vv_i)^2+\lambda\bigl(\norm{\U}_F^2+\norm{\V}_F^2\bigr). \]
+\vocab{Alternating least squares} fixes $\V$ and solves a ridge regression for each user, then swaps. On a
+$5\times4$ toy matrix ($k=2$, $\lambda=0.1$) each user update equals \code{Ridge} on that user's ratings, the
+regularised objective decreases every sweep, the training RMSE reaches $\gv{c15_dataprep/als_rmse}$, and the model
+predicts $\gv{c15_dataprep/als_pred_02}$ for user 1's unseen item 3. Practicalities: biases per user and item,
+implicit feedback (clicks, not ratings), the cold-start problem for new users/items (fall back to content or
+popularity), and evaluation by ranking metrics (precision@$k$, NDCG) on time-split data.
 
+\begin{moral}
+	Fit every transform inside the training fold; scale for distances and penalties, not for trees; treat
+	missingness and rare categories as information to be estimated carefully, not noise to be papered over.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[IDF]
+	\onechili
+	A corpus has 1000 documents; ``refund'' appears in 10, ``the'' in 990. Compute textbook IDF (natural log) for
+	both, and the tf-idf of ``refund'' in a document where it occurs 3 times.
+	\begin{hint}
+		$\ln(N/\text{df})$.
+	\end{hint}
+	\begin{sol}
+		$\ln100=\gv{c15_problems/p15a_r}$, $\ln(1000/990)=\gv{c15_problems/p15a_t}$; tf-idf $3\times4.605=
+			\gv{c15_problems/p15a_tf}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Smoothed target encoding]
+	\onechili
+	Global conversion rate 5\%. Pincode A has 2 visits and 1 conversion; pincode B has 400 visits and 60. Compute
+	smoothed encodings with $m=20$.
+	\begin{hint}
+		$(n\bar y+m\bar y_{\text{global}})/(n+m)$.
+	\end{hint}
+	\begin{sol}
+		A: $(1+20\cdot0.05)/22=\gv{c15_problems/p15b_a}$ (raw mean $0.5$ shrunk hard). B: $(60+1)/420=
+			\gv{c15_problems/p15b_b}$ (barely shrunk from $0.15$).
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Scaling, true or false]
+	\onechili
+	(a) Standardising features changes a random forest's predictions. (b) $k$-means results depend on feature units.
+	(c) PCA should be run on standardised data when features have different units. (d) Gradient descent on linear
+	regression converges faster after standardising. (e) The scaler should be fitted on train and test together for
+	consistency.
+	\begin{hint}
+		Only one statement about trees; one about leakage.
+	\end{hint}
+	\begin{sol}
+		(a) false; (b) true; (c) true; (d) true (better conditioning); (e) false --- fit on training data only and
+		apply the same transform to test data.
+	\end{sol}
+\end{problem}

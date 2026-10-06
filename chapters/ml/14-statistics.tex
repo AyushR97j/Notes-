@@ -1,20 +1,216 @@
 \chapter{Statistics Interviewers Ask}
 \label{ch:stats}
+Data-science and analytics rounds (and many ML rounds) spend ten minutes on classical statistics: a
+distribution question, a confidence interval, ``what is a p-value'', a test choice, an A/B sample size. The
+answers are short, but the follow-ups punish vague ones. Everything below is computed with
+\code{scipy.stats} and, where it matters, by hand alongside.
+
 \section{Distributions}
-\stub{Distributions}
+\prototype{Ten loan applications each default with probability 0.2: chance of exactly three defaults?}
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l l l >{\raggedright\arraybackslash}X}
+		\toprule
+		distribution & mean & variance & typical question \\ \midrule
+		Bernoulli$(p)$ & $p$ & $p(1-p)$ & one click \\
+		Binomial$(n,p)$ & $np$ & $np(1-p)$ & $\Prob(X=3)$, $n=10$, $p=0.2$: $\binom{10}3 0.2^30.8^7=\gv{c14_stats/binom3}$ \\
+		Geometric$(p)$ & $1/p$ & $(1-p)/p^2$ & trials until first success: mean $\gv{c14_stats/geom_mean}$ at $p=0.2$ \\
+		Poisson$(\lambda)$ & $\lambda$ & $\lambda$ & calls per minute; $\Prob(X=0)$ at $\lambda=2$: $e^{-2}=\gv{c14_stats/pois0}$ \\
+		Uniform$(a,b)$ & $\frac{a+b}2$ & $\frac{(b-a)^2}{12}$ & random tie-breaking \\
+		Exponential$(\lambda)$ & $1/\lambda$ & $1/\lambda^2$ & waiting time; memoryless \\
+		Normal$(\mu,\sigma^2)$ & $\mu$ & $\sigma^2$ & 68--95--99.7 rule \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+Facts on call: $\Prob(\text{at least one default in }10)=1-0.8^{10}=\gv{c14_stats/binom_ge1}$; $\Prob(\abs Z<1)
+=\gv{c14_stats/norm1}$ and $\Prob(\abs Z<1.96)=\gv{c14_stats/norm196}$; the exponential is
+\emph{memoryless}, $\Prob(T>s+t\mid T>s)=\Prob(T>t)$ (rate $0.5$, $t=2$: $\gv{c14_stats/expo_mem}$); Poisson is the
+limit of Binomial$(n,\lambda/n)$; sums of independent normals are normal.
 
 \section{Estimators and confidence intervals}
-\stub{Estimators and confidence intervals}
+\prototype{Ten measurements of a delivery time: give a 95\% interval for the mean.}
+An \vocab{estimator} $\hat\theta$ has bias $\E\hat\theta-\theta$, variance, and MSE $=\text{bias}^2+\text{variance}$
+(\Cref{ch:biasvar}). The sample mean is unbiased with standard error $\sigma/\sqrt n$; the sample variance with
+divisor $n-1$ is unbiased (\Cref{ch:maths}).
+
+\begin{definition}
+	A 95\% \vocab{confidence interval} is produced by a procedure that, over repeated samples, covers the true
+	parameter 95\% of the time. For a mean with unknown $\sigma$:
+	$\bar x\pm t_{0.975,\,n-1}\,s/\sqrt n$.
+\end{definition}
+\begin{example}[Mean]
+	$n=10$, $\bar x=\gv{c14_stats/ci_m}$, $s=\gv{c14_stats/ci_s}$, $\mathrm{SE}=\gv{c14_stats/ci_se}$,
+	$t_{0.975,9}=\gv{c14_stats/t_crit9}$ (not $\gv{c14_stats/z_crit}$: small sample): interval
+	$[\gv{c14_stats/ci_lo},\gv{c14_stats/ci_hi}]$, as \code{scipy.stats.t.interval} gives.
+\end{example}
+\begin{example}[Proportion and bootstrap]
+	120 clicks in 400 impressions: $\hat p=\gv{c14_stats/pr_p}$, $\mathrm{SE}=\sqrt{\hat p(1-\hat p)/n}=
+		\gv{c14_stats/pr_se}$, Wald interval $[\gv{c14_stats/pr_lo},\gv{c14_stats/pr_hi}]$. For statistics without a
+	formula (a median, a ratio, AUC) use the \vocab{bootstrap}: resample with replacement, recompute, take
+	percentiles. For the median of 60 skewed values ($\gv{c14_stats/boot_med}$) the 95\% percentile interval is
+	about $[\gv{c14_stats/boot_lo},\gv{c14_stats/boot_hi}]$, agreeing with \code{scipy.stats.bootstrap}.
+\end{example}
+
+\begin{remark}
+	\trap ``There is a 95\% probability that the true mean lies in $[11.88,12.74]$'' is the classic wrong
+	reading: the parameter is fixed and this particular interval either contains it or not; the 95\% describes
+	the procedure. (A Bayesian credible interval does admit the probability statement, under its prior.)
+\end{remark}
 
 \section{Hypothesis tests}
-\stub{Hypothesis tests}
+\prototype{A new checkout page: did conversion really go up, or is it noise?}
+
+\subsection{The vocabulary}
+Null hypothesis $H_0$ (no effect) versus alternative $H_1$. Choose a test statistic whose distribution under
+$H_0$ is known. The \vocab{p-value} is the probability, \emph{assuming $H_0$}, of a statistic at least as extreme
+as the observed one. Reject $H_0$ if $p<\alpha$.
+\begin{center}
+	\small
+	\begin{tabular}{l|cc}
+		& $H_0$ true & $H_0$ false \\ \hline
+		reject & \vocab{Type I error} (rate $\alpha$) & correct (\vocab{power} $1-\beta$) \\
+		do not reject & correct & \vocab{Type II error} (rate $\beta$) \\
+	\end{tabular}
+\end{center}
+Power rises with effect size, sample size and $\alpha$, and falls with noise.
+
+\begin{remark}
+	\trap A p-value is \emph{not} $\Prob(H_0\text{ true}\mid\text{data})$, not the probability the result is due
+	to chance, and not an effect size. $p=0.03$ with $n=10^6$ can be a negligible effect; $p=0.2$ with $n=20$ can
+	hide a large one. ``Not significant'' is not ``no effect''. Fix $\alpha$ before looking, and do not stop an A/B
+	test the moment $p$ dips below $0.05$ (peeking inflates Type I error).
+\end{remark}
+
+\subsection{\texorpdfstring{$z$}{z} and \texorpdfstring{$t$}{t}}
+\begin{example}[$z$-test, known $\sigma$]
+	Mean load time should be 50 ms; $n=64$ requests average 52 ms with known $\sigma=8$:
+	$z=\frac{52-50}{8/\sqrt{64}}=\gv{c14_stats/z}$, two-sided $p=\gv{c14_stats/z_p}$. Reject at 5\%. The power of
+	this test against a true mean of 52 is only $\gv{c14_stats/pow_z}$.
+\end{example}
+\begin{itemize}
+	\ii \textbf{One-sample $t$} ($\sigma$ unknown): $t=\frac{\bar x-\mu_0}{s/\sqrt n}$, $n-1$ d.f. For the delivery
+	times against $\mu_0=12$: $t=\gv{c14_stats/t1}$, $p=\gv{c14_stats/t1_p}$.
+	\ii \textbf{Two-sample Welch $t$} (unequal variances, the safe default):
+	$t=\frac{\bar a-\bar b}{\sqrt{s_a^2/n_a+s_b^2/n_b}}$ with Welch--Satterthwaite d.f. Scores
+	$\bar a=\gv{c14_stats/ma}$ vs $\bar b=\gv{c14_stats/mb}$: $t=\gv{c14_stats/tw}$, d.f.\ $\gv{c14_stats/dfw}$,
+	$p=\gv{c14_stats/tw_p}$.
+	\ii \textbf{Paired $t$}: the same units measured twice; test the differences. Six students before and after
+	coaching: $t=\gv{c14_stats/tp}$, $p=\gv{c14_stats/tp_p}$. Treating the same data as two independent samples
+	gives $p=\gv{c14_stats/tp_wrong_p}$: the between-student variation swamps the consistent small gains.
+\end{itemize}
+Each statistic and p-value above is recomputed by hand in \script{c14_stats} and checked against
+\code{ttest_1samp}, \code{ttest_ind(equal_var=False)} and \code{ttest_rel}. Use $z$ when $\sigma$ is known or
+$n$ is large; non-parametric alternatives (Mann--Whitney, Wilcoxon signed-rank) when normality is doubtful and $n$ small.
+
+\subsection{A/B test sample size}
+For two proportions $p_1\to p_2$ at significance $\alpha$ (two-sided) and power $1-\beta$:
+\[ n\approx\frac{\Bigl(z_{1-\alpha/2}\sqrt{2\bar p(1-\bar p)}+z_{1-\beta}\sqrt{p_1(1-p_1)+p_2(1-p_2)}\Bigr)^2}{(p_2-p_1)^2}
+	\quad\text{per group}. \]
+Detecting a lift from 10\% to 12\% at $\alpha=0.05$, power $0.8$ needs $\gv{c14_stats/ab_n}$ users per arm;
+simulating 4000 such experiments rejects $H_0$ in $\gv{c14_stats/ab_power_sim}$ of them. Halving the detectable
+lift roughly quadruples $n$.
 
 \section{Chi-square and ANOVA}
-\stub{Chi-square and ANOVA}
+\prototype{Does conversion depend on the app version?}
+\begin{example}[Test of independence]
+	Version A: 30 of 100 converted; version B: 45 of 100. Expected counts under independence
+	(row total $\times$ column total $/$ grand total, row by row): $\gv{c14_stats/chi_E}$. $\chi^2=\sum\frac{(O-E)^2}{E}=
+		\gv{c14_stats/chi}$ on $(2-1)(2-1)=1$ d.f., $p=\gv{c14_stats/chi_p}$ (with Yates' continuity correction, scipy's
+	default for $2\times2$: $p=\gv{c14_stats/chi_yates_p}$). Goodness of fit: a die rolled 60 times with counts
+	$8,12,9,11,6,14$ gives $\chi^2=\gv{c14_stats/gof}$ on 5 d.f., $p=\gv{c14_stats/gof_p}$ --- no evidence of bias.
+	Rule of thumb: expected counts $\ge5$, else Fisher's exact test.
+\end{example}
+\begin{example}[One-way ANOVA]
+	Three groups $(5,6,7,6)$, $(8,9,7,8)$, $(6,5,6,7)$. Between-group sum of squares $\gv{c14_stats/ssb}$ (2 d.f.),
+	within-group $\gv{c14_stats/ssw}$ (9 d.f.), $F=\frac{10.667/2}{6/9}=\gv{c14_stats/F}$, $p=\gv{c14_stats/F_p}$
+	(matches \code{f_oneway}). ANOVA says \emph{some} mean differs; post-hoc tests (Tukey) say which.
+\end{example}
 
 \section{Multiple testing}
-\stub{Multiple testing}
+\prototype{Twenty metrics on a dashboard, each tested at 5\%.}
+With 20 independent true nulls, $\Prob(\text{at least one false positive})=1-0.95^{20}=\gv{c14_stats/fwer20}$.
+\vocab{Bonferroni} controls this family-wise error by testing each at $\alpha/m$; it is conservative.
+\vocab{Benjamini--Hochberg} controls the \emph{false discovery rate}: sort p-values, find the largest $k$ with
+$p_{(k)}\le\frac km\alpha$, reject the $k$ smallest. For the eight sorted p-values
+\[ 0.001,\ 0.008,\ 0.012,\ 0.030,\ 0.041,\ 0.20,\ 0.35,\ 0.60, \]
+unadjusted testing rejects $\gv{c14_stats/n_raw}$, Bonferroni ($0.05/8$) rejects $\gv{c14_stats/n_bonf}$, and BH,
+whose thresholds $\frac k8\cdot0.05$ are \gv{c14_stats/bh_thr}, rejects $\gv{c14_stats/n_bh}$ (matching \code{false_discovery_control}). The
+same logic applies to trying many features, models or hyper-parameters on one validation set.
 
 \section{Correlation, causation and Simpson}
-\stub{Correlation, causation and Simpson}
+\prototype{A treatment better in every subgroup, yet worse overall.}
+Covariance carries units and scale; correlation is scale-free and measures \emph{linear} association
+(\Cref{ch:maths}). Pearson's $r$ is sensitive to outliers; Spearman's $\rho$ (Pearson on ranks) measures monotone
+association and is robust: nine points on a rising line plus one wild outlier give Pearson $\gv{c14_stats/pear_out}$
+but Spearman $\gv{c14_stats/spear_out}$.
 
+\begin{example}[Simpson's paradox]
+	In the classic kidney-stone data, treatment A succeeds in $\gv{c14_stats/simA_small}$ of small-stone cases and
+	$\gv{c14_stats/simA_large}$ of large-stone cases; treatment B in $\gv{c14_stats/simB_small}$ and
+	$\gv{c14_stats/simB_large}$. A is better in both groups, yet overall A succeeds in $\gv{c14_stats/simA_all}$
+	versus B's $\gv{c14_stats/simB_all}$: A was given mostly to the harder, large-stone cases. Stone size
+	\emph{confounds} the comparison; aggregate only after asking what drives treatment assignment.
+\end{example}
+
+\begin{remark}
+	\trap Correlation does not imply causation: confounders (ice-cream sales and drownings both follow summer),
+	reverse causation, selection effects. In ML terms: a feature can be highly predictive without being a lever
+	you can pull. Causal questions need randomised experiments or explicit causal assumptions.
+\end{remark}
+
+\begin{moral}
+	State $H_0$, pick the test that matches the data's structure (paired? proportions? counts?), report effect size
+	and interval alongside $p$, and correct for how many things you tested.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Poisson]
+	\onechili
+	A server gets on average 3 errors per hour. Probability of no error in an hour? Of at least 2?
+	\begin{hint}
+		$\Prob(X=k)=e^{-\lambda}\lambda^k/k!$.
+	\end{hint}
+	\begin{sol}
+		$e^{-3}=\gv{c14_problems/p14a_0}$; $1-e^{-3}(1+3)=\gv{c14_problems/p14a_2}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Which test?]
+	\onechili
+	Name the test: (a) average spend of the same 50 users before and after a redesign; (b) click-through of two
+	independent ad variants; (c) whether city and preferred payment method are related; (d) mean delivery time
+	across four warehouses.
+	\begin{hint}
+		Paired, two proportions, contingency table, more than two means.
+	\end{hint}
+	\begin{sol}
+		(a) paired $t$ (or Wilcoxon signed-rank); (b) two-proportion $z$ (or $\chi^2$ on the $2\times2$ table);
+		(c) $\chi^2$ test of independence; (d) one-way ANOVA (or Kruskal--Wallis).
+	\end{sol}
+\end{problem}
+
+\begin{problem}[$t$ statistic]
+	\twochili
+	Sample of 16 response times: mean 210 ms, standard deviation 40 ms. Test $H_0:\mu=200$ two-sided at 5\%.
+	\begin{hint}
+		$t=(210-200)/(40/4)$ with 15 d.f.; $t_{0.975,15}\approx2.13$.
+	\end{hint}
+	\begin{sol}
+		$t=\gv{c14_problems/p14c_t}$, $p=\gv{c14_problems/p14c_p}$: do not reject. A 95\% interval is
+		$210\pm2.131\cdot10=[\gv{c14_problems/p14c_lo},\gv{c14_problems/p14c_hi}]$, which contains 200.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Sample size intuition]
+	\twochili
+	An A/B test powered to detect a 2-point lift (10\% to 12\%) needs about 3840 users per arm. Roughly how many
+	for a 1-point lift (10\% to 11\%)? Why?
+	\begin{hint}
+		$n\propto1/\delta^2$.
+	\end{hint}
+	\begin{sol}
+		About four times as many: the formula gives $\gv{c14_problems/p14d_n}$ per arm. Standard error falls like
+		$1/\sqrt n$, so halving the detectable effect requires quadrupling $n$.
+	\end{sol}
+\end{problem}

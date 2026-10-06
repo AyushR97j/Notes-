@@ -1,0 +1,387 @@
+\chapter{Optimisers and learning-rate schedules}
+\label{ch:optim}
+
+Backpropagation gives the gradient; the optimiser decides what to do with it. The
+OA version of this chapter is ``what is the purpose of Adam?'' and one hand-computed
+update. The interview version is why plain gradient descent zig-zags, what momentum
+and Adam's second moment fix, why Adam's bias correction exists, and why the
+learning-rate schedule matters as much as the optimiser.
+
+\section{Gradient descent and its one big problem}
+\prototype{On $f(x,y)=\frac12(x^2+10y^2)$ gradient descent must use a step below
+$2/10$, so progress along $x$ is ten times slower than it could be.}
+
+\subsection{Curvature limits the step}
+Gradient descent updates $\btheta\gets\btheta-\eta\nabla\Loss(\btheta)$. Near a minimum
+the loss is approximately quadratic,
+$\Loss(\btheta)\approx\Loss^\star+\frac12(\btheta-\btheta^\star)\T\Hm(\btheta-\btheta^\star)$,
+and in the eigenbasis of the Hessian $\Hm$ each coordinate evolves independently:
+$e_i\gets(1-\eta\lambda_i)e_i$. Convergence needs $|1-\eta\lambda_i|<1$ for all $i$,
+i.e.\ $\eta<2/\lambda_{\max}$; the slowest direction then shrinks by $1-\eta\lambda_{\min}$
+per step. The best fixed step, $\eta=2/(\lambda_{\min}+\lambda_{\max})$, gives the
+contraction factor
+\[
+	\frac{\kappa-1}{\kappa+1},\qquad \kappa=\frac{\lambda_{\max}}{\lambda_{\min}}
+	\ \ (\text{the \vocab{condition number}}).
+\]
+
+\begin{example}[An ill-conditioned bowl]
+	For $\Hm=\diag(1,\gv{c04_optim/kappa})$: steps above $\gv{c04_optim/lr_max_stable}$
+	diverge (with $\eta=0.21$, $|y|$ grows to $\gv{c04_optim/diverge_y}$ in 20 steps from $1$).
+	The optimal step $\eta=\gv{c04_optim/eta_opt}$ contracts the error by
+	$\gv{c04_optim/rate_gd}$ per step (the script measures exactly this), so reducing it by
+	$10^{6}$ takes $\gv{c04_optim/iters_gd}$ steps. Heavy-ball momentum with its optimal
+	parameters contracts by $(\sqrt\kappa-1)/(\sqrt\kappa+1)=\gv{c04_optim/rate_hb}$ and needs
+	$\gv{c04_optim/iters_hb}$ steps.
+\end{example}
+
+The geometric picture: the gradient points across a narrow valley rather than along
+it, so a step large enough to make progress along the valley overshoots across it.
+Deep-network losses have Hessians with condition numbers in the thousands or worse,
+which is why every optimiser in this chapter is, one way or another, a fix for
+ill-conditioning.
+
+\subsection{Stochastic and minibatch gradients}
+The training loss is an average over $N$ examples. A \vocab{minibatch} gradient over $B$
+random examples is an unbiased estimate of the full gradient whose variance falls like
+$1/B$: averaging $B$ independent terms divides the variance by $B$.
+
+\begin{example}[Gradient noise against batch size]
+	For logistic regression on $20{,}000$ synthetic points, the mean squared deviation of
+	a minibatch gradient from the full gradient, as a function of $B$, has log--log slope
+	$\gv{c04_optim/noise_slope}$; going from $B=1$ to $B=64$ cuts it by a factor of
+	$\gv{c04_optim/noise_ratio}$.
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.55\linewidth, height=0.36\linewidth, xmode=log, ymode=log,
+		log basis x=2, xlabel={batch size $B$}, ylabel={$\E\norm{\bg_B-\nabla\Loss}^2$}]
+		\addplot+[mark=*] table[x=B,y=var] {gen/dl/data/c04_optim-noise.dat};
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+\end{example}
+
+Vocabulary that OAs test: an \vocab{iteration} (step) processes one minibatch; an
+\vocab{epoch} is one pass over the training set. With $N=\gv{c04_optim/ep_N}$ and
+$B=\gv{c04_optim/ep_B}$ an epoch is $\lceil N/B\rceil=\gv{c04_optim/ep_iters}$ iterations
+(the last batch is partial unless dropped), so 30 epochs are $\gv{c04_optim/ep_total}$
+steps. ``SGD'' in deep learning almost always means minibatch SGD.
+
+\section{Momentum and Nesterov}
+\prototype{A ball rolling down the valley accumulates speed along the floor while the
+side-to-side bounces cancel.}
+
+\vocab{Momentum} keeps a running sum of past gradients:
+\[
+	\bv\gets\beta\bv+\bg,\qquad \btheta\gets\btheta-\eta\bv
+	\qquad(\text{PyTorch convention}).
+\]
+Components of the gradient that keep their sign add up (on a constant slope $\bv\to
+\bg/(1-\beta)$, so $\beta=0.9$ is a $10\times$ larger effective step), while components
+that flip sign every step cancel. That is exactly the valley geometry above.
+\vocab{Nesterov momentum} evaluates the gradient at the look-ahead point
+$\btheta-\eta\beta\bv$; in PyTorch's equivalent form the update uses $\bg+\beta\bv$ instead
+of $\bv$. It reacts one step earlier when the velocity is about to overshoot.
+
+\begin{example}[Two momentum steps]
+	$\eta=0.1$, $\beta=0.9$, $\theta_0=1$, gradients $2$ then $1$: $v_1=\gv{c04_optim/mom_b1}$,
+	$\theta_1=\gv{c04_optim/mom_q1}$; $v_2=0.9\cdot2+1=\gv{c04_optim/mom_b2}$,
+	$\theta_2=\gv{c04_optim/mom_q2}$. The second gradient is half the first, yet the second
+	step is larger.
+\end{example}
+
+\begin{remark}
+	\trap Two conventions exist. Many texts write $\bv\gets\beta\bv+(1-\beta)\bg$ (an
+	exponential moving average); PyTorch's \pt{SGD} uses $\bv\gets\beta\bv+\bg$ (its
+	\pt{dampening} defaults to $0$). For the same $\eta$ the PyTorch step is $1/(1-\beta)$ times
+	larger, so learning rates do not transfer between the two without rescaling.
+\end{remark}
+
+\section{Adaptive methods: AdaGrad, RMSProp, Adam}
+\prototype{Adam's first step moves every parameter by almost exactly $\eta$, whether its
+gradient is $0.5$ or $-0.02$.}
+
+\subsection{Per-parameter step sizes}
+Momentum still uses one step size for all parameters. Adaptive methods divide each
+coordinate by a running estimate of its gradient scale, which approximately rescales the
+valley into a round bowl when the Hessian is close to diagonal:
+\begin{itemize}
+	\ii \vocab{AdaGrad}: $G\gets G+\bg^2$, $\btheta\gets\btheta-\eta\,\bg/(\sqrt G+\eps)$.
+	Rare features (sparse gradients) get large steps; but $G$ only grows, so the step
+	size decays to zero, too early for deep networks.
+	\ii \vocab{RMSProp}: replace the sum by an exponential moving average,
+	$\bv\gets\alpha\bv+(1-\alpha)\bg^2$, so the scale tracks recent gradients and the step
+	does not die.
+	\ii \vocab{Adam} \cite{adam} = momentum on $\bg$ plus RMSProp on $\bg^2$, with bias
+	correction:
+\end{itemize}
+\begin{algo}[Adam, step $t$ (defaults $\beta_1=0.9$, $\beta_2=0.999$, $\eps=10^{-8}$)]
+	\begin{align*}
+		\bmm_t &= \beta_1\bmm_{t-1}+(1-\beta_1)\bg_t, &
+		\bv_t &= \beta_2\bv_{t-1}+(1-\beta_2)\bg_t^2,\\
+		\hat\bmm_t &= \bmm_t/(1-\beta_1^t), &
+		\hat\bv_t &= \bv_t/(1-\beta_2^t),\\
+		\btheta_t &= \btheta_{t-1}-\eta\,\hat\bmm_t/\bigl(\sqrt{\hat\bv_t}+\eps\bigr).
+	\end{align*}
+\end{algo}
+
+\subsection{Why bias correction}
+With $\bmm_0=\zero$, $\bmm_t=(1-\beta_1)\sum_{s=1}^t\beta_1^{t-s}\bg_s$. If the gradients
+have constant mean $\bg$, then $\E\bmm_t=(1-\beta_1^t)\bg$: the average is biased toward
+the zero initialisation by exactly the factor $1-\beta_1^t$, which dividing removes. The
+bias matters most for $\bv$, because $1-\beta_2^t$ stays small for hundreds of steps
+($1-0.999^{t}\approx t/1000$). Without correction the first step would be
+$\eta\cdot0.1g/\sqrt{0.001g^2}=\eta\cdot0.1/\sqrt{0.001}\approx\gv{c04_optim/nobc_factor}\,\eta$; for
+$\eta=10^{-3}$ that is $\gv{c04_optim/a_nobc_step}$, a too-large first step taken at the
+moment the estimates are least reliable.
+
+\begin{example}[Two Adam steps by hand]
+	\label{ex:adam}
+	Two parameters at $\btheta_0=(1,1)$, $\eta=10^{-3}$, default betas, gradients
+	$\bg_1=(0.5,-0.02)$ then $\bg_2=(0.3,0.04)$.
+
+	\emph{Step 1.} $\bmm_1=0.1\bg_1=(\gv{c04_optim/a_m1_0},\gv{c04_optim/a_m1_1})$,
+	$\bv_1=0.001\bg_1^2=(\gv{c04_optim/a_v1_0},\ \gv{c04_optim/a_v1_1})$. Bias
+	correction divides by $0.1$ and $0.001$, giving $\hat\bmm_1=\bg_1$, $\hat\bv_1=\bg_1^2$,
+	so the step is $\eta\,\bg_1/|\bg_1|$: both parameters move by
+	$(\gv{c04_optim/a_step1_0},\ \gv{c04_optim/a_step1_1})$, one down and one up. The
+	25-fold difference in gradient size has disappeared.
+
+	\emph{Step 2.} $\bmm_2=0.9\bmm_1+0.1\bg_2=(\gv{c04_optim/a_m2_0},\gv{c04_optim/a_m2_1})$,
+	$\bv_2=0.999\bv_1+0.001\bg_2^2=(\gv{c04_optim/a_v2_0},\ \gv{c04_optim/a_v2_1})$.
+	Corrections $1-0.9^2=\gv{c04_optim/a_bc1_2}$ and $1-0.999^2=\gv{c04_optim/a_bc2_2}$ give
+	$\hat\bmm_2=(\gv{c04_optim/a_mhat2_0},\gv{c04_optim/a_mhat2_1})$ and
+	$\hat\bv_2=(\gv{c04_optim/a_vhat2_0},\ \gv{c04_optim/a_vhat2_1})$; the parameters
+	decrease by $(\gv{c04_optim/a_step2_0},\ \gv{c04_optim/a_step2_1})$, ending at
+	$\btheta_2=(\gv{c04_optim/a_th2_0},\ \gv{c04_optim/a_th2_1})$, exactly as
+	\pt{torch.optim.Adam}. The second parameter's gradient changed sign, so its averaged
+	momentum is small relative to its RMS and it moves only about a third of $\eta$.
+\end{example}
+
+\codefile[\script{c04_optim}]{gen/dl/snip/c04_optim-optimisers.py}
+
+All nine variants above (SGD, momentum, Nesterov, SGD with weight decay, AdaGrad, RMSProp,
+Adam, Adam with L2, AdamW) are run for 25 steps on a non-quadratic test function and their
+trajectories asserted equal to \pt{torch.optim}'s.
+
+\begin{remark}
+	\trap ``What is the purpose of Adam?'' is not ``to add momentum'' and not ``to reduce
+	overfitting''. Adam gives each parameter its own effective learning rate, scaled by the
+	inverse RMS of its recent gradients, and combines that with momentum; the practical
+	effect is fast, robust progress with little learning-rate tuning. It does not regularise.
+\end{remark}
+
+\begin{remark}
+	\trap ``Adam always beats SGD.'' On many image-classification benchmarks well-tuned SGD
+	with momentum reaches equal or better test accuracy; Adam's coordinate-wise rescaling can
+	settle in different (often sharper) solutions, and with L2 regularisation it under-decays
+	parameters with large gradient history. Adam and especially AdamW dominate for
+	Transformers. The honest interview answer is ``it depends on the architecture, and the
+	gap is usually closed by tuning the schedule and weight decay''.
+\end{remark}
+
+\subsection{AdamW: weight decay done properly}
+With plain SGD, adding $\frac\lambda2\norm\btheta^2$ to the loss and shrinking the weights by
+$(1-\eta\lambda)$ each step are the same thing. With Adam they are not: the L2 gradient
+$\lambda\btheta$ is divided by $\sqrt{\hat\bv}$ like everything else, so parameters with large
+gradients are barely decayed. \vocab{AdamW} \cite{adamw} decouples the decay,
+$\btheta\gets\btheta(1-\eta\lambda)$, outside the adaptive step (the \pt{decoupled} branch in
+the code). \Cref{ch:reg} measures the difference.
+
+\section{Paths and curves}
+\prototype{Thirty steps of GD, momentum and Adam from $(-4,1.5)$ on the bowl of the first
+section.}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth,
+	xlabel=$x$, ylabel=$y$, xmin=-5.2, xmax=5.2, ymin=-1.7, ymax=1.7,
+	legend pos=outer north east, legend style={font=\scriptsize}, unbounded coords=jump]
+	\addplot[gray!50, thin, forget plot] table[x=x,y=y] {gen/dl/data/c04_optim-contours.dat};
+	\addplot+[mark=*, mark size=0.9pt] table[x=x,y=y] {gen/dl/data/c04_optim-path_gd.dat};
+	\addlegendentry{GD, $\eta=0.18$}
+	\addplot+[mark=square*, mark size=0.9pt] table[x=x,y=y] {gen/dl/data/c04_optim-path_mom.dat};
+	\addlegendentry{momentum $0.9$, $\eta=0.03$}
+	\addplot+[mark=triangle*, mark size=1pt] table[x=x,y=y] {gen/dl/data/c04_optim-path_adam.dat};
+	\addlegendentry{Adam, $\eta=0.4$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+GD with a step close to the stability limit zig-zags across the narrow direction; momentum
+overshoots along the valley and spirals in; Adam moves at roughly constant speed $\eta$ per
+coordinate and, with a fixed learning rate, keeps hovering around the minimum (final loss
+$\gv{c04_optim/path_adam_f}$ against $\gv{c04_optim/path_gd_f}$ for GD). That last
+behaviour is the argument for decaying the learning rate.
+
+\begin{example}[Training curves on a real network]
+	A 2-64-64-2 ReLU network on a noisy two-moons dataset, minibatches of 64, the same
+	initialisation for every optimiser; full-data training loss after 100 and 400 steps:
+	\begin{center}
+		\small
+		\begin{tabular}{lcc}
+			\toprule
+			optimiser & step 100 & step 400 \\
+			\midrule
+			SGD, $\eta=0.05$ & $\gv{c04_optim/curve_sgd_100}$ & $\gv{c04_optim/curve_sgd_final}$ \\
+			SGD + momentum $0.9$ & $\gv{c04_optim/curve_mom_100}$ & $\gv{c04_optim/curve_mom_final}$ \\
+			RMSProp, $\eta=0.003$ & $\gv{c04_optim/curve_rms_100}$ & $\gv{c04_optim/curve_rms_final}$ \\
+			Adam, $\eta=0.003$ & $\gv{c04_optim/curve_adam_100}$ & $\gv{c04_optim/curve_adam_final}$ \\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	\begin{center}
+	\begin{tikzpicture}
+	\begin{axis}[napkinplot, width=0.66\linewidth, height=0.36\linewidth, xlabel={step},
+		ylabel={training loss}, ymax=0.7, legend pos=north east]
+		\addplot table[x=step,y=sgd] {gen/dl/data/c04_optim-curves.dat}; \addlegendentry{SGD}
+		\addplot table[x=step,y=mom] {gen/dl/data/c04_optim-curves.dat}; \addlegendentry{momentum}
+		\addplot table[x=step,y=rms] {gen/dl/data/c04_optim-curves.dat}; \addlegendentry{RMSProp}
+		\addplot table[x=step,y=adam] {gen/dl/data/c04_optim-curves.dat}; \addlegendentry{Adam}
+	\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	One run on one problem proves nothing general; the point is the shape (momentum and the
+	adaptive methods leave plain SGD behind early) and how to set up a fair comparison: same
+	initialisation, same batches, each optimiser at a sensible learning rate.
+\end{example}
+
+\section{Learning-rate schedules}
+\prototype{Cosine decay from $0.1$ over 100 epochs: $\gv{c04_optim/cos_t25}$ at epoch 25,
+$\gv{c04_optim/cos_t50}$ at epoch 50, $\gv{c04_optim/cos_t75}$ at epoch 75.}
+
+A large learning rate early makes fast progress and adds useful noise; a small one late lets
+the iterate settle into a minimum (recall Adam hovering above). Schedules interpolate:
+
+\codefile[\script{c04_optim}]{gen/dl/snip/c04_optim-schedules.py}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[napkinplot, width=0.66\linewidth, height=0.38\linewidth, xlabel={step},
+	ylabel={learning rate / peak}, legend pos=outer north east, legend style={font=\scriptsize}]
+	\addplot table[x=t,y=step] {gen/dl/data/c04_optim-sched.dat}; \addlegendentry{step decay}
+	\addplot table[x=t,y=cos] {gen/dl/data/c04_optim-sched.dat}; \addlegendentry{cosine}
+	\addplot table[x=t,y=wcos] {gen/dl/data/c04_optim-sched.dat}; \addlegendentry{warm-up + cosine}
+	\addplot table[x=t,y=onecycle] {gen/dl/data/c04_optim-sched.dat}; \addlegendentry{one-cycle}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+The script asserts that step decay, cosine and one-cycle reproduce the schedulers
+\pt{StepLR}, \pt{CosineAnnealingLR} and \pt{OneCycleLR} of PyTorch exactly. Step decay
+with $\eta_0=0.1$, $\gamma=0.1$ every 30 epochs gives $\gv{c04_optim/step_t65}$ at epoch 65.
+
+\vocab{Warm-up} ramps the learning rate up linearly over the first few hundred or thousand
+steps. Early on, the weights are random, activations and gradients can be large and Adam's
+second-moment estimate rests on a handful of samples, so a full-size step is risky;
+Transformers in particular often diverge without warm-up. \vocab{One-cycle} goes up then down
+in a single cycle (with momentum moving the opposite way) and is popular for short training
+budgets.
+
+\begin{remark}
+	\trap Schedulers in PyTorch are stepped explicitly. Calling \pt{scheduler.step()} once per
+	batch for a schedule defined in epochs (or the reverse) silently compresses or stretches it
+	by a factor of the number of batches per epoch.
+\end{remark}
+
+\section{Batch size, clipping and the loss landscape}
+\prototype{Doubling the batch halves the gradient variance, so the usual heuristic doubles
+the learning rate with it.}
+
+\subsection{Batch size}
+Because the gradient noise variance scales like $1/B$, a larger batch gives a cleaner
+gradient and allows a proportionally larger step: the \vocab{linear scaling heuristic}
+($\eta\propto B$, used with warm-up) works up to a problem-dependent critical batch size,
+beyond which larger batches stop reducing the number of steps needed. Small batches inject
+more noise, which is widely reported to help generalisation; the explanations (noise steering
+toward flatter minima) are plausible but not settled, so state them as such. Practical
+constraints usually decide $B$: memory, and hardware throughput.
+
+\subsection{Gradient clipping}
+\vocab{Clipping by norm} rescales the whole gradient when its norm exceeds a threshold $c$:
+$\bg\gets\bg\cdot\min(1,c/\norm\bg)$. For $\bg=(3,4)$ and $c=1$ it gives $\gv{c04_optim/clipn_ex}$: same
+direction, length $1$. \vocab{Clipping by value} clips each coordinate to $[-c,c]$, giving
+$\gv{c04_optim/clipv_ex}$, which changes the direction. Both match PyTorch's \pt{clip\_grad\_norm\_} and
+\pt{clip\_grad\_value\_}. Clipping by norm is the standard fix for exploding gradients in RNNs
+and is routine in Transformer training; it does nothing for vanishing gradients.
+
+\subsection{Loss landscapes}
+In high dimension most critical points of a neural-network loss are \vocab{saddle points}:
+the Hessian has both positive and negative eigenvalues, and for a random critical point it is
+unlikely that all of thousands of eigenvalues are positive. Gradient descent slows down near
+saddles (the gradient is small) but stochastic noise and momentum push it off them. Poor local
+minima are less of a practical problem in large networks than the textbook non-convexity
+warning suggests; plateaus, ill-conditioning and bad initialisation are the usual culprits when
+training stalls.
+
+\begin{moral}
+	Start with AdamW (Transformers) or SGD with momentum $0.9$ (CNNs), a warm-up plus cosine
+	schedule, gradient clipping at norm $1$; then tune the peak learning rate first, because it
+	matters more than anything else on this page.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}\onechili
+	A training set has $60{,}000$ examples and the batch size is $256$ (last partial batch kept).
+	How many optimiser steps are taken in $10$ epochs?
+	\begin{hint}$\lceil N/B\rceil$ per epoch.\end{hint}
+	\begin{sol}
+		$\lceil 60000/256\rceil = \gv{c04_optim/p_steps_ep}$ steps per epoch ($\gv{c04_optim/p_full}$ full
+		batches and one of $\gv{c04_optim/p_last}$), so $\gv{c04_optim/p_steps10}$ steps.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	Compute Adam's first step for a parameter with gradient $g_1=-4$, $\eta=0.01$, default betas,
+	$\eps$ negligible. What if the gradient were $-0.004$?
+	\begin{hint}After bias correction $\hat m_1=g_1$ and $\hat v_1=g_1^2$.\end{hint}
+	\begin{sol}
+		$\Delta\theta=-\eta\,\hat m_1/\sqrt{\hat v_1}=-0.01\cdot(-4)/4=+0.01$. For $g_1=-0.004$ the
+		step is the same $+0.01$: Adam's first step is $\eta\,\sign(g)$ whatever the scale (until
+		$|g|$ approaches $\eps$).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	Show that for gradients with constant mean $\bg$, $\E\bv_t=(1-\beta_2^t)\E\bg^2$ for Adam's
+	second moment with $\bv_0=\zero$, and compute the correction factor after $10$ steps with
+	$\beta_2=0.999$.
+	\begin{hint}Geometric series.\end{hint}
+	\begin{sol}
+		$\bv_t=(1-\beta_2)\sum_{s=1}^t\beta_2^{t-s}\bg_s^2$, so
+		$\E\bv_t=(1-\beta_2)\frac{1-\beta_2^t}{1-\beta_2}\E\bg^2=(1-\beta_2^t)\E\bg^2$. After $10$
+		steps, $1-0.999^{10}\approx\gv{c04_optim/p_bc10}$: without correction $\bv$ would underestimate the
+		second moment about $\gv{c04_optim/p_bc10_inv}$-fold and the steps would be about
+		$\gv{c04_optim/p_bc10_sqrt}\times$ too large.
+	\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	For $f(x)=\frac{\lambda}{2}x^2$ and gradient descent with step $\eta$, find all $\eta$ for which
+	the iterates converge, and the $\eta$ that converges in one step. What happens at $\eta=2/\lambda$?
+	\begin{hint}$x\gets(1-\eta\lambda)x$.\end{hint}
+	\begin{sol}
+		Convergence iff $|1-\eta\lambda|<1$, i.e.\ $0<\eta<2/\lambda$; $\eta=1/\lambda$ gives $x_1=0$.
+		At $\eta=2/\lambda$, $x\gets-x$: the iterate oscillates forever between $\pm x_0$. Between $1/\lambda$
+		and $2/\lambda$ it converges while flipping sign every step (the zig-zag).
+	\end{sol}
+\end{problem}
+
+\begin{problem}\onechili
+	A gradient $(6,-8,0)$ is clipped (i) by norm with threshold $5$, (ii) by value with threshold
+	$5$. Give both results.
+	\begin{hint}The norm is $10$.\end{hint}
+	\begin{sol}(i) $\gv{c04_optim/clipn_p}$; (ii) $\gv{c04_optim/clipv_p}$, which points in a different
+		direction (both checked against PyTorch).\end{sol}
+\end{problem}
+
+\begin{problem}\twochili
+	With PyTorch-style momentum $\bv\gets\beta\bv+\bg$ and a constant gradient $\bg$, find the
+	limiting step and the number of steps until the step reaches $90\%$ of it for $\beta=0.9$ and
+	$\beta=0.99$.
+	\begin{hint}$\bv_t=\bg(1-\beta^t)/(1-\beta)$.\end{hint}
+	\begin{sol}
+		The step tends to $\eta\bg/(1-\beta)$: $10\eta\bg$ or $100\eta\bg$. It reaches $90\%$ when
+		$\beta^t\le0.1$: $t\ge\ln0.1/\ln0.9\approx\gv{c04_optim/p_t09}$, so $\gv{c04_optim/p_n09}$ steps for
+		$\beta=0.9$, and $t\ge\gv{c04_optim/p_t099}$, so $\gv{c04_optim/p_n099}$ steps for $\beta=0.99$. Large $\beta$ means a long memory and a slow start.
+	\end{sol}
+\end{problem}

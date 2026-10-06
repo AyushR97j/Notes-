@@ -407,7 +407,8 @@ with implicit or explicit norm control, which is part of why huge neural network
 		Take $-\log$ of likelihood times prior and multiply by $2\sigma^2$.
 	\end{hint}
 	\begin{sol}
-		$-\log p(\w\mid\D)=\frac{1}{2\sigma^2}\sum(y_i-\w\T\x_i)^2+\frac{1}{2\tau^2}\norm{\w}^2+c$;
+		Up to an additive constant,
+		\[ -\log p(\w\mid\D)=\frac{1}{2\sigma^2}\sum(y_i-\w\T\x_i)^2+\frac{1}{2\tau^2}\norm{\w}^2+c; \]
 		multiplying by $2\sigma^2$ gives $\RSS+(\sigma^2/\tau^2)\norm{\w}^2$. A Laplace prior
 		$p(w_j)\propto e^{-\abs{w_j}/b}$ gives $\frac{1}{2\sigma^2}\RSS+\frac1b\norm{\w}_1$, i.e.\
 		lasso with $\lambda=2\sigma^2/b$ in the $\RSS+\lambda\norm{\w}_1$ form.

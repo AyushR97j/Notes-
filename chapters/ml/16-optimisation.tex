@@ -1,17 +1,137 @@
 \chapter{Optimisation for ML}
 \label{ch:optim}
+Every model in this book is fitted by minimising something. This short chapter collects the facts about
+\emph{how} that you need for follow-up questions: why gradient descent zig-zags, what momentum buys, when Newton
+or L-BFGS is the right tool, and why SGD needs a decaying step. Deep-learning optimisers (Adam and friends) are
+covered in \otherbook{Deep Learning}.
+
 \section{Gradient descent on a quadratic}
-\stub{Gradient descent on a quadratic}
+\prototype{Minimise $\frac12(x^2+10y^2)$ starting from $(1,1)$.}
+
+Near a minimum every smooth loss looks quadratic, $f(\x)=\frac12\x\T\A\x$ with $\A\succ0$ having eigenvalues
+$\mu=\lambda_{\min}\le\dots\le L=\lambda_{\max}$. Gradient descent $\x\leftarrow\x-\eta\A\x$ multiplies the
+component along eigenvector $i$ by $1-\eta\lambda_i$ each step (\Cref{ch:linreg}, Problem 3F). Hence:
+\begin{itemize}
+	\ii it converges iff $0<\eta<2/L$; at $\eta=0.21>2/L=\gv{c16_optim/eta_max}$ the iterate's norm after 20 steps
+	is $\gv{c16_optim/div_norm}$ and growing;
+	\ii the best constant step $\eta=2/(\mu+L)$ contracts the error by $\frac{\kappa-1}{\kappa+1}$ per step, where
+	$\kappa=L/\mu$ is the \vocab{condition number} (the script confirms the ratio $9/11$ for $\kappa=10$);
+	\ii the number of iterations to a fixed accuracy grows linearly in $\kappa$.
+\end{itemize}
+Geometrically, with $\kappa\gg1$ the level sets are long thin ellipses; the gradient points across the valley,
+not along it, so the iterates bounce between the walls (\Cref{fig:zigzag}). Standardising features and
+preconditioning reduce $\kappa$.
 
 \section{Momentum}
-\stub{Momentum}
+\prototype{A ball rolling down the valley keeps its speed along the floor and damps the side-to-side bounce.}
+\vocab{Heavy-ball momentum} keeps a velocity: $\vv\leftarrow\beta\vv-\eta\nabla f(\x)$, $\x\leftarrow\x+\vv$.
+Oscillating gradient components cancel in the running sum; consistent ones accumulate. With optimally tuned
+$\eta,\beta$ on a quadratic the contraction factor improves from $\frac{\kappa-1}{\kappa+1}$ to
+$\frac{\sqrt\kappa-1}{\sqrt\kappa+1}$: iterations scale with $\sqrt\kappa$ instead of $\kappa$. Iterations to reach
+$\norm{\x}<10^{-6}$ from $(1,1)$:
+\begin{center}
+	\small
+	\begin{tabular}{rccccc}
+		\toprule
+		$\kappa$ & GD, $\eta=1/L$ & GD, $\eta=\frac2{\mu+L}$ & heavy ball & GD rate & momentum rate \\ \midrule
+		\gv{c16_optim/rate_rows}
+		\bottomrule
+	\end{tabular}
+\end{center}
+Nesterov's accelerated gradient evaluates the gradient at the look-ahead point $\x+\beta\vv$ and attains the
+$\sqrt\kappa$ rate for general smooth convex functions.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[width=0.8\linewidth, xmin=-0.3, xmax=1.1, ymin=-0.55, ymax=0.55, axis equal image,
+				axis lines=middle, ticklabel style={font=\scriptsize}, legend pos=outer north east,
+				legend style={font=\scriptsize}]
+			\foreach \c in {0.005,0.03,0.1,0.25,0.5,0.85}{
+				\addplot[gray!50, domain=0:360, samples=80, forget plot] ({sqrt(2*\c)*cos(x)}, {sqrt(2*\c/10)*sin(x)});}
+			\addplot[red!80!black, thick, mark=*, mark size=1pt] table[x=x,y=y] {gen/ml/data/c16_optim-path_gd.dat};
+			\addplot[blue!80!black, thick, mark=square*, mark size=1pt] table[x=x,y=y] {gen/ml/data/c16_optim-path_hb.dat};
+			\legend{GD, heavy ball}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{$f=\frac12(x^2+10y^2)$, $\kappa=10$, 15 steps from $(1,0.5)$: gradient descent ($\eta=2/(\mu+L)$)
+		zig-zags across the narrow direction and ends at distance $\gv{c16_optim/gd15}$ from the optimum; tuned
+		heavy-ball momentum ends at $\gv{c16_optim/hb15}$.}
+	\label{fig:zigzag}
+\end{figure}
 
 \section{Newton and quasi-Newton}
-\stub{Newton and quasi-Newton}
+\prototype{One Newton step solves a quadratic exactly.}
+Newton's method uses curvature: $\x\leftarrow\x-\Hm\inv\nabla f$. On a quadratic it jumps to the minimiser in one
+step (checked); near a minimum of a smooth function it converges \emph{quadratically} (the number of correct
+digits doubles each step), and it is invariant to linear rescaling of the parameters, so conditioning does not
+matter. Costs: forming and solving with the $d\times d$ Hessian, $O(d^3)$ per step; and far from the minimum, or
+where $\Hm$ is not PD, it can go the wrong way --- hence damping and line searches. Logistic regression's IRLS
+(\Cref{ch:logistic}) is Newton's method.
 
-\section{Coordinate descent}
-\stub{Coordinate descent}
+\vocab{Quasi-Newton} methods build a Hessian (inverse) approximation from successive gradient differences: BFGS
+keeps a dense $d\times d$ matrix; \vocab{L-BFGS} keeps only the last $m$ (say 10) pairs and costs $O(md)$ per
+step --- the default solver for scikit-learn's logistic regression. On the Rosenbrock function (a curved,
+ill-conditioned valley) from $(-1.2,1)$, plain gradient descent with step $10^{-3}$ needs
+$\gv{c16_optim/ros_gd}$ iterations to get the gradient norm below $10^{-5}$; BFGS needs $\gv{c16_optim/ros_BFGS}$,
+L-BFGS $\gv{c16_optim/ros_LBFGSB}$ and Newton-CG $\gv{c16_optim/ros_NewtonCG}$.
 
-\section{Duality}
-\stub{Duality}
+\section{Coordinate descent, SGD and duality}
+\prototype{One data point per update: fast, noisy, and never quite settles at a constant step.}
+\vocab{Coordinate descent} minimises over one coordinate at a time; it shines when each one-dimensional problem
+has a closed form, as for the lasso (\Cref{ch:biasvar}) and SMO's two-variable steps (\Cref{ch:svm}).
 
+\vocab{Stochastic gradient descent} replaces $\nabla f$ by the gradient on one example or a mini-batch: an
+unbiased but noisy estimate, $n$ times cheaper per step. With a constant step, the iterates reach a noise ball
+around the optimum whose size is proportional to $\eta$; convergence requires a decaying step
+($\sum\eta_t=\infty$, $\sum\eta_t^2<\infty$, e.g.\ $\eta_t\propto1/t$) or averaging of iterates.
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.66\linewidth, height=0.34\linewidth, ymode=log,
+				xlabel={SGD step}, ylabel={excess training MSE}, legend pos=north east]
+			\addplot[red!80!black, thick] table[x=t,y=const] {gen/ml/data/c16_optim-sgd.dat};
+			\addplot[blue!80!black, thick, dashed] table[x=t,y=decay] {gen/ml/data/c16_optim-sgd.dat};
+			\legend{constant $\eta=0.02$, $\eta_t=0.05/(1+t/500)$}
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+Linear regression with 2000 rows: the constant step plateaus at excess MSE $\approx\gv{c16_optim/sgd_const_end}$;
+the decaying step keeps improving ($\gv{c16_optim/sgd_decay_end}$). Rates to remember for convex problems: GD on
+smooth convex $O(1/t)$, on strongly convex $O(c^t)$ (linear); SGD $O(1/\sqrt t)$ and $O(1/t)$ respectively.
+
+\vocab{Duality} (\Cref{ch:maths}) turns a constrained primal into a dual whose value lower-bounds it; for convex
+problems with Slater's condition they coincide. Practical uses: the SVM dual exposes kernels and sparsity; the
+\emph{duality gap} is a certificate of how far an iterate is from optimal, which is exactly the stopping test
+scikit-learn's lasso and SVM solvers use.
+
+\begin{moral}
+	Condition number sets gradient descent's speed; momentum turns $\kappa$ into $\sqrt\kappa$; curvature (Newton,
+	L-BFGS) removes it at a price per step; SGD trades exactness for cheap steps and needs a decaying rate.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Largest step]
+	\onechili
+	For $f(x,y)=2x^2+8y^2$, what is the largest constant learning rate for which gradient descent converges, and
+	what is the condition number?
+	\begin{hint}
+		The Hessian is $\diag(4,16)$.
+	\end{hint}
+	\begin{sol}
+		$L=16$, $\mu=4$: converge iff $\eta<2/16=0.125$; $\kappa=4$, and the best constant step $2/(4+16)=0.1$
+		contracts errors by $(4-1)/(4+1)=0.6$ per step.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Newton in one dimension]
+	\twochili
+	Apply two Newton steps to minimise $f(x)=x^4-3x$ from $x_0=1$.
+	\begin{hint}
+		$x\leftarrow x-f'(x)/f''(x)$ with $f'=4x^3-3$, $f''=12x^2$.
+	\end{hint}
+	\begin{sol}
+		$x_1=1-1/12=\gv{c16_problems/p16b_x1}$; $x_2=\gv{c16_problems/p16b_x2}$; the minimiser is
+		$(3/4)^{1/3}=\gv{c16_problems/p16b_star}$ --- two steps already give four correct digits.
+	\end{sol}
+\end{problem}
