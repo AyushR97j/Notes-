@@ -1,0 +1,461 @@
+% =====================================================================
+%  preamble.tex -- shared template for the two placement study books
+%
+%  Large parts of this file are adapted from the preamble and macros of
+%  Evan Chen's "An Infinitely Large Napkin"
+%  (https://github.com/vEnhance/napkin, files tex/preamble.tex and
+%  tex/macros.tex).  Those source files are licensed under the
+%  GNU General Public License, version 3.  Accordingly this adapted file
+%  is also distributed under the GNU GPL v3; see latex/COPYING-GPL-3.txt
+%  and latex/NOTICE.md.
+%
+%  Copyright (C) Evan Chen and the Napkin contributors (original code).
+%  Modifications (C) Philospher.
+%
+%  This program is free software: you can redistribute it and/or modify
+%  it under the terms of the GNU General Public License as published by
+%  the Free Software Foundation, either version 3 of the License, or
+%  (at your option) any later version.  It is distributed WITHOUT ANY
+%  WARRANTY; without even the implied warranty of MERCHANTABILITY or
+%  FITNESS FOR A PARTICULAR PURPOSE.
+%
+%  The main file must define before \input-ing this file:
+%    \booktitle, \bookshort, \bookauthor, \bookid (ml or dl)
+% =====================================================================
+
+%%fakesection Load packages (from Napkin / evan.sty)
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[pdfusetitle]{hyperref}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathrsfs}
+\usepackage[usenames,svgnames,dvipsnames,table]{xcolor}
+\usepackage{textcomp}
+\usepackage{enumerate}
+\usepackage{mathtools}
+\usepackage{microtype}
+\usepackage[normalem]{ulem}
+\usepackage{stmaryrd}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[nameinlink]{cleveref}
+\usepackage{etoolbox}
+
+%%fakesection Napkin pedagogy commands
+\newcommand{\prototype}[1]{%
+	\emph{{\color{red} Prototypical example for this section:} #1} \par\medskip
+}
+\newcommand{\vocab}[1]{\textbf{\color{blue} #1}}
+% \stub{...}: grey placeholder text while drafting.  None may survive
+% into a final PDF; the read-through greps for the word STUB.
+\newcommand{\stub}[1]{{\color{gray}\sffamily [STUB: #1]}}
+\newcommand{\ii}{\item}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\inv}{^{-1}}
+\newcommand{\wh}{\widehat}
+\newcommand{\wt}{\widetilde}
+\newcommand{\ol}{\overline}
+\newcommand{\abs}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\ceiling}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\CC}{\mathbb C}
+\newcommand{\NN}{\mathbb N}
+\newcommand{\RR}{\mathbb R}
+\newcommand{\ZZ}{\mathbb Z}
+\newcommand{\EE}{\mathbb E}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\sign}{sign}
+
+%%fakesection Links
+\hypersetup{
+	linkcolor={red!50!black},
+	citecolor={green!50!black},
+	urlcolor={blue!80!black},
+	pdfkeywords={machine learning, deep learning, placements, interviews},
+	pdfauthor={\bookauthor},
+	pdftitle={\booktitle},
+	colorlinks,
+}
+
+%%fakesection TikZ and pgfplots (all figures are drawn, never pasted)
+\usepackage{tikz}
+\usetikzlibrary{arrows,arrows.meta,positioning,calc,shapes,shapes.geometric,
+	fit,backgrounds,decorations.pathreplacing,matrix,patterns,shadows}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween,groupplots,colormaps}
+\pgfplotsset{
+	every axis/.append style={font=\small, line width=0.7pt,
+		tick style={line width=0.5pt}},
+	napkinplot/.style={width=0.82\linewidth, height=0.5\linewidth,
+		grid=major, grid style={gray!20}, axis lines=left,
+		legend style={draw=none, fill=white, fill opacity=0.8,
+			text opacity=1, font=\footnotesize},
+		cycle list name=napkincolors},
+}
+\pgfplotscreateplotcyclelist{napkincolors}{%
+	{blue!80!black, mark=none, thick},
+	{red!80!black, mark=none, thick, dashed},
+	{ForestGreen, mark=none, thick, densely dotted},
+	{orange!90!black, mark=none, thick, dashdotted},
+	{violet, mark=none, thick},
+	{gray, mark=none, thick, dashed}}
+
+%%fakesection Page layout (Napkin)
+\usepackage[headsepline]{scrlayer-scrpage}
+\renewcommand{\headfont}{}
+\addtolength{\textheight}{3.14cm}
+\setlength{\footskip}{0.5in}
+\setlength{\headsep}{10pt}
+\automark[chapter]{chapter}
+\rohead{\footnotesize\thepage}
+\rehead{\footnotesize \textbf{\sffamily \bookshort}, by \emph{\bookauthor}}
+\lehead{\footnotesize\thepage}
+\lohead{\footnotesize \leftmark}
+\chead{}
+\rofoot{}
+\refoot{}
+\lefoot{}
+\lofoot{}
+
+%%fakesection Fancy section and chapter heads (Napkin)
+\renewcommand*{\sectionformat}{\color{purple}\S\thesection\autodot\enskip}
+\renewcommand*{\subsectionformat}{\color{purple}\S\thesubsection\autodot\enskip}
+\newcommand{\problemhead}{A few problems to think about}
+\renewcommand{\thesubsection}{\thesection.\roman{subsection}}
+\addtokomafont{chapterprefix}{\raggedleft}
+\RedeclareSectionCommand[beforeskip=0.5em]{chapter}
+\renewcommand*{\chapterformat}{%
+	\mbox{\scalebox{1.5}{\chapappifchapterprefix{\nobreakspace}}%
+		\scalebox{2.718}{\color{purple}\thechapter\autodot}\enskip}}
+\addtokomafont{partprefix}{\rmfamily}
+\renewcommand*{\partformat}{\color{purple}\scalebox{2.5}{\thepart}}
+
+%%fakesection Theorems (Napkin tcolorbox + thmtools setup)
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable,skins,hooks}
+% patch tcolorbox to support continuation of a paragraph after a box
+% (as in Napkin; from tex.stackexchange.com/questions/568782)
+\makeatletter
+\tcbset{
+	after app={%
+			\ifx\tcb@drawcolorbox\tcb@drawcolorbox@breakable
+			\else
+				\@endparenv
+			\fi
+		}
+}
+\appto\tcb@use@after@lastbox{\@endparenv\@doendpe}
+\makeatother
+
+\usepackage{thmtools}
+\theoremstyle{definition}
+\declaretheoremstyle[
+	headfont=\sffamily\bfseries\color{MidnightBlue},
+	headpunct={\\[3pt]},
+	postheadspace={0pt},
+]{thmtheorem}
+\declaretheoremstyle[
+	headfont=\bfseries\color{RawSienna},
+	headpunct={\\[3pt]},
+	postheadspace={0pt},
+]{thmexample}
+
+\tcbset{
+	theorem box/.style={
+			enhanced, arc=9pt, outer arc=10pt, colframe=blue,
+			colback=TealBlue!5, boxrule=1pt, before skip=12pt,
+			after skip=14pt, left=10pt, right=10pt, breakable
+		},
+	remark box/.style={
+			boxrule=0pt, frame hidden, sharp corners, enhanced,
+			borderline west={2pt}{0pt}{ForestGreen}, before skip=8pt,
+			colback=ForestGreen!5, after skip=12pt, breakable,
+			left=10pt, right=10pt
+		},
+	example box/.style={
+			enhanced, sharp corners, arc=9pt, outer arc=10pt,
+			colframe=RawSienna, colback=Salmon!5, boxrule=0.5pt,
+			before skip=12pt, after skip=14pt, breakable, top=6pt,
+			bottom=8pt, left=10pt, right=10pt
+		},
+	ques box/.style={
+			boxrule=0pt, frame hidden, enhanced, sharp corners,
+			before skip=8pt, after skip=12pt,
+			borderline west={3pt}{0pt}{black},
+			colback=RedViolet!5!gray!5, breakable, left=10pt, right=10pt
+		}
+}
+
+\declaretheorem[style=thmtheorem,name=Theorem,numberwithin=section]{theorem}
+\tcolorboxenvironment{theorem}{theorem box}
+\declaretheorem[style=thmtheorem,name=Lemma,sibling=theorem]{lemma}
+\tcolorboxenvironment{lemma}{theorem box}
+\declaretheorem[style=thmtheorem,name=Proposition,sibling=theorem]{proposition}
+\tcolorboxenvironment{proposition}{theorem box}
+\declaretheorem[style=thmtheorem,name=Corollary,sibling=theorem]{corollary}
+\tcolorboxenvironment{corollary}{theorem box}
+\declaretheorem[style=thmexample,name=Example,sibling=theorem]{example}
+\tcolorboxenvironment{example}{example box}
+
+\declaretheoremstyle[
+	headfont=\bfseries\sffamily\color{ForestGreen!70!black},
+	bodyfont=\normalfont,
+	headpunct={ --- },
+]{thmremark}
+\declaretheoremstyle[
+	headfont=\bfseries,
+	bodyfont=\normalfont\small
+]{thmques}
+\declaretheorem[name=Question,sibling=theorem,style=thmques]{ques}
+\tcolorboxenvironment{ques}{ques box}
+\declaretheorem[name=Exercise,sibling=theorem,style=thmques]{exercise}
+\tcolorboxenvironment{exercise}{ques box}
+\declaretheorem[name=Remark,sibling=theorem,style=thmremark]{remark}
+\tcolorboxenvironment{remark}{remark box}
+
+\theoremstyle{definition}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{abuse}[theorem]{Abuse of Notation}
+
+% Moral (Napkin): one-line takeaway in a green frame
+\newenvironment{moral}{%
+	\begin{tcolorbox}[boxrule=0.4pt,colframe=green!70!black,sharp corners,
+				standard jigsaw,opacityback=0,left=10pt,right=10pt,top=3pt,bottom=3pt,
+				before skip=10pt,after skip=20pt]%
+			\bfseries\color{green!50!black}}%
+		{\end{tcolorbox}}
+
+%%fakesection Problems with hints and solutions (Napkin, via answers.sty)
+\declaretheorem[style=definition,name=Problem,numberwithin=chapter,
+	postheadhook={\phantomsection\label{prob:\theproblem}}]{problem}
+\renewcommand{\theproblem}{\thechapter\Alph{problem}}
+\usepackage{answers}
+\Newassociation{hint}{hintitem}{\bookid-hints}
+\Newassociation{sol}{solitem}{\bookid-solns}
+\renewcommand{\solutionextension}{out}
+\renewenvironment{hintitem}[1]{\item[{\bfseries\hyperref[prob:#1]{#1}.}]%
+	\phantomsection\label{hint:#1}}{}
+\renewenvironment{solitem}[1]{\item[{\bfseries\hyperref[prob:#1]{#1}.}]%
+	\phantomsection\label{sol:#1}}{}
+% Every problem gets an anchor and, at its end, links to hint and solution.
+\AtEndEnvironment{problem}{\par\hfill{\footnotesize\sffamily
+		\hyperref[hint:\theproblem]{hint}\,$\cdot$\,%
+		\hyperref[sol:\theproblem]{solution}}}
+% Problems in the big end-of-book set are numbered P1, P2, ...
+\newcommand{\bigproblemset}{\renewcommand{\theproblem}{P\arabic{problem}}}
+
+%%fakesection Chili difficulty icons (drawn in TikZ instead of Napkin's PNG)
+\newcommand{\chili}{%
+	\begin{tikzpicture}[baseline=-0.6ex, x=1em, y=1em]
+		\fill[red!85!black] (0,0) .. controls (0.35,0.35) and (0.9,0.25) ..
+		(1.35,-0.35) .. controls (1.0,-0.05) and (0.45,-0.05) .. (0.1,-0.25)
+		.. controls (0.0,-0.18) .. cycle;
+		\fill[white, opacity=0.5] (0.25,0.06) .. controls (0.55,0.2) ..
+		(0.9,0.08) .. controls (0.55,0.12) .. cycle;
+		\draw[ForestGreen!80!black, line width=1.3pt, line cap=round]
+		(0.02,-0.08) -- (-0.18,0.05) .. controls (-0.28,0.12) .. (-0.25,0.3);
+	\end{tikzpicture}}
+\newcommand{\prechili}{\vspace*{0.3em}\hspace*{\fill}}
+\newcommand{\onechili}{\marginpar{\prechili\chili}}
+\newcommand{\twochili}{\marginpar{\prechili\chili\chili}}
+\newcommand{\threechili}{\marginpar{\prechili\chili\chili\chili}}
+
+%%fakesection Table of contents (Napkin)
+\makeatletter
+\pretocmd{\tableofcontents}{%
+	\if@openright\cleardoublepage\else\clearpage\fi
+	\pdfbookmark[0]{\contentsname}{toc}%
+}{}{}%
+\makeatother
+\setcounter{tocdepth}{1}
+\RedeclareSectionCommand[tocnumwidth=4.2em]{part}
+\RedeclareSectionCommand[tocpagenumberwidth=2.2em,tocnumwidth=4.2em]{chapter}
+\RedeclareSectionCommand[tocpagenumberwidth=2.2em,tocnumwidth=2.8em]{section}
+
+%%fakesection Bibliography (Napkin style)
+\usepackage[backend=biber,backref=true,style=alphabetic,maxbibnames=6,
+	maxcitenames=2]{biblatex}
+\DeclareLabelalphaTemplate{
+	\labelelement{
+		\field[final]{shorthand}
+		\field{label}
+		\field[strwidth=2,strside=left]{labelname}
+	}
+	\labelelement{
+		\field[strwidth=2,strside=right]{year}
+	}
+}
+\DeclareFieldFormat{labelalpha}{\textbf{\scriptsize #1}}
+\DefineBibliographyStrings{english}{%
+	backrefpage  = {cited p.},
+	backrefpages = {cited pp.}
+}
+\DeclareFieldFormat{journaltitle}{\mkbibemph{#1},}
+\DeclareFieldFormat[inbook,thesis]{title}{\mkbibemph{#1}\addperiod}
+\DeclareFieldFormat[article]{title}{#1}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}\addcolon\space}
+\renewcommand{\mkbibnamegiven}[1]{\textsc{#1}}
+\renewcommand{\mkbibnamefamily}[1]{\textsc{#1}}
+\renewcommand{\mkbibnameprefix}[1]{\textsc{#1}}
+\renewcommand{\mkbibnamesuffix}[1]{\textsc{#1}}
+\renewcommand{\finentrypunct}{}
+
+%%fakesection Mini ToC (Napkin)
+\usepackage[tight]{minitoc}
+\mtcsetfont{parttoc}{chapter}{\sffamily\bfseries}
+\mtcsetfont{parttoc}{section}{\footnotesize\rmfamily\upshape\mdseries}
+\mtcsetfont{parttoc}{subsection}{\footnotesize\rmfamily\upshape\mdseries}
+\setcounter{parttocdepth}{1}
+\renewcommand*{\partheadstartvskip}{\vspace*{20em}}
+\renewcommand*{\partheadendvskip}{}
+\renewcommand\beforeparttoc{\noindent{\bfseries \Large Part \thepart: Contents}}
+\doparttoc[n]
+
+% =====================================================================
+% =====================================================================
+%%  ML / DL MACROS  (new code for these books, not from Napkin)
+% =====================================================================
+% =====================================================================
+
+%% ---- generated values: every number in a worked example comes from
+%% ---- code/ via build.sh, which writes \gvset{script/key}{value} lines
+%% ---- into gen/<book>/*.tex.  \gv{script/key} prints the value; an
+%% ---- undefined key prints a red ?? and a LaTeX warning.
+\makeatletter
+\newcommand{\gvset}[2]{\expandafter\gdef\csname gv@#1\endcsname{#2}}
+\newcommand{\gv}[1]{%
+	\ifcsname gv@#1\endcsname\csname gv@#1\endcsname
+	\else{\color{red}\bfseries ??[#1]}%
+		\PackageWarning{gv}{Undefined generated value `#1'}\fi}
+\makeatother
+
+%% ---- code listings and real program output
+\usepackage{listings}
+\usepackage{fancyvrb}
+\definecolor{codebg}{RGB}{248,248,245}
+\definecolor{codekw}{RGB}{0,70,160}
+\definecolor{codecm}{RGB}{110,110,110}
+\definecolor{codestr}{RGB}{160,60,0}
+\lstdefinestyle{napkinpy}{
+	language=Python, basicstyle=\ttfamily\footnotesize,
+	keywordstyle=\color{codekw}\bfseries, commentstyle=\color{codecm}\itshape,
+	stringstyle=\color{codestr}, showstringspaces=false,
+	columns=fullflexible, keepspaces=true, breaklines=true,
+	breakatwhitespace=false, postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+	numbers=left, numberstyle=\tiny\color{gray}, numbersep=6pt,
+	xleftmargin=14pt, frame=none, upquote=true, tabsize=4,
+	literate={≈}{{$\approx$}}1 {→}{{$\to$}}1 {—}{{---}}1 {λ}{{$\lambda$}}1
+	{σ}{{$\sigma$}}1 {μ}{{$\mu$}}1 {θ}{{$\theta$}}1 {η}{{$\eta$}}1
+	{ε}{{$\varepsilon$}}1 {Σ}{{$\Sigma$}}1 {α}{{$\alpha$}}1 {β}{{$\beta$}}1
+	{γ}{{$\gamma$}}1 {≥}{{$\geq$}}1 {≤}{{$\leq$}}1 {×}{{$\times$}}1
+	{²}{{$^2$}}1 {·}{{$\cdot$}}1 {∂}{{$\partial$}}1,
+}
+\lstset{style=napkinpy}
+\tcbuselibrary{listings}
+\newtcbinputlisting{\codefile}[2][]{%
+	listing file={#2}, listing only, enhanced, breakable,
+	colback=codebg, colframe=gray!40, boxrule=0.4pt, sharp corners,
+	left=2pt, right=2pt, top=1pt, bottom=1pt,
+	listing options={style=napkinpy}, title={\ttfamily\footnotesize #1},
+	coltitle=black, colbacktitle=gray!15, fonttitle=\footnotesize,
+	before skip=8pt, after skip=10pt}
+\newtcblisting{pycode}[1][]{%
+	listing only, enhanced, breakable, colback=codebg, colframe=gray!40,
+	boxrule=0.4pt, sharp corners, left=2pt, right=2pt, top=1pt, bottom=1pt,
+	listing options={style=napkinpy}, before skip=8pt, after skip=10pt, #1}
+% \outputfile{path}: verbatim output captured from a script run.
+\newcommand{\outputfile}[1]{%
+	\begin{tcolorbox}[enhanced, breakable, colback=black!80, colupper=white,
+			boxrule=0pt, sharp corners, left=4pt, right=4pt, top=2pt, bottom=2pt,
+			before skip=6pt, after skip=10pt,
+			title={\ttfamily\scriptsize output (generated by build.sh)},
+			fonttitle=\scriptsize, colbacktitle=black!60, coltitle=white]
+		\VerbatimInput[fontsize=\footnotesize, formatcom=\color{white}]{#1}
+	\end{tcolorbox}}
+
+%% ---- small algorithm box
+\newtcolorbox{algo}[1][]{enhanced, breakable, colback=white,
+	colframe=MidnightBlue!60, boxrule=0.6pt, sharp corners,
+	fonttitle=\sffamily\bfseries\small, coltitle=white,
+	colbacktitle=MidnightBlue!70, title={Algorithm: #1},
+	before skip=10pt, after skip=12pt, left=6pt, right=6pt}
+
+%% ---- "Trap" marker used at the start of remarks about wrong MCQ answers
+\newcommand{\trap}{\textbf{\color{red!70!black}\sffamily Trap.}\ }
+\newcommand{\oatag}{\textsuperscript{\color{orange!80!black}\sffamily\scriptsize OA}}
+
+%% ---- notation
+\renewcommand{\vec}[1]{\bm{#1}}
+\newcommand{\x}{\bm{x}}
+\newcommand{\y}{\bm{y}}
+\newcommand{\w}{\bm{w}}
+\newcommand{\bb}{\bm{b}}
+\newcommand{\z}{\bm{z}}
+\newcommand{\h}{\bm{h}}
+\newcommand{\uu}{\bm{u}}
+\newcommand{\vv}{\bm{v}}
+\newcommand{\bmu}{\bm{\mu}}
+\newcommand{\btheta}{\bm{\theta}}
+\newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\balpha}{\bm{\alpha}}
+\newcommand{\bSigma}{\bm{\Sigma}}
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\I}{\mathbf{I}}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\B}{\mathbf{B}}
+\newcommand{\Hm}{\mathbf{H}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\K}{\mathbf{K}}
+\newcommand{\V}{\mathbf{V}}
+\newcommand{\U}{\mathbf{U}}
+\newcommand{\M}{\mathbf{M}}
+\newcommand{\zero}{\bm{0}}
+\newcommand{\one}{\bm{1}}
+\newcommand{\T}{^{\top}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\Loss}{\mathcal{L}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\Hyp}{\mathcal{H}}
+\newcommand{\ind}[1]{\mathbb{1}\!\left[#1\right]}
+\newcommand{\given}{\,\middle|\,}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\iid}{\overset{\text{i.i.d.}}{\sim}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Corr}{Corr}
+\DeclareMathOperator{\Bias}{Bias}
+\DeclareMathOperator{\MSE}{MSE}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator{\relu}{ReLU}
+\DeclareMathOperator{\logit}{logit}
+\DeclareMathOperator{\Ber}{Bernoulli}
+\DeclareMathOperator{\Bin}{Bin}
+\DeclareMathOperator{\Poi}{Poisson}
+\DeclareMathOperator{\Unif}{Unif}
+\DeclareMathOperator{\vect}{vec}
+\DeclareMathOperator{\conv}{conv}
+\newcommand{\sigmoid}{\sigma}
+
+%% ---- references in plain text to the companion book
+\newcommand{\otherbook}[1]{\emph{#1}}
