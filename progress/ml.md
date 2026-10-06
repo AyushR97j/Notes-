@@ -1,4 +1,4 @@
-RESUME HERE: ch01 done; next = ch02 Maths (code/ml/c02_*.py then chapters/ml/02-maths.tex).
+RESUME HERE: ch02 done; next = ch03 Linear regression (code/ml/c03_*.py then chapters/ml/03-linreg.tex).
 
 # Classical Machine Learning — progress log
 
@@ -44,7 +44,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 ## Chapter checklist
 - [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
-- [ ] 02 Maths ★
+- [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
 - [ ] 03 Linear regression ★
 - [ ] 04 Bias–variance and regularisation ★
 - [ ] 05 Logistic regression ★
@@ -66,3 +66,4 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 
 ## Log
 - Session 1: template + test book built; ML skeleton compiles.
+- Lesson: never put [ ] inside a proof's optional title; bold-vector macros are brace-wrapped so \nabla_\x works; use \script{name} for file paths.

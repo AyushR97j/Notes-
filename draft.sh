@@ -12,4 +12,4 @@ for i in 1 2; do
     grep -n -A6 "^!\|\.tex:[0-9]*: " "draft-$book.log" | head -40; echo "LaTeX failed"; exit 1; }
 done
 echo "pages: $(pdfinfo draft-$book.pdf | awk '/^Pages/{print $2}')"
-grep -n "Overfull\|gv Warning\|Reference.*undefined" "draft-$book.log" | head -20 || true
+grep -n "Overfull\|gv Warning\|Reference.*undefined" "draft-$book.log" | awk '!/Overfull/ || ($0 ~ /[0-9.]+pt/ && substr($0, match($0,/\(([0-9.]+)pt/)+1, RLENGTH-4)+0 > 2)' | head -20 || true

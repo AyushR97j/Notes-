@@ -49,7 +49,7 @@ build_pdf () {
     grep -n -A5 "^!\|:[0-9]*: " "$book.log" | head -40; echo "LaTeX failed (see $book.log)"; exit 1; }
   cp "$book.pdf" "${PDFNAME[$book]}"
   echo ">> built ${PDFNAME[$book]} ($(pdfinfo "$book.pdf" | awk '/^Pages/{print $2}') pages)"
-  grep -c "Overfull" "$book.log" | xargs echo ">> overfull boxes:"
+  echo ">> overfull boxes > 2pt: $(grep -o 'Overfull \\[hv]box ([0-9.]*pt' "$book.log" | grep -o '[0-9.]*' | awk '$1>2' | wc -l)"
   grep -q "undefined" "$book.log" && grep "undefined" "$book.log" | sort -u | head || true
 }
 
