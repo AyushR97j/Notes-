@@ -1,4 +1,68 @@
 \chapter*{Preface}
 \addcontentsline{toc}{chapter}{Preface}
-\stub{preface}
-Versions: \gv{a00_versions/torch}.
+
+This book is for a student preparing for machine-learning roles in Indian campus placements: the
+online assessment (OA) that filters thousands of applicants, and the technical interviews that
+decide offers. It takes you from a single neuron to Transformers and large language models, and
+its acceptance test is simple: after working through it you should be able to answer every
+deep-learning question those rounds ask, and to derive and implement the core algorithms from a
+blank file. It assumes the mathematics and the logistic-regression chapter of the companion book,
+\otherbook{Classical Machine Learning}, by the same author.
+
+\section*{What placements actually ask}
+A collected set of real company papers (Info Edge, Fujitsu's IISc and IIT Kharagpur papers,
+Qualcomm at IISc, EXL) contains 49 non-coding ML/DL questions: 22 on deep learning, 9 on supervised
+learning, 7 on optimisation, losses and regularisation, 6 on preprocessing, NLP and miscellany,
+3 on unsupervised learning, and one each on evaluation and statistics. They are one-line concept
+MCQs, one-minute hand numerics and ``which statements are true'' multi-selects: the output shape and
+parameter count of a convolution, softmax confidence and cross-entropy from five logits, a neuron's
+output, the purpose of Adam, the effect of $\lambda$ in $E+\lambda\sum w^2$, XOR and the perceptron,
+weight sharing, ResNet and vanishing gradients, LSTMs for time series, which layer reduces spatial
+size, what fine-tuning means. Interviews go further: build a Transformer from scratch, derive
+backpropagation for an MLP, implement it in NumPy, and answer three ``why?''s deep. Topics absent
+from the 49 questions are not skipped; they are simply where interviews go next.
+
+\section*{How the book is built}
+Every topic has four layers:
+\begin{enumerate}
+	\ii \textbf{Intuition}, with an everyday analogy where one helps, and a \emph{prototypical example}
+	at the start of each section.
+	\ii \textbf{The precise statement}: definitions, derivations and proofs, in the blue and black boxes.
+	\ii \textbf{A worked numerical in the shape an OA would set}, in the red \emph{Example} boxes.
+	\ii \textbf{The trap}: the popular wrong answer a question-setter plants, in green remarks marked
+	\textbf{\color{red!70!black}\sffamily Trap}.
+\end{enumerate}
+Each chapter ends with problems rated by chilies (\chili\ is a one-minute OA item,
+\chili\chili\chili\ a derivation); Chapter~14 adds 73 more in OA form. Hints and full solutions are in the
+two appendices, linked both ways. Chapter~13 is a rapid-fire list of 98 interview questions with
+spoken-length answers, for the night before.
+
+\section*{Every number is computed}
+No number in this book was typed by hand from a calculator. Each worked example, table, shape,
+parameter or FLOP count, every figure and every ``this prints'' comes from a script in
+\fpath{code/dl/}, run by \fpath{build.sh} with fixed seeds on a CPU in seconds, whose output is pasted
+into the text at build time. Every from-scratch implementation (backpropagation, an autograd engine,
+the optimisers, BatchNorm, convolution, LSTM, multi-head attention, a full encoder--decoder
+Transformer, LoRA, BPE and more) is asserted against PyTorch, SciPy or scikit-learn, printing both
+numbers; a single mismatch stops the build. The scripts are short and are shown wherever the code is
+the point. Parameter counts of named production models are never quoted; where a familiar shape
+appears (``a BERT-base-shaped configuration'') it is a configuration defined in the text and counted
+by code.
+
+\paragraph{Reproducibility.} This edition was built with Python \gv{a00_versions/python}, NumPy
+\gv{a00_versions/numpy}, SciPy \gv{a00_versions/scipy}, scikit-learn \gv{a00_versions/sklearn} and
+PyTorch \gv{a00_versions/torch} (CPU). Running \pt{./build.sh dl} regenerates every number, figure
+and listing and rebuilds the PDF.
+
+\section*{Sources}
+The book is written from the author's own understanding and checked by the code above, not copied.
+The standard references, recommended for more depth, are Goodfellow, Bengio and Courville's
+\emph{Deep Learning} \cite{goodfellow}, Zhang, Lipton, Li and Smola's \emph{Dive into Deep Learning}
+\cite{d2l}, and Prince's \emph{Understanding Deep Learning} \cite{prince}. The original papers behind
+the central ideas are cited where they are used, among them the Transformer \cite{vaswani}, ResNet
+\cite{resnet}, Adam \cite{adam}, BatchNorm \cite{batchnorm}, the LSTM \cite{lstm}, BERT \cite{bert},
+LoRA \cite{lora} and the VAE \cite{vae}. The typographic template is adapted from Evan Chen's
+\emph{An Infinitely Large Napkin} (GPL; see \fpath{latex/NOTICE.md}).
+
+\medskip
+\hfill Philospher
