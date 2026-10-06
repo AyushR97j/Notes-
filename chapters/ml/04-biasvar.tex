@@ -1,17 +1,448 @@
 \chapter{Bias, Variance and Regularisation}
 \label{ch:biasvar}
-\section{The decomposition}
-\stub{The decomposition}
+Chapter 1 showed test error as a U-shape in model capacity. This chapter explains the U
+(bias falls, variance rises), then gives you the dial that moves along it without changing the model
+class: a penalty $\lambda$ on the size of the weights. Nearly every ``effect of $\lambda$'' and
+``bagging versus boosting'' question in an OA is this chapter in disguise.
 
-\section{Ridge}
-\stub{Ridge}
+\section{The decomposition}
+\prototype{Refit the same degree-9 polynomial on 200 different training sets and look at the spread of
+	the 200 curves (variance) and at how far their average is from the truth (bias).}
+
+\subsection{Setting}
+Let $y=f(\x)+\eps$ with $\E\eps=0$, $\Var\eps=\sigma^2$, independent of $\x$. A learning algorithm
+applied to a random training set $S$ produces $\hat f_S$. Fix a test input $\x_0$ and take
+expectations over both $S$ and the test noise.
+
+\begin{theorem}[Bias--variance decomposition]
+	\[ \E_{S,\eps}\bigl[(y_0-\hat f_S(\x_0))^2\bigr]
+		=\underbrace{\sigma^2}_{\text{noise}}
+		+\underbrace{\bigl(f(\x_0)-\E_S\hat f_S(\x_0)\bigr)^2}_{\text{bias}^2}
+		+\underbrace{\E_S\bigl(\hat f_S(\x_0)-\E_S\hat f_S(\x_0)\bigr)^2}_{\text{variance}}. \]
+\end{theorem}
+\begin{proof}
+	Write $\bar f=\E_S\hat f_S(\x_0)$ and $f=f(\x_0)$. Then
+	$y_0-\hat f_S=\eps+(f-\bar f)+(\bar f-\hat f_S)$. Square and take expectations. The three cross
+	terms vanish: $\eps$ is independent of $S$ with mean zero, $f-\bar f$ is a constant, and
+	$\E_S(\bar f-\hat f_S)=0$ by definition of $\bar f$.
+\end{proof}
+
+Read the three terms as an archer. \emph{Noise} is wind you cannot control. \emph{Bias} is a
+sight that is misaligned: the average arrow lands off-centre. \emph{Variance} is a shaky hand: the
+arrows scatter around their own average. A rigid model (low degree, big $\lambda$) has a steady hand
+and a bad sight; a flexible one has a good sight and a shaky hand.
+
+\begin{remark}
+	The decomposition is exact for squared loss. For 0-1 loss there is no clean additive version
+	(several competing definitions exist), which is why MCQs that say ``boosting reduces bias'' are
+	using the words loosely.
+\end{remark}
+
+\begin{example}[Measured, not assumed]
+	Degree-9 polynomial features on $25$ noisy points from $\sin 2\pi x$ ($\sigma^2=0.09$), ridge
+	penalty swept from $\lambda=\gv{c04_biasvar/bv_lam_lo}$ to $\gv{c04_biasvar/bv_lam_hi}$, 200
+	training sets. Averaged over test points:
+	\begin{center}
+		\begin{tabular}{lccc}
+			\toprule
+			& tiny $\lambda=\gv{c04_biasvar/bv_lam_lo}$ & best $\lambda\approx\gv{c04_biasvar/bv_best_lam}$ &
+			big $\lambda=\gv{c04_biasvar/bv_lam_hi}$\\
+			\midrule
+			bias$^2$ & \gv{c04_biasvar/bv_b2_lo} & \gv{c04_biasvar/bv_b2_best} & \gv{c04_biasvar/bv_b2_hi}\\
+			variance & \gv{c04_biasvar/bv_v_lo} & \gv{c04_biasvar/bv_v_best} & \gv{c04_biasvar/bv_v_hi}\\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	The script also draws fresh noisy test targets and checks that
+	bias$^2+$variance$+\sigma^2$ matches the simulated test MSE at every $\lambda$.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.75\linewidth, height=0.42\linewidth, xmode=log,
+				xlabel={ridge penalty $\lambda$ (log scale) $\longrightarrow$ less flexible},
+				ylabel={error}, ymin=0, ymax=0.7, legend pos=north west, legend columns=2]
+			\addplot[red!80!black, thick] table[x=lam,y=bias2] {gen/ml/data/c04_biasvar-bv.dat};
+			\addplot[blue!80!black, thick, dashed] table[x=lam,y=var] {gen/ml/data/c04_biasvar-bv.dat};
+			\addplot[gray, densely dotted, thick] table[x=lam,y=noise] {gen/ml/data/c04_biasvar-bv.dat};
+			\addplot[black, very thick] table[x=lam,y=total] {gen/ml/data/c04_biasvar-bv.dat};
+			\addplot[only marks, mark=o, mark size=1.5pt, black] table[x=lam,y=mse] {gen/ml/data/c04_biasvar-bv.dat};
+			\legend{bias$^2$, variance, noise $\sigma^2$, sum, simulated test MSE}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Bias--variance trade-off along the ridge path. Moving right (more regularisation)
+		trades variance for bias; the sum is minimised in between.}
+	\label{fig:bv}
+\end{figure}
+
+\subsection{What moves which term}
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}X cc}
+		\toprule
+		Change & bias & variance \\
+		\midrule
+		more training data (same model) & $\approx$ same & $\downarrow$ \\
+		more features / higher degree / deeper tree & $\downarrow$ & $\uparrow$ \\
+		larger $\lambda$ (ridge, lasso, weight decay) & $\uparrow$ & $\downarrow$ \\
+		larger $k$ in $k$-NN & $\uparrow$ & $\downarrow$ \\
+		bagging / random forest (averaging many high-variance models) & $\approx$ same & $\downarrow$ \\
+		boosting (sequentially fitting residuals of weak models) & $\downarrow$ & $\uparrow$ (slowly)\\
+		early stopping (fewer iterations) & $\uparrow$ & $\downarrow$ \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+
+\begin{remark}
+	\trap ``More data reduces bias.'' More data shrinks variance; it cannot fix a model class that
+	cannot represent $f$ (a line fitted to a parabola stays wrong with a billion points). If
+	training error is high, more data will not help --- that is the diagnostic. If the gap is
+	large, more data will.
+\end{remark}
+
+\begin{moral}
+	Underfitting is bias, overfitting is variance; regularisation and averaging buy lower variance
+	with a little bias.
+\end{moral}
+
+\section{Ridge regression}
+\prototype{Shrinking the five-point slope from $0.8$ towards $0$ as $\lambda$ grows.}
+
+\subsection{Definition and closed form}
+\begin{definition}
+	\vocab{Ridge regression} (Tikhonov, $\ell_2$ regularisation) minimises
+	\[ \norm{\y-\X\w}^2+\lambda\norm{\w}_2^2,\qquad\lambda\ge0, \]
+	with the intercept \emph{not} penalised (centre $\X$ and $\y$ first, or exclude it explicitly).
+\end{definition}
+The gradient is $-2\X\T(\y-\X\w)+2\lambda\w$, so
+\[ \hat\w_{\text{ridge}}=(\X\T\X+\lambda\I)\inv\X\T\y. \]
+$\X\T\X+\lambda\I$ is positive definite for any $\lambda>0$, so the solution exists and is unique
+even when $\X\T\X$ is singular ($n<d$, duplicated features). Historically, that was the point.
+
+\begin{example}[One feature, by hand]
+	Centre the five points of \Cref{ch:linreg}: $\sum x_iy_i=8$, $\sum x_i^2=10$. Without intercept,
+	$\hat w=\sum x_iy_i/(\sum x_i^2+\lambda)=8/(10+\lambda)$:
+	\begin{center}
+		\begin{tabular}{lccccc}
+			\toprule
+			$\lambda$ & 0 & 1 & 10 & 40 & 1000 \\
+			$\hat w$ & \gv{c04_biasvar/r1_0} & \gv{c04_biasvar/r1_1} & \gv{c04_biasvar/r1_10} &
+			\gv{c04_biasvar/r1_40} & \gv{c04_biasvar/r1_1000}\\
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	At $\lambda=\sum x_i^2$ the slope is exactly halved. All non-zero cases match
+	\texttt{Ridge(fit\_intercept=False)}.
+\end{example}
+
+\subsection{The SVD view: shrinkage by direction}
+With $\X=\U\bSigma\V\T$ (singular values $s_j$),
+\[ \X\hat\w_{\text{ridge}}=\sum_j\uu_j\,\frac{s_j^2}{s_j^2+\lambda}\,\uu_j\T\y. \]
+OLS keeps every principal direction fully (factor 1); ridge multiplies direction $j$ by
+$s_j^2/(s_j^2+\lambda)$, shrinking the low-variance directions most --- exactly the directions in
+which the data say least and the estimate is noisiest. The \vocab{effective degrees of freedom}
+$\mathrm{df}(\lambda)=\sum_j s_j^2/(s_j^2+\lambda)=\Tr\Hm_\lambda$ falls from $d$ to $0$.
+
+\begin{example}[Diabetes data, $\lambda=50$]
+	On scikit-learn's diabetes data ($n=\gv{c04_biasvar/n_diab}$, $d=\gv{c04_biasvar/p_diab}$,
+	standardised), $\lambda=50$ keeps the top principal direction at factor
+	$\gv{c04_biasvar/shrink_top}$ and the bottom one at $\gv{c04_biasvar/shrink_bot}$;
+	$\mathrm{df}=\gv{c04_biasvar/dof50}$. The closed form, the SVD formula and \texttt{Ridge} agree
+	to $10^{-6}$.
+\end{example}
+
+\subsection{The Bayesian view}
+As derived in \Cref{ch:maths}, ridge is the MAP estimate under $\w\sim\Normal(\zero,\tau^2\I)$ with
+Gaussian noise $\sigma^2$, and $\lambda=\sigma^2/\tau^2$. ``Large $\lambda$'' means ``I strongly
+believe the weights are small''; $\lambda\to0$ is a flat prior and recovers OLS.
+
+\begin{remark}
+	\trap Ridge is \emph{not} scale-invariant. Penalising $w_j^2$ treats a feature measured in
+	rupees and one measured in crores identically, so the crores feature (tiny values, huge
+	coefficient) is punished far more. Standardise features before ridge, lasso, elastic net, SVMs,
+	$k$-NN and PCA (\Cref{ch:dataprep}). OLS and trees do not need it.
+\end{remark}
 
 \section{Lasso and elastic net}
-\stub{Lasso and elastic net}
+\prototype{With an orthonormal design, lasso turns OLS coefficients $(3,-1.2,0.4,-0.1)$ into
+	$(2.5,-0.7,0,0)$.}
+
+\begin{definition}
+	The \vocab{lasso} minimises $\frac{1}{2n}\norm{\y-\X\w}^2+\lambda\norm{\w}_1$
+	(scikit-learn's scaling). The \vocab{elastic net} minimises
+	$\frac{1}{2n}\norm{\y-\X\w}^2+\lambda\bigl(\alpha\norm{\w}_1+\frac{1-\alpha}{2}\norm{\w}_2^2\bigr)$.
+\end{definition}
+
+\subsection{Why the lasso gives exact zeros}
+Three explanations, each enough for an interview.
+\begin{enumerate}
+	\ii \textbf{Subgradient.} In one dimension with standardised feature, the optimality condition
+	is $w=z-\lambda\,\partial\abs w$ where $z$ is the OLS coefficient. The subgradient of $\abs w$ at
+	$0$ is the whole interval $[-1,1]$, so $w=0$ is optimal whenever $\abs z\le\lambda$. The solution
+	is the \vocab{soft-thresholding} operator $S_\lambda(z)=\sign(z)\max(\abs z-\lambda,0)$. Ridge's
+	penalty $w^2$ has derivative $2w$, which vanishes at $0$, so it only rescales: $z/(1+\lambda)$.
+	\ii \textbf{Geometry.} Equivalently minimise RSS subject to $\norm{\w}_1\le t$. The RSS
+	contours are ellipses; the $\ell_1$ ball is a diamond with corners on the axes, so the first
+	contact typically happens at a corner, where some coordinates are zero. The $\ell_2$ ball is
+	round and has no corners (\Cref{fig:l1l2}).
+	\ii \textbf{Prior.} Lasso is MAP under a Laplace prior, which has a sharp peak at zero.
+\end{enumerate}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}[scale=0.95]
+		\foreach \sh/\nm/\lab in {0/l1/lasso, 6.2/l2/ridge}{
+			\begin{scope}[xshift=\sh cm]
+				\draw[->] (-1.8,0) -- (3.0,0) node[right] {$w_1$};
+				\draw[->] (0,-1.8) -- (0,3.6) node[above] {$w_2$};
+				\foreach \r in {0.5,1.0,1.5}
+				\draw[red!60!black, rotate around={50:(1.0,2.0)}] (1.0,2.0) ellipse ({0.5*\r} and {1.0*\r});
+				\draw[red!80!black, thick, rotate around={50:(1.0,2.0)}] (1.0,2.0)
+				ellipse ({0.5*\gv{c04_biasvar/geo_\nm_r}} and {1.0*\gv{c04_biasvar/geo_\nm_r}});
+				\fill (1.0,2.0) circle (1.5pt) node[above right] {$\hat\w_{\text{OLS}}$};
+				\fill[blue!70!black] (\gv{c04_biasvar/geo_\nm_x},\gv{c04_biasvar/geo_\nm_y}) circle (2.2pt);
+				\node[blue!70!black, font=\small, anchor=east] at (-0.15,\gv{c04_biasvar/geo_\nm_y}+0.25) {\lab};
+			\end{scope}}
+		\fill[blue!15, draw=blue!70!black, thick, fill opacity=0.6] (1.3,0) -- (0,1.3) -- (-1.3,0) -- (0,-1.3) -- cycle;
+		\fill[blue!15, draw=blue!70!black, thick, fill opacity=0.6] (6.2,0) circle (1.3);
+		\node[font=\small] at (1.4,-1.5) {$\abs{w_1}+\abs{w_2}\le t$};
+		\node[font=\small] at (7.6,-1.5) {$w_1^2+w_2^2\le t^2$};
+	\end{tikzpicture}
+	\caption{Constrained forms: the RSS ellipses first touch the $\ell_1$ diamond at a corner
+		(a sparse solution, $w_1=0$), and the $\ell_2$ disc at a generic point (both weights
+		non-zero). The contact points are computed in \script{c04_biasvar}.}
+	\label{fig:l1l2}
+\end{figure}
+
+\begin{example}[Soft versus proportional shrinkage]
+	Orthonormal design, OLS coefficients $(\gv{c04_biasvar/soft_in})$. Lasso with threshold $0.5$
+	gives $(\gv{c04_biasvar/soft_out})$ --- verified by running \texttt{Lasso} on a design with
+	orthonormal columns. Ridge with $\lambda=1$ gives $(\gv{c04_biasvar/ridge_out})$: everything
+	halved, nothing zero. Lasso shrinks every surviving coefficient by the same \emph{amount};
+	ridge by the same \emph{factor}.
+\end{example}
+
+\subsection{Coordinate descent}
+Because the one-dimensional problem has the closed-form soft-threshold solution, the lasso is
+solved by cycling through coordinates, each time soft-thresholding the partial residual
+correlation. This is what scikit-learn does; our dozen-line version matches \texttt{Lasso} on the
+diabetes data to $10^{-4}$:
+\codefile[code/ml/c04\_biasvar.py: lasso by coordinate descent]{gen/ml/snip/c04_biasvar-cd.py}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.3cm},
+				width=0.5\linewidth, height=0.42\linewidth, xmode=log, grid=major,
+				grid style={gray!20}, axis lines=left, ticklabel style={font=\scriptsize},
+				cycle list name=napkincolors, title style={font=\small}]
+			\nextgroupplot[title={ridge}, xlabel={$\lambda$}, ylabel={coefficient}, x dir=reverse]
+			\foreach \c in {age,sex,bmi,bp,s1,s2,s3,s4,s5,s6}
+			{\addplot+[thick] table[x=alpha,y=\c] {gen/ml/data/c04_biasvar-ridgepath.dat};}
+			\nextgroupplot[title={lasso}, xlabel={$\lambda$}, x dir=reverse]
+			\foreach \c in {age,sex,bmi,bp,s1,s2,s3,s4,s5,s6}
+			{\addplot+[thick] table[x=alpha,y=\c] {gen/ml/data/c04_biasvar-lassopath.dat};}
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Regularisation paths on the diabetes data (penalty decreasing to the right). Ridge
+		coefficients shrink smoothly and are never exactly zero; lasso coefficients enter one at a
+		time.}
+	\label{fig:paths}
+\end{figure}
+
+On the diabetes data, lasso keeps $\gv{c04_biasvar/nnz_1}$, $\gv{c04_biasvar/nnz_5}$ and
+$\gv{c04_biasvar/nnz_20}$ of the 10 features at $\lambda=1,5,20$; ridge with $\lambda=10^4$ still has
+all $\gv{c04_biasvar/ridge_nnz_big}$ non-zero.
+
+\subsection{Correlated features: why elastic net exists}
+Lasso is unstable with groups of correlated features: it tends to pick one arbitrarily and zero
+the rest, and which one can flip between bootstrap samples. Ridge spreads weight evenly. Elastic
+net does both: sparse across groups, shared within a group.
+\begin{example}[Two near-copies]
+	$x_1$ and $x_2$ are noisy copies of the same signal $z$ (correlation $>0.99$), $x_3$ is
+	independent, $y=2z+x_3+\eps$. Coefficients on $(x_1,x_2,x_3)$:
+	lasso $(\gv{c04_biasvar/g_lasso})$, elastic net $(\gv{c04_biasvar/g_en})$, ridge
+	$(\gv{c04_biasvar/g_ridge})$.
+\end{example}
+
+\begin{remark}
+	\trap ``Lasso's zero coefficients prove those features are irrelevant.'' A zeroed feature may be
+	strongly predictive but redundant given a correlated one that was kept. Also, the lasso can
+	select at most $n$ features when $d>n$; elastic net removes that limit.
+\end{remark}
 
 \section{The augmented error}
-\stub{The augmented error}
+\prototype{OA: ``In $E_{\text{aug}}(\w)=E_{\text{in}}(\w)+\lambda\sum_jw_j^2$, what happens as
+	$\lambda\to0$ and as $\lambda\to\infty$?''}
+
+The penalised objective $E_{\text{aug}}=E_{\text{in}}+\lambda\Omega(\w)$ is the general form: data
+fit plus complexity. Answers to memorise:
+\begin{itemize}
+	\ii $\lambda=0$: no regularisation; the unconstrained minimiser of $E_{\text{in}}$; lowest
+	training error, highest variance; overfits if the model is flexible.
+	\ii $\lambda\to\infty$: the penalty dominates; $\w\to\zero$ (the intercept, unpenalised,
+	goes to $\bar y$): the model predicts a constant; maximal bias, zero variance; underfits.
+	\ii Increasing $\lambda$: training error \emph{never decreases}; validation error typically falls
+	then rises; the effective number of parameters decreases; weights shrink.
+	\ii $\lambda$ is a hyper-parameter: chosen by validation or cross-validation, never on the
+	training set (the training error would always pick $\lambda=0$).
+	\ii In neural networks, the same penalty is called \vocab{weight decay}, because the gradient
+	step becomes $\w\leftarrow(1-2\eta\lambda)\w-\eta\nabla E_{\text{in}}$: the weights decay
+	geometrically each step. (Under Adam the two are not equivalent; see \otherbook{Deep Learning}.)
+\end{itemize}
+
+\begin{remark}
+	\trap Three plausible-sounding wrong options. ``Regularisation reduces training error'' (it
+	increases it). ``Large $\lambda$ causes overfitting'' (it causes underfitting). ``$\lambda$ is
+	learnt by gradient descent along with $\w$'' (then it would go to $0$).
+\end{remark}
+
+\begin{moral}
+	$\lambda$ is a bias dial: zero gives you the raw fit, infinity gives you a constant, validation
+	finds the middle.
+\end{moral}
 
 \section{Early stopping and double descent}
-\stub{Early stopping and double descent}
+\prototype{Gradient descent from $\w=\zero$ on 60 points with 50 features: validation error is best
+	after about 1000 steps, then creeps up.}
 
+\subsection{Early stopping is implicit regularisation}
+Gradient descent started at $\zero$ moves first along high-variance principal directions (large
+$s_j$) and only later fits the low-variance ones. Stopping after $t$ steps therefore acts like ridge
+with $\lambda\approx1/(\eta t)$: the number of iterations is a regulariser.
+\begin{example}[Where to stop]
+	$n=60$ training points, $d=50$ features of which 5 matter, noise variance 4. Validation MSE is
+	minimal ($\gv{c04_biasvar/es_best_val}$) at iteration $\gv{c04_biasvar/es_best_it}$; by
+	iteration 3000 training MSE is $\gv{c04_biasvar/es_final_tr}$ (below the noise level --- it is
+	fitting noise) and validation MSE has risen to $\gv{c04_biasvar/es_final_val}$.
+\end{example}
+
+\subsection{Double descent}
+The classical U-curve is not the whole story. Fit \emph{minimum-norm} least squares (what
+gradient descent from zero converges to) with $p$ of the available features on $n$ points. As $p$
+approaches $n$ the model can just barely interpolate, the solution is forced through every noisy
+point with huge weights, and test error spikes. Past $p=n$ there are infinitely many interpolating
+solutions and the minimum-norm one becomes smoother as $p$ grows, so test error falls again ---
+\vocab{double descent} \cite{belkin2019}.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.72\linewidth, height=0.38\linewidth, xlabel={number of
+							features $p$ (with $n=\gv{c04_biasvar/dd_n}$ training points)}, ylabel={test MSE},
+				ymode=log, xmin=0, xmax=200]
+			\addplot[blue!80!black, thick, mark=*, mark size=1pt] table[x=p,y=err] {gen/ml/data/c04_biasvar-dd.dat};
+			\draw[gray, dashed] (axis cs:40,0.3) -- (axis cs:40,25);
+			\node[font=\scriptsize, anchor=west] at (axis cs:42,12) {$p=n$};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Double descent for minimum-norm least squares (100 repetitions, peak clipped at 20 for
+		display). Error peaks at the interpolation threshold $p=n$ and falls again beyond it.}
+	\label{fig:dd}
+\end{figure}
+
+In our run the peak sits at $p=\gv{c04_biasvar/dd_peak_p}$; at $p=200$ the error is
+$\gv{c04_biasvar/dd_err_p200}$, better than the best under-parameterised model
+($\gv{c04_biasvar/dd_min_under}$). Adding a little ridge removes the spike entirely. The interview
+point: ``more parameters always means more overfitting'' is false for interpolating models trained
+with implicit or explicit norm control, which is part of why huge neural networks generalise.
+
+\section\problemhead
+
+\begin{problem}[Effect of $\lambda$, multi-select]
+	\onechili
+	For ridge regression with penalty $\lambda\sum_jw_j^2$, which are true?
+	(a) Training MSE is non-decreasing in $\lambda$.
+	(b) As $\lambda\to\infty$ every prediction tends to the mean of the training targets.
+	(c) The solution is unique for every $\lambda>0$ even if $d>n$.
+	(d) Ridge sets some coefficients exactly to zero for large enough $\lambda$.
+	(e) Ridge results do not depend on the units of the features.
+	\begin{hint}
+		Think about the closed form and the SVD shrinkage factors.
+	\end{hint}
+	\begin{sol}
+		(a), (b), (c) are true. (b) assumes the intercept is unpenalised. (d) false: shrinkage
+		factors $s_j^2/(s_j^2+\lambda)$ are never zero; that is lasso's property. (e) false: the
+		penalty depends on the scale of each coefficient, so standardise first.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[One-dimensional ridge and lasso]
+	\onechili
+	With a single standardised feature and no intercept, the OLS coefficient is $\hat w=2.4$.
+	Give the lasso solution for thresholds $\lambda=1$ and $\lambda=3$, and the ridge solution
+	$\hat w/(1+\lambda)$ for $\lambda=1$ and $\lambda=3$.
+	\begin{hint}
+		Soft-threshold: $\sign(z)\max(\abs z-\lambda,0)$.
+	\end{hint}
+	\begin{sol}
+		Lasso: $\gv{c04_problems/p4b_lasso1}$ and $\gv{c04_problems/p4b_lasso3}$. Ridge: $\gv{c04_problems/p4b_ridge1}$ and $\gv{c04_problems/p4b_ridge3}$. Lasso subtracts, ridge divides; only lasso
+		reaches zero.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Diagnose from numbers]
+	\onechili
+	A model has training MSE 4.1 and validation MSE 4.3; the noise variance is believed to be
+	about 1. Another has training MSE 0.2 and validation MSE 6.0. For each, would you increase or
+	decrease $\lambda$, and would collecting more data help?
+	\begin{hint}
+		High training error = bias; large gap = variance.
+	\end{hint}
+	\begin{sol}
+		First: high bias (training error far above the noise floor, tiny gap). Decrease $\lambda$ or
+		add features; more data will not help much. Second: high variance (training error below the
+		noise floor, huge gap). Increase $\lambda$, simplify, or collect more data --- here more data
+		helps.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Ridge from MAP]
+	\twochili
+	Show that with $y_i=\w\T\x_i+\eps_i$, $\eps_i\sim\Normal(0,\sigma^2)$ and prior
+	$w_j\iid\Normal(0,\tau^2)$, the MAP estimate is ridge with $\lambda=\sigma^2/\tau^2$. What prior
+	gives the lasso, and what is the corresponding $\lambda$?
+	\begin{hint}
+		Take $-\log$ of likelihood times prior and multiply by $2\sigma^2$.
+	\end{hint}
+	\begin{sol}
+		$-\log p(\w\mid\D)=\frac{1}{2\sigma^2}\sum(y_i-\w\T\x_i)^2+\frac{1}{2\tau^2}\norm{\w}^2+c$;
+		multiplying by $2\sigma^2$ gives $\RSS+(\sigma^2/\tau^2)\norm{\w}^2$. A Laplace prior
+		$p(w_j)\propto e^{-\abs{w_j}/b}$ gives $\frac{1}{2\sigma^2}\RSS+\frac1b\norm{\w}_1$, i.e.\
+		lasso with $\lambda=2\sigma^2/b$ in the $\RSS+\lambda\norm{\w}_1$ form.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Bias and variance of a shrunk mean]
+	\twochili
+	Estimate $\mu$ from $n$ i.i.d.\ samples with variance $\sigma^2$ using $\hat\mu_c=c\bar X$ for
+	$0\le c\le1$. Compute its bias, variance and MSE, and find the $c$ minimising MSE. Why can a
+	biased estimator win?
+	\begin{hint}
+		Bias $=(c-1)\mu$, variance $=c^2\sigma^2/n$.
+	\end{hint}
+	\begin{sol}
+		$\MSE(c)=(1-c)^2\mu^2+c^2\sigma^2/n$, minimised at $c^\star=\mu^2/(\mu^2+\sigma^2/n)<1$.
+		Shrinking trades a little bias for a larger cut in variance whenever $\sigma^2/n$ is not
+		negligible relative to $\mu^2$. This is ridge in one line; $c^\star$ has exactly the form
+		$s^2/(s^2+\lambda)$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Lasso subgradient condition]
+	\threechili
+	For the objective $\frac12\norm{\y-\X\w}^2+\lambda\norm{\w}_1$, show that $\hat\w=\zero$ is optimal
+	if and only if $\lambda\ge\norm{\X\T\y}_\infty$. What is the practical use of this fact?
+	\begin{hint}
+		$\zero\in-\X\T(\y-\X\w)+\lambda\,\partial\norm{\w}_1$ at $\w=\zero$.
+	\end{hint}
+	\begin{sol}
+		At $\w=\zero$ the subdifferential of $\norm{\w}_1$ is $[-1,1]^d$, so optimality requires a
+		vector $\bm g\in[-1,1]^d$ with $\X\T\y=\lambda\bm g$, i.e.\ $\abs{\x_{(j)}\T\y}\le\lambda$ for
+		every column $j$. Since the problem is convex this is also sufficient. Practically,
+		$\lambda_{\max}=\norm{\X\T\y}_\infty$ is where every lasso path starts (scikit-learn's grid
+		begins there, scaled by $1/n$), and the first feature to enter is the one most correlated
+		with $\y$.
+	\end{sol}
+\end{problem}

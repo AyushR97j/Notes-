@@ -31,9 +31,23 @@
 [check] c03_problems: 2D odds form vs sequential Bayes: ours=[0.476882] ref=[0.476882] max|diff|=5.55e-17 -> OK
 [check] c03_problems: 3B slope = r s_y/s_x on simulated data: ours=[3.150737] ref=[3.150737] max|diff|=1.33e-15 -> OK
 [check] c01_setup: E[max of 50 val accuracies] simulation vs exact: ours=[0.61193] ref=[0.612007] max|diff|=7.71e-05 -> OK
+[check] c04_problems: OLS coefficient is 2.4: ours=[2.4] ref=[2.4] max|diff|=0.00e+00 -> OK
+[check] c04_problems: ridge 1-D, lambda=3: ours=[0.6] ref=[0.6] max|diff|=1.11e-16 -> OK
+[check] c04_problems: lasso 1-D, threshold 1: ours=[1.4] ref=[1.4] max|diff|=4.44e-16 -> OK
+[check] c04_problems: MSE(c xbar) simulation vs (1-c)^2 mu^2 + c^2 s^2/n: ours=[0.284931] ref=[0.286] max|diff|=1.07e-03 -> OK
 [check] c03_linreg: VIF by auxiliary regressions vs diag(inv corr): ours=[10.337063 10.324967  1.003782] ref=[10.337063 10.324967  1.003782] max|diff|=6.75e-14 -> OK
 [check] c03_linreg: #poly features p=2, d=2 = C(p+d,d): ours=[6.] ref=[6.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=3, d=2 = C(p+d,d): ours=[10.] ref=[10.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=10, d=2 = C(p+d,d): ours=[66.] ref=[66.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=10, d=3 = C(p+d,d): ours=[286.] ref=[286.] max|diff|=0.00e+00 -> OK
 [check] c03_linreg: #poly features p=100, d=2 = C(p+d,d): ours=[5151.] ref=[5151.] max|diff|=0.00e+00 -> OK
+[check] c04_biasvar: bias^2 + variance + noise = simulated test MSE: ours=[0.644278 0.559275 0.488433 0.398459 0.296543 0.219718] ref=[0.640389 0.554534 0.494682 0.392011 0.296674 0.22178 ] max|diff|=6.45e-03 -> OK
+[check] c04_biasvar: 1-D ridge lambda=1 vs sklearn: ours=[0.727273] ref=[0.727273] max|diff|=0.00e+00 -> OK
+[check] c04_biasvar: 1-D ridge lambda=10 vs sklearn: ours=[0.4] ref=[0.4] max|diff|=0.00e+00 -> OK
+[check] c04_biasvar: 1-D ridge lambda=40 vs sklearn: ours=[0.16] ref=[0.16] max|diff|=0.00e+00 -> OK
+[check] c04_biasvar: 1-D ridge lambda=1000 vs sklearn: ours=[0.007921] ref=[0.007921] max|diff|=0.00e+00 -> OK
+[check] c04_biasvar: ridge closed form vs sklearn Ridge (diabetes, lambda=50): ours=[ 0.107037 -9.690857 23.076371 14.238577 -3.622089 -3.520529] ref=[ 0.107037 -9.690857 23.076371 14.238577 -3.622089 -3.520529] max|diff|=2.49e-14 -> OK
+[check] c04_biasvar: ridge via SVD shrinkage vs closed form: ours=[ 0.107037 -9.690857 23.076371 14.238577 -3.622089 -3.520529] ref=[ 0.107037 -9.690857 23.076371 14.238577 -3.622089 -3.520529] max|diff|=4.62e-14 -> OK
+[check] c04_biasvar: effective dof = trace of ridge hat matrix: ours=[7.505106] ref=[7.505106] max|diff|=8.88e-16 -> OK
+[check] c04_biasvar: lasso on orthonormal X = soft-threshold(OLS, lambda): ours=[ 2.5 -0.7  0.  -0. ] ref=[ 2.5 -0.7  0.  -0. ] max|diff|=1.11e-16 -> OK
+[check] c04_biasvar: our coordinate-descent lasso vs sklearn Lasso (diabetes, alpha=1): ours=[-0.       -9.31933  24.831504 14.088986 -4.838946 -0.      ] ref=[-0.       -9.31933  24.831504 14.088986 -4.838946 -0.      ] max|diff|=1.06e-09 -> OK

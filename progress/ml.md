@@ -1,4 +1,4 @@
-RESUME HERE: ch03 done; next = ch04 Bias–variance and regularisation.
+RESUME HERE: ch04 done; next = ch05 Logistic regression and GLMs.
 
 # Classical Machine Learning — progress log
 
@@ -46,7 +46,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
 - [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
-- [ ] 04 Bias–variance and regularisation ★
+- [x] 04 Bias–variance and regularisation ★ (c04_biasvar.py, c04_problems.py)
 - [ ] 05 Logistic regression ★
 - [ ] 06 Generative classifiers
 - [ ] 07 kNN
