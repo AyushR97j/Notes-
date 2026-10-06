@@ -287,8 +287,8 @@
 \makeatother
 \setcounter{tocdepth}{1}
 \RedeclareSectionCommand[tocnumwidth=4.2em]{part}
-\RedeclareSectionCommand[tocpagenumberwidth=2.2em,tocnumwidth=4.2em]{chapter}
-\RedeclareSectionCommand[tocpagenumberwidth=2.2em,tocnumwidth=2.8em]{section}
+\RedeclareSectionCommand[tocpagenumberwidth=2.8em,tocnumwidth=4.2em]{chapter}
+\RedeclareSectionCommand[tocpagenumberwidth=2.8em,tocnumwidth=2.8em]{section}
 
 %%fakesection Bibliography (Napkin style)
 \usepackage[backend=biber,backref=true,style=alphabetic,maxbibnames=6,
@@ -317,6 +317,7 @@
 \renewcommand{\mkbibnameprefix}[1]{\textsc{#1}}
 \renewcommand{\mkbibnamesuffix}[1]{\textsc{#1}}
 \renewcommand{\finentrypunct}{}
+\appto{\bibsetup}{\raggedright\sloppy}
 
 %%fakesection Mini ToC (Napkin)
 \usepackage[tight]{minitoc}
@@ -327,6 +328,7 @@
 \renewcommand*{\partheadstartvskip}{\vspace*{20em}}
 \renewcommand*{\partheadendvskip}{}
 \renewcommand\beforeparttoc{\noindent{\bfseries \Large Part \thepart: Contents}}
+\makeatletter\renewcommand\@pnumwidth{2.4em}\makeatother
 \doparttoc[n]
 
 % =====================================================================
@@ -474,3 +476,6 @@
 %% ---- file paths in running text (breakable, underscores allowed)
 \newcommand{\script}[1]{\nolinkurl{code/\bookid/#1.py}}
 \newcommand{\fpath}[1]{\nolinkurl{#1}}
+% \code{max_depth}: inline code that may break at _ . / - (no escaping needed)
+\makeatletter\g@addto@macro\UrlBreaks{\do\_\do\.\do\-\do\=}\makeatother
+\newcommand{\code}[1]{\nolinkurl{#1}}

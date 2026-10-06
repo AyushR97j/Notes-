@@ -1,4 +1,4 @@
-RESUME HERE: ch02 done; next = ch03 Linear regression (code/ml/c03_*.py then chapters/ml/03-linreg.tex).
+RESUME HERE: ch13 done; next = ch14 Statistics interviewers ask (~6 pages, scipy.stats).
 
 # Classical Machine Learning — progress log
 
@@ -45,17 +45,17 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [ ] 00 Preface (how to use, what placements ask, sources, reproducibility)
 - [x] 01 Setup ★ (c01_setup.py: Bayes error, degree sweep, selection optimism)
 - [x] 02 Maths ★ (c02_maths.py: SVD, projections, matrix-calculus checks, Bayes, r², CLT, MLE/MAP, convexity, KKT, info theory)
-- [ ] 03 Linear regression ★
-- [ ] 04 Bias–variance and regularisation ★
-- [ ] 05 Logistic regression ★
-- [ ] 06 Generative classifiers
-- [ ] 07 kNN
-- [ ] 08 SVM ★
-- [ ] 09 Trees ★
-- [ ] 10 Ensembles ★
-- [ ] 11 Unsupervised ★
-- [ ] 12 Semi-/self-supervised
-- [ ] 13 Evaluation ★
+- [x] 03 Linear regression ★ (c03_linreg.py, c03_problems.py also holds ch1–3 problem numbers)
+- [x] 04 Bias–variance and regularisation ★ (c04_biasvar.py, c04_problems.py)
+- [x] 05 Logistic regression ★ (c05_logistic.py, c05_problems.py)
+- [x] 06 Generative classifiers (c06_generative.py, c06_problems.py)
+- [x] 07 kNN (c07_knn.py incl. a KD-tree with visit counter, c07_problems.py)
+- [x] 08 SVM ★ (c08_svm.py: hand hard margin, dual QP, primal QP, kernels, SVR; c08_problems.py)
+- [x] 09 Trees ★ (c09_trees.py, c09_problems.py)
+- [x] 10 Ensembles ★ (c10_bagging.py, c10_boosting.py: AdaBoost/GBM/XGBoost checked vs libraries; c10_problems.py)
+- [x] 11 Unsupervised ★ (c11_unsup.py, c11_problems.py)
+- [x] 12 Semi-/self-supervised (c12_semisup.py, c12_problems.py)
+- [x] 13 Evaluation ★ (c13_eval.py, c13_problems.py)
 - [ ] 14 Statistics
 - [ ] 15 Data prep ★
 - [ ] 16 Optimisation

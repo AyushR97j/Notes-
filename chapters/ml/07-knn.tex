@@ -1,17 +1,255 @@
-\chapter{k-Nearest Neighbours and Distances}
+\chapter{\texorpdfstring{$k$}{k}-Nearest Neighbours and Distances}
 \label{ch:knn}
+$k$-NN has no training step, one hyper-parameter and a one-sentence definition, which makes it a
+favourite for ``what happens if\dots'' questions: if $k=1$, if $k=n$, if you forget to scale, if
+you add 100 useless features. Answer those well and you have also explained the curse of
+dimensionality, which is really a chapter about every distance-based method.
+
 \section{The algorithm}
-\stub{The algorithm}
+\prototype{Six labelled points, one query at $(3,3)$, and a prediction that flips as $k$ grows.}
+
+\begin{definition}
+	Given training points $(\x_i,y_i)$, a distance $d$ and an integer $k$, the \vocab{$k$-nearest
+		neighbour} classifier predicts the majority label among the $k$ training points closest to
+	the query; $k$-NN \emph{regression} predicts the mean (or a distance-weighted mean) of their
+	targets.
+\end{definition}
+It is a \vocab{lazy} (instance-based, non-parametric) learner: ``training'' stores the data, and all
+the cost moves to prediction --- $O(nd)$ per query by brute force, plus $O(nd)$ memory. That is
+the opposite of most production constraints, which is why approximate search (\S\ref{sec:ann}) exists.
+
+\begin{example}[By hand]
+	Query $(3,3)$; distances to the six training points:
+	\begin{center}
+		\begin{tabular}{cccc}
+			\toprule
+			point & label & Euclidean & Manhattan \\ \midrule
+			\gv{c07_knn/hand_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Sorted by Euclidean distance the labels read B, B, A, A, A, B. So $k=1$ predicts
+	$\gv{c07_knn/pred_k1}$, $k=3$ (votes $\gv{c07_knn/votes_k3}$) predicts $\gv{c07_knn/pred_k3}$,
+	and $k=5$ (votes $\gv{c07_knn/votes_k5}$) predicts $\gv{c07_knn/pred_k5}$ --- all three agree with
+	\texttt{KNeighborsClassifier}. If the targets of the six points are $10,12,20,24,22,14$, 3-NN
+	regression predicts $(20+22+12)/3=\gv{c07_knn/reg_k3}$; weighting by inverse distance gives
+	$\gv{c07_knn/reg_k3w}$.
+\end{example}
+
+\begin{remark}
+	Practicalities interviewers probe: use an odd $k$ for binary problems to avoid ties (ties in
+	\emph{distance} still need a rule; scikit-learn uses the order in the training data); class
+	imbalance biases the vote towards the majority, so weight by distance or by inverse class
+	frequency; categorical features need a suitable distance (Hamming, or one-hot then scale).
+\end{remark}
 
 \section{Distances}
-\stub{Distances}
+\prototype{Two customers as vectors: how far apart are they, and in which sense?}
 
-\section{Choosing k}
-\stub{Choosing k}
+A \vocab{metric} satisfies $d(\x,\y)\ge0$ with equality iff $\x=\y$, symmetry, and the triangle
+inequality. For $\bm a=(1,2,3)$ and $\bm b=(4,0,3)$:
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l l c >{\raggedright\arraybackslash}X}
+		\toprule
+		name & formula & value & use \\ \midrule
+		Euclidean ($\ell_2$) & $\sqrt{\sum(a_i-b_i)^2}$ & \gv{c07_knn/euc} & default; continuous, scaled features \\
+		Manhattan ($\ell_1$) & $\sum\abs{a_i-b_i}$ & \gv{c07_knn/man} & grids, robust to one large difference \\
+		Chebyshev ($\ell_\infty$) & $\max\abs{a_i-b_i}$ & \gv{c07_knn/cheb} & worst coordinate matters \\
+		Minkowski $p=3$ & $(\sum\abs{a_i-b_i}^p)^{1/p}$ & \gv{c07_knn/mink3} & family containing the three above \\
+		cosine distance & $1-\frac{\bm a\T\bm b}{\norm{\bm a}\norm{\bm b}}$ & \gv{c07_knn/cos} & text, embeddings: direction not length \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+Cosine similarity here is $\gv{c07_knn/cos_sim}$. Cosine distance is not a metric (it fails the
+triangle inequality), but on unit-normalised vectors it is a monotone function of Euclidean
+distance: $\norm{\bm a-\bm b}^2=2(1-\cos\theta)$. Hamming distance counts differing positions:
+$101101$ and $110100$ differ in $\gv{c07_knn/ham}$ places.
+
+The \vocab{Mahalanobis distance} $\sqrt{(\x-\y)\T\bSigma\inv(\x-\y)}$ measures distance in units of
+the data's own spread and correlation. With
+$\bSigma=\begin{psmallmatrix}4&1.5\\1.5&1\end{psmallmatrix}$, the point $(2,1)$ is at Euclidean
+distance $\gv{c07_knn/mah_euc}$ from the origin but Mahalanobis distance only $\gv{c07_knn/mah}$,
+because it lies along the direction in which the data naturally vary. Euclidean distance on
+standardised \emph{and decorrelated} (whitened) features is Mahalanobis distance.
+
+\section{Scaling, and choosing \texorpdfstring{$k$}{k}}
+\prototype{Income in rupees and age in years: who is the nearest neighbour?}
+
+\begin{example}[Scaling decides the neighbour]
+	Customers 1 $=(\text{Rs }50{,}000,\ 58\text{ yrs})$ and 2 $=(\text{Rs }52{,}000,\ 25\text{ yrs})$;
+	query $(\text{Rs }51{,}800,\ 57\text{ yrs})$. Raw Euclidean distances are
+	$\gv{c07_knn/raw_d1}$ and $\gv{c07_knn/raw_d2}$: the nearest is customer
+	$\gv{c07_knn/raw_nn}$, a 25-year-old, because a Rs 1600 income gap dwarfs a 32-year age gap.
+	After standardising both features the nearest is customer $\gv{c07_knn/std_nn}$. Distance-based
+	methods ($k$-NN, $k$-means, SVM with RBF kernel, PCA) need features on comparable scales.
+\end{example}
+
+\begin{remark}
+	\trap ``Fit the scaler on the whole dataset, then split.'' The test set's mean and variance then
+	leak into training. Fit the scaler on the training fold only, inside a pipeline
+	(\Cref{ch:dataprep}).
+\end{remark}
+
+\subsection{\texorpdfstring{$k$}{k} as a bias--variance dial}
+$k=1$: training error is exactly $0$ (each point is its own neighbour), the boundary is jagged
+(the Voronoi diagram of the training set), variance is maximal. $k=n$: every query gets the
+majority class, a constant predictor with maximal bias. Effective number of parameters is roughly
+$n/k$. A classical result (Cover and Hart) bounds the asymptotic error of 1-NN by twice the Bayes
+error.
+\begin{example}[Cross-validated $k$ on two moons]
+	400 points, 5-fold CV error: $k=1$ gives $\gv{c07_knn/k1_cv}$ (training error
+	$\gv{c07_knn/k1_tr}$); the best is $k=\gv{c07_knn/k_best}$ with $\gv{c07_knn/k_best_err}$; $k=201$
+	gives $\gv{c07_knn/k201_cv}$.
+\end{example}
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.66\linewidth, height=0.36\linewidth, xmode=log,
+				xlabel={$k$ (log scale)}, ylabel={error}, legend pos=north west, ymin=0]
+			\addplot[red!80!black, thick, mark=*, mark size=1pt] table[x=k,y=cv] {gen/ml/data/c07_knn-k.dat};
+			\addplot[blue!80!black, thick, dashed, mark=square*, mark size=1pt] table[x=k,y=train] {gen/ml/data/c07_knn-k.dat};
+			\legend{5-fold CV, training}
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
 
 \section{The curse of dimensionality}
-\stub{The curse of dimensionality}
+\prototype{In 1000 dimensions your nearest and farthest neighbours are almost equally far away.}
+
+Three facts, all simulated in \script{c07_knn}:
+\begin{enumerate}
+	\ii \textbf{Distances concentrate.} For 500 uniform points in $[0,1]^d$, the relative contrast
+	$(d_{\max}-d_{\min})/d_{\min}$ from a random query is $\gv{c07_knn/contrast_2}$ in 2 dimensions
+	and $\gv{c07_knn/contrast_1000}$ in 1000. When every point is about equally far, ``nearest''
+	carries little information.
+	\ii \textbf{Neighbourhoods are not local.} To capture 10\% of uniform data in $[0,1]^d$ with a
+	sub-cube you need edge length $0.1^{1/d}$: $\gv{c07_knn/edge_10}$ of each axis's range at $d=10$
+	and $\gv{c07_knn/edge_100}$ at $d=100$. The ``local'' neighbourhood spans almost everything.
+	\ii \textbf{Volume lives near the surface.} The fraction of a unit ball's volume within $0.01$ of
+	its boundary is $1-0.99^d$: $\gv{c07_knn/shell_100}$ at $d=100$, $\gv{c07_knn/shell_1000}$ at
+	$d=1000$.
+\end{enumerate}
+The data needed to keep the same density of samples grows exponentially in $d$. Irrelevant
+features are the practical killer: adding uniform noise dimensions to the two-moons problem drops
+7-NN test accuracy from $\gv{c07_knn/irr_0}$ to $\gv{c07_knn/irr_100}$ with 100 noise features.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.5cm},
+				width=0.48\linewidth, height=0.38\linewidth, grid=major, grid style={gray!20},
+				axis lines=left, ticklabel style={font=\scriptsize}]
+			\nextgroupplot[xmode=log, ymode=log, xlabel={dimension $d$},
+				ylabel={$(d_{\max}-d_{\min})/d_{\min}$}]
+			\addplot[blue!80!black, thick, mark=*, mark size=1pt] table[x=d,y=ratio] {gen/ml/data/c07_knn-contrast.dat};
+			\nextgroupplot[xlabel={irrelevant features added}, ylabel={7-NN test accuracy}, ymin=0.5, ymax=1]
+			\addplot[red!80!black, thick, mark=square*, mark size=1pt] table[x=nd,y=acc] {gen/ml/data/c07_knn-irrel.dat};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Left: distance contrast collapses with dimension. Right: noise features drown the two
+		informative ones.}
+	\label{fig:curse}
+\end{figure}
+
+Why $k$-NN still works on images or embeddings: real data lie near a low-dimensional manifold
+(the \emph{intrinsic} dimension is small), and learned embeddings are built so that distance means
+something. Remedies when it does not: feature selection, PCA or learned embeddings, metric learning.
+
+\begin{remark}
+	\trap ``The curse of dimensionality means more features always hurt.'' More \emph{informative}
+	features help any model; the curse bites distance-based and density-based methods through
+	irrelevant or redundant dimensions, and more generally through the sample size needed to cover
+	the space. Linear models with regularisation and tree ensembles suffer far less from irrelevant
+	features.
+\end{remark}
 
 \section{KD-trees and approximate search}
-\stub{KD-trees and approximate search}
+\label{sec:ann}
+\prototype{Find the nearest of 4000 points without measuring all 4000 distances.}
 
+A \vocab{KD-tree} splits space recursively on one coordinate at a time at the median. To find a
+nearest neighbour, descend to the query's leaf, then backtrack, exploring the other side of a
+split only if the splitting plane is closer than the best distance so far. In low dimensions this
+prunes almost everything; in high dimensions the ``ball'' around the query crosses nearly every
+splitting plane and pruning fails. Our 30-line KD-tree (which agrees with scikit-learn's
+\texttt{KDTree} on every query) visits on average:
+\begin{center}
+	\begin{tabular}{rcc}
+		\toprule
+		$d$ & nodes visited (of 4000) & fraction \\ \midrule
+		\gv{c07_knn/kd_rows}
+		\bottomrule
+	\end{tabular}
+\end{center}
+Beyond about 10--20 dimensions exact trees degrade to brute force. Production systems (embedding
+search for RAG, recommendation, image retrieval) use \vocab{approximate nearest neighbour} (ANN)
+methods that trade a little recall for orders of magnitude in speed: locality-sensitive hashing
+(random projections whose hash collisions favour nearby points), graph-based indices such as HNSW
+(navigable small-world graphs, greedy search from coarse to fine layers), and inverted-file indices
+with product quantisation (cluster the space, then compress vectors into short codes). Ball trees
+replace axis-aligned splits by nested hyperspheres and handle non-Euclidean metrics better.
+
+\begin{moral}
+	$k$-NN is only as good as its distance: scale features, drop irrelevant ones, pick $k$ by
+	cross-validation, and expect exact search to fail in high dimension.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Vote by hand]
+	\onechili
+	Training points: $(0,0)$:red, $(1,0)$:red, $(0,2)$:blue, $(2,2)$:blue, $(3,0)$:blue. Classify
+	$(1,1)$ with $k=1$ and $k=3$ using Manhattan distance, listing ties.
+	\begin{hint}
+		Manhattan distances from $(1,1)$ are $2,1,2,2,3$.
+	\end{hint}
+	\begin{sol}
+		Nearest is $(1,0)$ (distance 1): $k=1$ gives red. For $k=3$ the next two come from a
+		three-way tie at distance $2$: $(0,0)$ red, $(0,2)$ blue, $(2,2)$ blue. Depending on the
+		tie-break the vote is red-red-blue (red) or red-blue-blue (blue). The answer must state the
+		tie rule. Including every tied point gives two red and two blue, still a tie; inverse-distance
+		weighting resolves it: red $1/1+1/2=1.5$ against blue $1/2+1/2=1$, so red.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Edge length]
+	\onechili
+	Data are uniform in $[0,1]^{20}$. What edge length must a cube around a query have to contain
+	1\% of the data on average? 50\%?
+	\begin{hint}
+		Volume $=\text{edge}^{20}$.
+	\end{hint}
+	\begin{sol}
+		$0.01^{1/20}=\gv{c07_problems/p7b_1}$ and $0.5^{1/20}=\gv{c07_problems/p7b_50}$. A
+		neighbourhood holding 1\% of the data spans almost 80\% of every axis: it is not local.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[True or false]
+	\onechili
+	(a) $k$-NN with $k=1$ has zero training error (no duplicate points with different labels).
+	(b) Increasing $k$ increases variance. (c) $k$-NN needs feature scaling. (d) $k$-NN training is
+	$O(1)$ apart from storing the data. (e) $k$-NN cannot do regression.
+	\begin{hint}
+		Think about $k=1$ versus $k=n$.
+	\end{hint}
+	\begin{sol}
+		(a) true, (b) false (it decreases variance and increases bias), (c) true, (d) true (unless
+		you build an index, which is $O(n\log n)$), (e) false.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Cosine versus Euclidean]
+	\twochili
+	Documents as term-count vectors: $A=(2,0,1)$, $B=(20,0,10)$, $C=(1,1,1)$. Which is closer to $A$
+	under Euclidean distance, and under cosine distance? Which is more sensible for documents?
+	\begin{hint}
+		$B$ is $A$ repeated ten times.
+	\end{hint}
+	\begin{sol}
+		Euclidean: $d(A,B)=\gv{c07_problems/p7d_ab}$, $d(A,C)=\gv{c07_problems/p7d_ac}$, so $C$ is
+		closer. Cosine distance: $d(A,B)=0$ (same direction), $d(A,C)=\gv{c07_problems/p7d_cos}$, so
+		$B$ is closer. For documents, $B$ is the same content at ten times the length; cosine
+		(or Euclidean on length-normalised vectors) is the sensible choice.
+	\end{sol}
+\end{problem}

@@ -331,8 +331,8 @@ fail differently.
 		Residuals are $(1, 0, -2, 1)$.
 	\end{hint}
 	\begin{sol}
-		MSE $=(1+0+4+1)/4 = 1.5$; MAE $=(1+0+2+1)/4=1$. With target $17$ the last residual is $-9$:
-		MSE becomes $(1+0+4+81)/4=21.5$, MAE becomes $(1+0+2+9)/4=3$. Squared loss is far more
+		MSE $=(1+0+4+1)/4 = \gv{c03_problems/p1b_mse}$; MAE $=(1+0+2+1)/4=\gv{c03_problems/p1b_mae}$. With target $17$ the last residual is $-9$:
+		MSE becomes $(1+0+4+81)/4=\gv{c03_problems/p1b_mse2}$, MAE becomes $(1+0+2+9)/4=\gv{c03_problems/p1b_mae2}$. Squared loss is far more
 		sensitive to outliers, which is why MAE or Huber loss is used when targets have heavy
 		tails.
 	\end{sol}
@@ -396,8 +396,8 @@ fail differently.
 		Each accuracy is approximately $\Normal(0.5, 0.25/n)$.
 	\end{hint}
 	\begin{sol}
-		Standard deviation $=\sqrt{0.25/100}=0.05$, so the best is about $0.5+2.25\times0.05 =
-		0.6125$, matching the simulation $\gv{c01_setup/opt_val}$ in the chapter. The optimism shrinks
+		Standard deviation $=\sqrt{0.25/100}=0.05$, so the best is about $0.5+\gv{c03_problems/p1f_emax}\times0.05 =
+		\gv{c03_problems/p1f_best}$, matching the simulation $\gv{c01_setup/opt_val}$ in the chapter. The optimism shrinks
 		like $1/\sqrt n$ and grows like $\sqrt{2\ln m}$: bigger validation sets help, comparing more
 		models hurts.
 	\end{sol}

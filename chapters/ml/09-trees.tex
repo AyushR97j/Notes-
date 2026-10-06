@@ -1,20 +1,308 @@
 \chapter{Decision Trees}
 \label{ch:trees}
+Trees are the most interview-friendly model: you can compute a split by hand in two minutes, draw
+the result, and explain it to a non-technical manager. They are also the building block of the
+models that win most tabular competitions (\Cref{ch:ensembles}), so their quirks --- greediness,
+instability, bias towards many-valued features --- matter far beyond this chapter.
+
 \section{Impurity}
-\stub{Impurity}
+\prototype{A node with 8 candidates who accepted an offer and 6 who declined: how ``mixed'' is it?}
+
+A classification tree splits so that child nodes are purer than the parent. With class proportions
+$p_1,\dots,p_K$ in a node:
+\begin{definition}
+	\begin{gather*}
+		\text{entropy } \Ent=-\sum_kp_k\log_2p_k,\qquad
+		\text{Gini } G=1-\sum_kp_k^2=\sum_kp_k(1-p_k),\\
+		\text{misclassification error } 1-\max_kp_k.
+	\end{gather*}
+\end{definition}
+All three are $0$ for a pure node and maximal for a uniform one (binary: entropy $1$ bit, Gini
+$0.5$). Gini is the probability that two labels drawn at random from the node disagree; entropy is
+the expected number of bits to encode a label. They almost always choose the same split; Gini avoids
+a logarithm and is scikit-learn's default.
+
+\begin{definition}
+	The \vocab{information gain} of a split of node $S$ into children $S_v$ is
+	\[ \IG=\Ent(S)-\sum_v\frac{\abs{S_v}}{\abs S}\Ent(S_v), \]
+	the drop from parent impurity to the size-weighted child impurity. The same construction with
+	Gini gives the \emph{Gini decrease}.
+\end{definition}
+
+\begin{remark}
+	\trap Misclassification error is a poor splitting criterion: it is not strictly concave, so many
+	splits that clearly improve purity leave it unchanged (e.g.\ $(40,40)\to(30,10)+(10,30)$ and
+	$(40,40)\to(20,40)+(20,0)$ both have error $0.25$, but the second creates a pure node). Use it for
+	pruning, not growing.
+\end{remark}
 
 \section{A split by hand}
-\stub{A split by hand}
+\prototype{Which of CTC, city and role best predicts whether a candidate accepts an offer?}
+
+\begin{center}
+	\small
+	\begin{tabular}{rllll}
+		\toprule
+		\# & CTC & City & Role & Accepted? \\ \midrule
+		\gv{c09_trees/table}
+		\bottomrule
+	\end{tabular}
+\end{center}
+
+\begin{example}[Information gain of each feature]
+	Parent: $\gv{c09_trees/npos}$ yes, $\gv{c09_trees/nneg}$ no, so
+	$\Ent=-\frac8{14}\log_2\frac8{14}-\frac6{14}\log_2\frac6{14}=\gv{c09_trees/Hp}$ and Gini
+	$=1-(8/14)^2-(6/14)^2=\gv{c09_trees/Gp}$.
+	\begin{itemize}
+		\ii \textbf{CTC} ($\gv{c09_trees/CTC_parts}$): child entropies $\gv{c09_trees/CTC_High_H}$ and
+		$\gv{c09_trees/CTC_Low_H}$, weighted $\frac7{14}\cdot0.5917+\frac7{14}\cdot0.8631=
+			\gv{c09_trees/CTC_condH}$, so $\IG=\gv{c09_trees/CTC_IG}$.
+		\ii \textbf{City} ($\gv{c09_trees/City_parts}$): weighted child entropy $\gv{c09_trees/City_condH}$,
+		$\IG=\gv{c09_trees/City_IG}$.
+		\ii \textbf{Role} ($\gv{c09_trees/Role_parts}$): weighted child entropy $\gv{c09_trees/Role_condH}$,
+		$\IG=\gv{c09_trees/Role_IG}$.
+	\end{itemize}
+	The root splits on \textbf{\gv{c09_trees/best}}. Gini decreases rank the same way
+	($\gv{c09_trees/CTC_Gdec}$, $\gv{c09_trees/City_Gdec}$, $\gv{c09_trees/Role_Gdec}$). The parent
+	Gini and the CTC gain match scikit-learn's impurity values for a depth-1 tree.
+\end{example}
+
+\begin{center}
+	\begin{tikzpicture}[
+			node/.style={draw, rounded corners, align=center, font=\small, fill=blue!5, minimum width=2.6cm},
+			leaf/.style={draw, rounded corners, align=center, font=\small, fill=green!8, minimum width=2.6cm},
+			level distance=1.6cm, sibling distance=5cm, edge from parent/.style={draw, -Stealth}]
+		\node[node] {all 14\\ 8 yes / 6 no\\ $\Ent=\gv{c09_trees/Hp}$}
+		child {node[leaf] {CTC = High\\ 6 yes / 1 no\\ $\Ent=\gv{c09_trees/CTC_High_H}$} edge from parent node[left, font=\scriptsize] {High~}}
+		child {node[leaf] {CTC = Low\\ 2 yes / 5 no\\ $\Ent=\gv{c09_trees/CTC_Low_H}$} edge from parent node[right, font=\scriptsize] {~Low}};
+	\end{tikzpicture}
+\end{center}
+
+\subsection{The bias towards many-valued features: gain ratio}
+City and Role have \emph{identical} information gain, but Role splits three ways. Taken to the
+extreme, a candidate-ID feature with 14 distinct values gives 14 pure leaves and the maximal gain
+$\gv{c09_trees/id_IG}$ while being useless for prediction. C4.5 corrects this with the
+\vocab{gain ratio} $\IG/\mathrm{SplitInfo}$, where
+$\mathrm{SplitInfo}=-\sum_v\frac{\abs{S_v}}{\abs S}\log_2\frac{\abs{S_v}}{\abs S}$ is the entropy of the
+split itself. SplitInfo is $\gv{c09_trees/City_SI}$ for City, $\gv{c09_trees/Role_SI}$ for Role and
+$\log_214=\gv{c09_trees/id_SI}$ for the ID, giving gain ratios $\gv{c09_trees/City_GR}$,
+$\gv{c09_trees/Role_GR}$ and $\gv{c09_trees/id_GR}$. (Gain ratio over-corrects towards
+near-trivial splits with tiny SplitInfo, so C4.5 only considers splits with above-average gain.)
+
+\begin{remark}[ID3, C4.5, CART]
+	\vocab{ID3}: categorical features, multiway splits, information gain, no pruning.
+	\vocab{C4.5}: adds continuous thresholds, gain ratio, missing-value handling and error-based
+	pruning. \vocab{CART} (what scikit-learn implements): strictly \emph{binary} splits, Gini for
+	classification and squared error for regression, cost-complexity pruning. A binary tree can
+	still express a multiway categorical split as a sequence of binary ones.
+\end{remark}
 
 \section{Growing a tree}
-\stub{Growing a tree}
+\prototype{Eight values of a continuous feature: only seven thresholds are worth trying.}
+
+\subsection{Continuous features}
+Sort the values; only midpoints between consecutive \emph{distinct} values can change the
+partition, so a feature with $n$ distinct values has at most $n-1$ candidate thresholds (and only
+those between differently-labelled neighbours can be optimal). With pre-sorting, scanning all
+thresholds for one feature costs $O(n)$ by updating class counts incrementally.
+\begin{example}[Threshold scan]
+	$x=(2,3,4.5,5,6.5,7,8,9.5)$ with labels $(0,0,0,1,0,1,1,1)$; parent Gini $\gv{c09_trees/thr_parent}$.
+	\begin{center}
+		\small
+		\begin{tabular}{cccc}
+			\toprule
+			threshold & left (positives/size) & right & weighted Gini \\ \midrule
+			\gv{c09_trees/thr_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Two thresholds tie at $\gv{c09_trees/thr_best_g}$; scikit-learn's stump picks
+	$x\le\gv{c09_trees/thr_best}$, the first.
+\end{example}
+
+\subsection{Categorical features and missing values}
+A categorical feature with $q$ levels admits $2^{q-1}-1$ binary partitions. For binary
+classification (and regression) there is a shortcut: order the levels by their positive rate (mean
+target) and only consider the $q-1$ splits in that order --- optimal for Gini and squared error.
+That ordering is a form of target encoding, with the same leakage risk if done on the full data
+(\Cref{ch:dataprep}). Libraries that take only numbers need one-hot or ordinal encoding first;
+LightGBM and CatBoost handle categories natively.
+
+Missing values: C4.5 sends a fractional example down every branch; CART uses \vocab{surrogate
+	splits} (another feature mimicking the primary split); XGBoost and LightGBM learn a
+\emph{default direction} per split; recent scikit-learn trees accept \texttt{NaN} and learn which
+side missing values go to. With 10\% of entries set to \texttt{NaN} in both train and test, a depth-5
+tree on the breast-cancer data still reaches test accuracy $\gv{c09_trees/nan_acc}$.
+
+\subsection{Stopping}
+Recursion stops when a node is pure, or hits \code{max_depth}, \code{min_samples_split},
+\code{min_samples_leaf}, \code{max_leaf_nodes}, or a minimum impurity decrease. Greedy
+growth is not optimal: finding the smallest consistent tree is NP-hard, and a split with zero gain
+(XOR!) may be needed to enable great splits below it.
 
 \section{Regression trees}
-\stub{Regression trees}
+\prototype{Six points that jump from about 5 to about 21: split where the jump is.}
+Each leaf predicts the mean of its targets; the split criterion is the reduction in the sum of
+squared errors (equivalently, variance reduction).
+\begin{example}[One regression split]
+	$x=1,\dots,6$, $y=(5,6,5,20,22,21)$; total SSE $\gv{c09_trees/r_sst}$. The best threshold is
+	$x\le\gv{c09_trees/r_t}$ with leaf means $\gv{c09_trees/r_l}$ and $\gv{c09_trees/r_r}$ and remaining
+	SSE $\gv{c09_trees/r_sse}$ --- identical to \texttt{DecisionTreeRegressor(max\_depth=1)}.
+\end{example}
+A regression tree is a piecewise-constant function: it cannot extrapolate beyond the range of the
+training targets and approximates a straight line by a staircase. That is why trees forecast
+trending time series badly unless you model differences, and why ``trees for regression'' answers
+should mention it.
 
 \section{Pruning}
-\stub{Pruning}
+\prototype{An unpruned tree reaches 100\% training accuracy; its test accuracy peaked several levels
+	earlier.}
+
+Grown to purity, a tree memorises noise. \vocab{Pre-pruning} stops early (depth, leaf size);
+\vocab{post-pruning} grows fully and cuts back. CART's \vocab{cost-complexity pruning} minimises
+\[ R_\alpha(T)=R(T)+\alpha\abs T \]
+(training error plus $\alpha$ per leaf). As $\alpha$ grows, the subtree whose removal increases error
+least per leaf removed (the ``weakest link'') is collapsed first, giving a nested sequence of
+subtrees; pick $\alpha$ by cross-validation. Note the parallel with $E+\lambda\Omega$ in
+\Cref{ch:biasvar}.
+
+\begin{example}[Breast-cancer data]
+	The unpruned tree has depth $\gv{c09_trees/full_depth}$, $\gv{c09_trees/full_leaves}$ leaves and
+	test accuracy $\gv{c09_trees/full_test}$. Along the pruning path, the best test accuracy
+	$\gv{c09_trees/ccp_best_test}$ is reached at $\alpha=\gv{c09_trees/ccp_best_alpha}$ with
+	$\gv{c09_trees/ccp_best_leaves}$ leaves.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
+				width=0.48\linewidth, height=0.38\linewidth, grid=major, grid style={gray!20},
+				axis lines=left, ticklabel style={font=\scriptsize},
+				legend style={draw=none, fill=none, font=\scriptsize}]
+			\nextgroupplot[xlabel={max depth}, ylabel={accuracy}, legend pos=south east, ymin=0.88, ymax=1.01]
+			\addplot[blue!80!black, thick, mark=*, mark size=1pt] table[x=d,y=train] {gen/ml/data/c09_trees-depth.dat};
+			\addplot[red!80!black, thick, mark=square*, mark size=1pt] table[x=d,y=test] {gen/ml/data/c09_trees-depth.dat};
+			\legend{train, test}
+			\nextgroupplot[xlabel={$\alpha$ (log)}, xmode=log, ylabel={leaves}, axis y line*=left]
+			\addplot[ForestGreen, thick, mark=*, mark size=1pt, const plot] table[x=alpha,y=leaves] {gen/ml/data/c09_trees-ccp.dat};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Left: training accuracy rises to 1 with depth while test accuracy plateaus. Right:
+		cost-complexity pruning removes leaves as $\alpha$ grows.}
+	\label{fig:tree-depth}
+\end{figure}
 
 \section{What trees are good for}
-\stub{What trees are good for}
+\prototype{OA: ``Which of the following can decision trees be used for?''}
 
+\textbf{Strengths.} Classification and regression (and multi-output); mixed numeric and categorical
+features; no scaling needed --- predictions are invariant to any monotone transform of a feature
+(log-transforming every feature leaves the breast-cancer tree's test predictions identical, checked
+in the script); automatic interactions (a path is a conjunction of conditions); missing-value
+strategies; interpretable rules; built-in feature-importance scores; fast prediction ($O(\text{depth})$);
+feature selection and discretisation as by-products; base learners for ensembles.
+
+\textbf{Weaknesses.} High variance: resampling the training set changes the root split --- over 200
+bootstrap samples of the breast-cancer data the depth-1 tree chose $\gv{c09_trees/root_distinct}$
+different root features, the commonest only $\gv{c09_trees/root_top_share}$ of the time. Axis-aligned
+boundaries approximate a diagonal by a staircase (\Cref{fig:tree-regions}). No extrapolation. Greedy
+and myopic. Biased towards features with many split points. Probability estimates from small leaves
+are coarse.
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=0.8cm},
+				width=0.5\linewidth, height=0.4\linewidth, xmin=-1.5, xmax=2.5, ymin=-1.1, ymax=1.6,
+				ticklabel style={font=\scriptsize}, title style={font=\small}, axis on top]
+			\nextgroupplot[title={depth 2 (\gv{c09_trees/moon_leaves2} leaves)}]
+			\addplot[scatter, only marks, mark=square*, mark size=1.9pt, point meta=\thisrow{c},
+				colormap={rb}{color=(blue!12) color=(red!12)}, scatter/use mapped color={draw=mapped color, fill=mapped color}]
+			table[x=x,y=y] {gen/ml/data/c09_trees-region2.dat};
+			\addplot[only marks, mark=o, mark size=1pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c09_trees-m0.dat};
+			\addplot[only marks, mark=+, mark size=1.3pt, red!80!black] table[x=x,y=y] {gen/ml/data/c09_trees-m1.dat};
+			\nextgroupplot[title={depth 12 (\gv{c09_trees/moon_leaves12} leaves)}, yticklabels={}]
+			\addplot[scatter, only marks, mark=square*, mark size=1.9pt, point meta=\thisrow{c},
+				colormap={rb}{color=(blue!12) color=(red!12)}, scatter/use mapped color={draw=mapped color, fill=mapped color}]
+			table[x=x,y=y] {gen/ml/data/c09_trees-region12.dat};
+			\addplot[only marks, mark=o, mark size=1pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c09_trees-m0.dat};
+			\addplot[only marks, mark=+, mark size=1.3pt, red!80!black] table[x=x,y=y] {gen/ml/data/c09_trees-m1.dat};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Decision regions are unions of axis-aligned rectangles. A deep tree carves small boxes
+		around individual noisy points.}
+	\label{fig:tree-regions}
+\end{figure}
+
+\begin{remark}
+	\trap ``Decision trees cannot handle categorical data'' (they can in principle; scikit-learn's
+	implementation needs encoding). ``Decision trees need normalised features'' (they do not).
+	``Decision trees are linear classifiers'' (no: piecewise-constant, axis-aligned). ``A deeper tree
+	always generalises better'' (no: training accuracy rises, test accuracy plateaus or falls).
+\end{remark}
+
+\begin{moral}
+	Split greedily on the largest impurity drop, stop or prune before the leaves memorise noise,
+	and expect high variance --- which is exactly what ensembles fix.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Entropy and Gini]
+	\onechili
+	A node holds 30 samples: 10 of class A, 10 of B, 10 of C. Compute its entropy (bits) and Gini.
+	It is split into $(10,10,0)$ and $(0,0,10)$; compute the information gain.
+	\begin{hint}
+		Uniform over three classes: $\log_23$.
+	\end{hint}
+	\begin{sol}
+		Entropy $\log_23=\gv{c09_problems/p9a_H}$, Gini $1-3\cdot\frac19=\gv{c09_problems/p9a_G}$.
+		Children: $(10,10,0)$ has entropy $1$, $(0,0,10)$ has $0$; weighted
+		$\frac{20}{30}\cdot1=0.667$; $\IG=\gv{c09_problems/p9a_IG}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Best split]
+	\twochili
+	12 emails, 6 spam. Feature A splits them into $(5\text{ spam},1\text{ ham})$ and $(1,5)$. Feature
+	B splits them into $(3,0)$ and $(3,6)$. Which split does information gain prefer? Which does Gini
+	prefer?
+	\begin{hint}
+		Compute both weighted child impurities.
+	\end{hint}
+	\begin{sol}
+		A: each child has entropy $\gv{c09_problems/p9b_hA}$, IG $=\gv{c09_problems/p9b_igA}$; Gini
+		decrease $\gv{c09_problems/p9b_gA}$. B: children entropies $0$ and $\gv{c09_problems/p9b_hB}$,
+		weighted $\frac9{12}\cdot0.918$, IG $=\gv{c09_problems/p9b_igB}$; Gini decrease
+		$\gv{c09_problems/p9b_gB}$. Both prefer A, although B creates a pure node.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Regression split]
+	\onechili
+	$x=(1,2,3,4)$, $y=(2,4,10,12)$. Find the best single split by squared error and the two leaf
+	predictions.
+	\begin{hint}
+		Try $x\le1.5$, $x\le2.5$, $x\le3.5$.
+	\end{hint}
+	\begin{sol}
+		SSE for the three thresholds: $\gv{c09_problems/p9c_s1}$, $\gv{c09_problems/p9c_s2}$,
+		$\gv{c09_problems/p9c_s3}$. Best is $x\le2.5$ with leaves $3$ and $11$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[True or false]
+	\onechili
+	(a) A fully grown tree on data without duplicate inputs has zero training error. (b) Standardising
+	features changes a decision tree's predictions. (c) Trees can capture feature interactions without
+	explicit product features. (d) A regression tree can predict a value larger than every training
+	target. (e) Gini impurity of a binary node is at most 0.5.
+	\begin{hint}
+		Think about leaves and monotone transforms.
+	\end{hint}
+	\begin{sol}
+		(a) true. (b) false. (c) true. (d) false: leaves average training targets. (e) true:
+		$2p(1-p)\le\frac12$.
+	\end{sol}
+\end{problem}

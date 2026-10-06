@@ -1,26 +1,478 @@
 \chapter{Ensembles}
 \label{ch:ensembles}
+If a placement OA has one question on classical ML beyond linear models, it is usually here:
+the 63.2\% bootstrap number, ``bagging reduces variance, boosting reduces bias'', ``which is true of
+random forests'', or a feature-importance trap. Interviews go further: derive AdaBoost's weight,
+explain gradient boosting as gradient descent in function space, and derive XGBoost's leaf weight and
+split gain. All of those are below, each checked against the library that implements it.
+
 \section{The bootstrap and 63.2 percent}
-\stub{The bootstrap and 63.2 percent}
+\prototype{Draw $n$ rows with replacement from $n$; which fraction of the original rows appears?}
+
+A \vocab{bootstrap sample} draws $n$ rows uniformly \emph{with replacement} from the $n$ training rows.
+A fixed row is missed by one draw with probability $1-\frac1n$, by all $n$ independent draws with
+probability $(1-\frac1n)^n$. Hence
+\[ \Prob(\text{row appears})=1-\Bigl(1-\frac1n\Bigr)^n\ \xrightarrow{n\to\infty}\ 1-e^{-1}
+	=\gv{c10_bagging/lim}, \]
+using $\lim(1-\frac1n)^n=e^{-1}$ (take logs: $n\log(1-\frac1n)=n(-\frac1n-\frac1{2n^2}-\dots)\to-1$).
+\begin{example}[How fast it converges]
+	$n=2$: $\gv{c10_bagging/pin_2}$; $n=5$: $\gv{c10_bagging/pin_5}$; $n=10$: $\gv{c10_bagging/pin_10}$;
+	$n=100$: $\gv{c10_bagging/pin_100}$; $n=1000$: $\gv{c10_bagging/pin_1000}$. Simulating 2000
+	bootstraps of 1000 rows gives an average unique fraction of $\gv{c10_bagging/sim_unique}$. So each
+	bootstrap sample contains about 63.2\% of the distinct rows, the other 36.8\% are
+	\vocab{out-of-bag} (OOB) for that sample, and the number of copies of a given row is approximately
+	Poisson(1): it appears twice with probability $e^{-1}/2=\gv{c10_bagging/p_twice}$.
+\end{example}
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.6\linewidth, height=0.33\linewidth, xmode=log, xlabel={$n$},
+				ylabel={$\Prob(\text{row in sample})$}, ymin=0.6, ymax=1.02]
+			\addplot[blue!80!black, thick, mark=*, mark size=1.2pt] table[x=n,y=pin] {gen/ml/data/c10_bagging-boot.dat};
+			\addplot[red!80!black, dashed, domain=1:10000] {0.6321};
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+	\trap The 63.2\% is the fraction of \emph{distinct original rows} in a bootstrap sample, not the
+	sample size (which is $n$) and not ``each row has a 63.2\% chance per draw'' (that is $1/n$).
+	For a quick OA: ``probability that a given observation is \emph{not} in a bootstrap sample of size
+	$n$'' is $(1-1/n)^n\approx\gv{c10_bagging/inv_e}$.
+\end{remark}
 
 \section{Bagging and random forests}
-\stub{Bagging and random forests}
+\prototype{Average 100 deep trees, each grown on its own bootstrap sample.}
+
+\subsection{Why averaging helps}
+If $B$ models each have variance $\sigma^2$ and pairwise correlation $\rho$, their average has
+variance
+\[ \Var\Bigl(\frac1B\sum_bf_b\Bigr)=\rho\sigma^2+\frac{1-\rho}{B}\sigma^2. \]
+Averaging kills the second term as $B$ grows, but the first, $\rho\sigma^2$, stays.
+\begin{center}
+	\small
+	\begin{tabular}{rrcc}
+		\toprule
+		$\rho$ & $B$ & formula & simulated \\ \midrule
+		\gv{c10_bagging/var_rows}
+		\bottomrule
+	\end{tabular}
+\end{center}
+Two consequences drive the design of every averaging ensemble: (1) the base models should have low
+bias and high variance (deep trees), since averaging does not touch bias; (2) the models should be as
+decorrelated as possible.
+
+\begin{definition}
+	\vocab{Bagging} (bootstrap aggregating): fit the same learner on $B$ bootstrap samples; average
+	(regression) or vote/average probabilities (classification). A \vocab{random forest} bags deep
+	trees and \emph{additionally} considers only a random subset of \code{max_features} features at
+	each split (typically $\sqrt d$ for classification, $d/3$ or all for regression), which
+	decorrelates the trees.
+\end{definition}
+
+\begin{example}[Decorrelation, measured]
+	On a 20-feature problem, the mean pairwise correlation between the predicted probabilities of 200
+	trees is $\gv{c10_bagging/bag_corr}$ for plain bagging and $\gv{c10_bagging/rf_corr}$ for a random
+	forest with \code{max_features="sqrt"}. Test accuracies: $\gv{c10_bagging/bag_test}$ and
+	$\gv{c10_bagging/rf_test}$.
+\end{example}
+
+\subsection{Out-of-bag error}
+Each tree has not seen about 36.8\% of the rows; predicting each row using only the trees for which
+it was OOB gives a nearly free validation estimate. Computing this by hand from the forest's stored
+bootstrap indices reproduces scikit-learn's \code{oob_score_} exactly
+($\gv{c10_bagging/rf_oob}$); 5-fold cross-validation gives $\gv{c10_bagging/rf_cv}$.
+
+\begin{example}[Bias and variance of each ensemble]
+	Regression on $f(\x)=\sin3x_1+0.5x_2^2$ with noise variance $0.09$, 200 training points, 20
+	independent training sets:
+	\begin{center}
+		\small
+		\begin{tabular}{lccc}
+			\toprule
+			model & bias$^2$ & variance & expected test MSE \\ \midrule
+			\gv{c10_bagging/bv_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	A deep tree has low bias and high variance; bagging and random forests cut the variance by
+	about a factor of four with bias roughly unchanged. A stump has high bias; boosting 300 stumps
+	removes most of it.
+\end{example}
+
+\begin{remark}
+	\trap ``Random forests reduce bias.'' The standard (and correct) answer is that bagging and random
+	forests reduce \emph{variance}; the forest's bias is about that of one deep tree (slightly higher,
+	since feature subsampling weakens each tree). ``Adding more trees to a random forest causes
+	overfitting'' is also false: test error stabilises as $B$ grows; more trees cost compute, not
+	accuracy. What \emph{can} overfit a forest is very deep trees on noisy data with too few
+	features per split rarely mattering --- tune \code{min_samples_leaf} and \code{max_features}, not $B$.
+\end{remark}
+
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.55\linewidth, height=0.32\linewidth, xmode=log,
+				xlabel={number of trees $B$}, ylabel={test accuracy}]
+			\addplot[ForestGreen, thick, mark=*, mark size=1.2pt] table[x=B,y=acc] {gen/ml/data/c10_bagging-ntrees.dat};
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
 
 \section{Feature importance and its traps}
-\stub{Feature importance and its traps}
+\prototype{A column of random noise is ranked the second most important feature.}
+
+\vocab{Mean decrease in impurity} (MDI, scikit-learn's \code{feature_importances_}) sums, over all
+splits on a feature, the weighted impurity decrease, averaged over trees and normalised to sum to 1.
+\vocab{Permutation importance} shuffles one feature's column in held-out data and measures the drop
+in score.
+
+\begin{example}[MDI favours high-cardinality features]
+	Two informative features (one continuous, one binary) and two pure-noise features (one continuous,
+	one binary); random forest, importances:
+	\begin{center}
+		\small
+		\begin{tabular}{lcc}
+			\toprule
+			feature & MDI (training) & permutation (held-out) \\ \midrule
+			\gv{c10_bagging/mdi_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	MDI gives the continuous noise $\gv{c10_bagging/mdi_noise_cont}$, far more than the genuinely
+	informative binary feature ($\gv{c10_bagging/mdi_inf_bin}$): a continuous column offers hundreds of
+	thresholds, and deep trees use them to fit noise in training data, collecting impurity decrease that
+	never generalises \cite{strobl2007}. Permutation importance on held-out data puts the noise at about
+	zero. (Our hand-rolled permutation importance agrees with
+	\code{sklearn.inspection.permutation_importance} to $0.01$.)
+\end{example}
+
+\begin{example}[Correlated features split the credit]
+	The informative continuous feature alone gets MDI $\gv{c10_bagging/single_inf}$; add a near-copy
+	and the two receive $\gv{c10_bagging/copy_a}$ and $\gv{c10_bagging/copy_b}$. Each looks half as
+	important although either alone carries all the signal. Permutation importance has the mirror
+	problem: shuffling one copy barely hurts, because the model reads the other.
+\end{example}
+
+\begin{remark}
+	\trap Feature importance is not causal effect, and MDI is not reliable for features of different
+	cardinality or for correlated groups. Prefer permutation importance on a validation set, drop-column
+	importance, or SHAP values, and permute correlated groups together. An interviewer who asks ``your
+	random forest says \texttt{customer\_id} is the top feature --- why?'' wants exactly this answer
+	(plus: check for leakage).
+\end{remark}
 
 \section{AdaBoost}
-\stub{AdaBoost}
+\prototype{Ten points on a line, stumps as weak learners, three rounds by hand.}
+
+\vocab{Boosting} builds an additive model $F(\x)=\sum_m\alpha_mh_m(\x)$ \emph{sequentially}, each
+weak learner focusing on what the previous ones got wrong. AdaBoost (binary, $y\in\{\pm1\}$):
+\begin{algo}[AdaBoost]
+	\begin{enumerate}
+		\ii Start with weights $w_i=1/n$.
+		\ii For $m=1,\dots,M$: fit $h_m$ to minimise weighted error
+		$\eps_m=\sum_iw_i\ind{h_m(\x_i)\ne y_i}$; set $\alpha_m=\frac12\ln\frac{1-\eps_m}{\eps_m}$;
+		update $w_i\leftarrow w_i\exp(-\alpha_my_ih_m(\x_i))$ and renormalise.
+		\ii Predict $\sign\bigl(\sum_m\alpha_mh_m(\x)\bigr)$.
+	\end{enumerate}
+\end{algo}
+Misclassified points are multiplied by $e^{\alpha_m}$, correct ones by $e^{-\alpha_m}$. After the
+update the current learner has weighted error exactly $\frac12$ --- it is useless on the new weights,
+which forces the next learner to find something new.
+
+\begin{example}[Three rounds by hand]
+	$x=1,\dots,10$ with labels $+,+,-,-,-,+,+,+,-,-$. Each round picks the stump with the lowest
+	weighted error:
+	\begin{center}
+		\small
+		\begin{tabular}{clcccc}
+			\toprule
+			round & stump & misclassified $x$ & $\eps_m$ & $\alpha_m$ & train acc.\ of $F$ \\ \midrule
+			\gv{c10_boosting/ada_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Round 1: $\eps_1=3\times0.1=\gv{c10_boosting/ada_eps1}$, $\alpha_1=\frac12\ln\frac{0.7}{0.3}=
+		\gv{c10_boosting/ada_alpha1}$. Unnormalised weights become $0.1e^{0.4236}$ for the three mistakes and
+	$0.1e^{-0.4236}$ for the rest; they sum to $Z_1=\gv{c10_boosting/Z1}$, and after normalising each
+	mistake has weight $\gv{c10_boosting/w1_wrong}$ $(=\frac1{2\cdot3})$ and each correct point
+	$\gv{c10_boosting/w1_right}$ $(=\frac1{2\cdot7})$: the mistakes now carry half the total weight.
+	Three stumps classify all ten points correctly although no single stump does better than 70\%.
+	scikit-learn's \code{AdaBoostClassifier} (SAMME) reports the same errors and estimator weights
+	$\ln\frac{1-\eps}{\eps}=2\alpha_m$, and the same predictions.
+\end{example}
+
+AdaBoost is forward stagewise additive modelling with the exponential loss $e^{-yF(\x)}$: the
+$\alpha_m$ formula is the exact line-search minimiser of that loss. Because $e^{-m}$ grows
+exponentially for negative margins, AdaBoost pours weight onto mislabelled or outlying points ---
+its main weakness on noisy data.
 
 \section{Gradient boosting}
-\stub{Gradient boosting}
+\prototype{Fit a stump to the residuals, add half of it, repeat.}
+
+\subsection{Functional gradient descent}
+Treat the $n$ predictions $F(\x_1),\dots,F(\x_n)$ as the parameters. Gradient descent on the total
+loss $\sum_i\ell(y_i,F(\x_i))$ would move each prediction along its \vocab{pseudo-residual}
+$r_i=-\partial\ell/\partial F(\x_i)$. But we need a function that generalises to new $\x$, so fit a
+small regression tree $h_m$ to $(\x_i,r_i)$ and step along it:
+\[ F_m(\x)=F_{m-1}(\x)+\nu\,h_m(\x),\qquad 0<\nu\le1\ \ (\text{shrinkage, learning rate}). \]
+For squared loss $\frac12(y-F)^2$ the pseudo-residual is the ordinary residual $y-F$; for log-loss with
+$F$ the log-odds it is $y-p$; for absolute loss it is $\sign(y-F)$, which is why boosting can use
+robust losses.
+
+\begin{example}[Two rounds by hand]
+	$x=(1,2,3,4)$, $y=(1,3,6,8)$, squared loss, stumps, $\nu=0.5$. $F_0=\bar y=\gv{c10_boosting/gb_F0}$.
+	Residuals $(\gv{c10_boosting/gb_r1})$; the best stump splits at $x\le\gv{c10_boosting/gb_t1}$ and
+	predicts $(\gv{c10_boosting/gb_u1})$. Add half: $F_1=(3.25,3.25,5.75,5.75)$. New residuals
+	$(\gv{c10_boosting/gb_r2})$; the next stump predicts $(\gv{c10_boosting/gb_u2})$, so
+	$F_2=(\gv{c10_boosting/gb_F2})$. \code{GradientBoostingRegressor(n_estimators=2, learning_rate=0.5,
+	max_depth=1)} returns exactly these.
+\end{example}
+
+\codefile[code/ml/c10\_boosting.py: gradient boosting for squared loss]{gen/ml/snip/c10_boosting-gbr.py}
+On the Friedman-1 regression benchmark this loop reproduces the test predictions of scikit-learn's
+\code{GradientBoostingRegressor} to $10^{-8}$, once it shares one random state across trees and grows
+them on \code{float32} inputs as scikit-learn does. For log-loss each leaf takes a Newton step,
+\[ \textstyle\sum_{\text{leaf}}(y_i-p_i)\big/\sum_{\text{leaf}}p_i(1-p_i), \]
+instead of the mean residual; our version of that matches the decision function of
+\code{GradientBoostingClassifier} as well.
+
+\begin{remark}
+	Boosting \emph{can} overfit: training loss keeps falling with $M$. Control it with a small $\nu$
+	(0.01--0.1) plus early stopping on validation loss, shallow trees (depth 3--8 or 8--64 leaves),
+	row subsampling (\vocab{stochastic gradient boosting}) and column subsampling. Small $\nu$ needs
+	more trees: $\nu\times M$ is roughly constant at the optimum.
+\end{remark}
 
 \section{XGBoost}
-\stub{XGBoost}
+\prototype{Derive the optimal leaf value $-G/(H+\lambda)$ and the split gain, then check them against the
+	library on six points.}
+
+\subsection{Second-order objective}
+At round $t$, XGBoost adds a tree $f_t$ to minimise
+\[ \sum_i\ell\bigl(y_i,\hat y_i^{(t-1)}+f_t(\x_i)\bigr)+\gamma T+\tfrac12\lambda\sum_{j=1}^Tw_j^2, \]
+where $T$ is the number of leaves and $w_j$ the leaf values. Expand the loss to second order with
+$g_i=\partial\ell/\partial\hat y$ and $h_i=\partial^2\ell/\partial\hat y^2$ at the current prediction:
+\[ \sum_i\Bigl[g_if_t(\x_i)+\tfrac12h_if_t(\x_i)^2\Bigr]+\gamma T+\tfrac12\lambda\sum_jw_j^2+\text{const}. \]
+Grouping examples by leaf ($I_j$ = examples in leaf $j$, $G_j=\sum_{I_j}g_i$, $H_j=\sum_{I_j}h_i$):
+\[ \sum_j\Bigl[G_jw_j+\tfrac12(H_j+\lambda)w_j^2\Bigr]+\gamma T. \]
+Each bracket is a one-dimensional quadratic, so
+\begin{theorem}[Leaf weight and structure score]
+	\[ w_j^\star=-\frac{G_j}{H_j+\lambda},\qquad
+		\text{objective}^\star=-\frac12\sum_j\frac{G_j^2}{H_j+\lambda}+\gamma T, \]
+	and splitting a leaf into $L$ and $R$ changes the objective by
+	\[ \text{Gain}=\frac12\Bigl[\frac{G_L^2}{H_L+\lambda}+\frac{G_R^2}{H_R+\lambda}
+		-\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\Bigr]-\gamma. \]
+\end{theorem}
+For squared loss $\frac12(y-\hat y)^2$: $g=\hat y-y$, $h=1$, so $H_j$ is a count and $w^\star$ is a
+shrunk mean residual. For log-loss: $g=p-y$, $h=p(1-p)$, a Newton step like Friedman's leaf update.
+$\lambda$ shrinks leaf values (and makes leaves with tiny Hessian sums harmless); $\gamma$ is a minimum
+gain per extra leaf (pre-pruning); \code{min_child_weight} is a minimum $H_j$ per leaf.
+
+\begin{example}[Squared loss, by hand and by library]
+	$x=1,\dots,6$, $y=(1,2,2,6,7,9)$, initial prediction $0.5$, $\lambda=1$, $\gamma=0$, one depth-1 tree,
+	learning rate 1. Gradients $g=\hat y-y=(\gv{c10_boosting/xg_g})$, $h_i=1$, $G=\gv{c10_boosting/xg_G}$.
+	Bracketed gains (without the $\frac12$) for each midpoint threshold: $\gv{c10_boosting/xg_all}$.
+	The best split is $x<\gv{c10_boosting/xg_t}$ with $G_L=\gv{c10_boosting/xg_GL}$,
+	$H_L=\gv{c10_boosting/xg_HL}$, $G_R=\gv{c10_boosting/xg_GR}$, $H_R=\gv{c10_boosting/xg_HR}$:
+	\[ w_L=\frac{3.5}{3+1}=\gv{c10_boosting/xg_wl},\qquad w_R=\frac{20.5}{3+1}=\gv{c10_boosting/xg_wr},\qquad
+		\frac{3.5^2}{4}+\frac{20.5^2}{4}-\frac{24^2}{7}=\gv{c10_boosting/xg_gain}. \]
+	\code{xgboost.train} (exact method) chooses the same threshold, its leaves hold the same weights,
+	its \code{Cover} is $\sum h_i=6$, and its reported \code{Gain} is $\gv{c10_boosting/xg_gain}$ --- the
+	bracket \emph{without} the $\frac12$ (the paper's Gain is $\gv{c10_boosting/xg_half}$). Without the
+	split the single leaf would be $24/7=\gv{c10_boosting/xg_w_root}$.
+\end{example}
+
+\begin{example}[Log-loss]
+	Labels $(0,1,0,0,1,1)$ at $x=1,\dots,6$, initial probability $0.5$: $g_i=0.5-y_i$, $h_i=0.25$. The
+	best split is $x<\gv{c10_boosting/xl_t}$: $G_L=\gv{c10_boosting/xl_GL}$, $H_L=\gv{c10_boosting/xl_HL}$,
+	$G_R=\gv{c10_boosting/xl_GR}$, $H_R=\gv{c10_boosting/xl_HR}$, so $w_L=-1/2=\gv{c10_boosting/xl_wl}$,
+	$w_R=1/1.5=\gv{c10_boosting/xl_wr}$ and the predicted probabilities are $\sigma(w)=
+		\gv{c10_boosting/xl_pl}$ and $\gv{c10_boosting/xl_pr}$ --- both matching the library. Setting
+	\code{gamma} just below the reported gain $\gv{c10_boosting/xl_gain}$ keeps the split
+	($\gv{c10_boosting/gamma_below_leaves}$ leaves); just above prunes it
+	($\gv{c10_boosting/gamma_above_leaves}$ leaf). In the library, a split survives iff the reported gain
+	exceeds \code{gamma}.
+\end{example}
+
+\subsection{The engineering that made it win}
+\begin{itemize}
+	\ii \textbf{Shrinkage and column subsampling}, as in stochastic gradient boosting.
+	\ii \textbf{Sparsity-aware split finding.} Each split learns a \emph{default direction} for missing
+	values by trying both and keeping the better, scanning only non-missing entries. With 20\% of entries
+	missing, the root of our first tree splits on \texttt{\gv{c10_boosting/miss_feat}} and sends missing
+	values to the ``yes'' branch: \gv{c10_boosting/miss_dir}.
+	\ii \textbf{Approximate and histogram splits.} Instead of scanning every distinct value, bucket each
+	feature into quantiles (weighted by $h_i$, the ``weighted quantile sketch'') or fixed histograms
+	(\code{tree_method="hist"}, default 256 bins), turning split search from $O(n)$ per feature into
+	$O(\text{bins})$.
+	\ii \textbf{Systems}: column blocks in compressed, pre-sorted format; cache-aware access;
+	parallel split search across features; out-of-core computation.
+\end{itemize}
+The tree dump for that missing-value example, as printed by the library:
+\outputfile{gen/ml/out/c10_boosting-dump.txt}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.75\linewidth, height=0.4\linewidth, xmode=log,
+				xlabel={boosting round}, ylabel={test log-loss}, ymin=0.08, ymax=0.4, legend pos=north east]
+			\addplot[red!80!black, thick] table[x=it,y=e1] {gen/ml/data/c10_boosting-eta.dat};
+			\addplot[blue!80!black, thick, dashed] table[x=it,y=e03] {gen/ml/data/c10_boosting-eta.dat};
+			\addplot[ForestGreen, thick, densely dotted] table[x=it,y=e005] {gen/ml/data/c10_boosting-eta.dat};
+			\legend{$\eta=1$, $\eta=0.3$, $\eta=0.05$}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{XGBoost on the breast-cancer data: a large learning rate reaches its best test loss in
+		$\gv{c10_boosting/eta1.0_arg}$ rounds and then degrades; $\eta=0.3$ is best at round
+		$\gv{c10_boosting/eta0.3_arg}$ (loss $\gv{c10_boosting/eta0.3_best}$); $\eta=0.05$ needs
+		$\gv{c10_boosting/eta0.05_arg}$ rounds. Smaller steps need more trees and are more forgiving.}
+	\label{fig:eta}
+\end{figure}
 
 \section{LightGBM and CatBoost}
-\stub{LightGBM and CatBoost}
+\prototype{Same accuracy, an order of magnitude less time on a million rows.}
 
-\section{Stacking and the bias-variance story}
-\stub{Stacking and the bias-variance story}
+\vocab{LightGBM} \cite{lightgbm}: histogram-based splits by default; \emph{leaf-wise} (best-first) tree
+growth --- always split the leaf with the largest gain, controlled by \code{num_leaves} rather than
+depth, which reaches lower loss for the same number of leaves but can overfit small data (cap
+\code{max_depth} or raise \code{min_data_in_leaf}); \emph{gradient-based one-side sampling} (keep
+all large-gradient rows, subsample small-gradient ones); \emph{exclusive feature bundling} (merge
+sparse features that are rarely non-zero together); native categorical splits.
 
+\vocab{CatBoost} \cite{catboost}: \emph{ordered target statistics} for categorical features (encode
+each row's category using only rows that come before it in a random permutation, avoiding target
+leakage), \emph{ordered boosting} to reduce the prediction shift from reusing the same rows for
+gradients and fitting, and \emph{oblivious} (symmetric) trees that use the same split at every node of
+a level, which are fast to evaluate and act as a regulariser.
+
+On a 3000-row synthetic problem, LightGBM reaches test accuracy $\gv{c10_boosting/lgb_acc}$ and
+XGBoost (\code{hist}) $\gv{c10_boosting/xgb_acc}$; differences of this size are noise --- tuning
+matters more than the library.
+
+\section{Stacking and the bias--variance story}
+\prototype{Logistic regression, a random forest and $k$-NN, combined by a logistic regression trained
+	on their out-of-fold predictions.}
+
+\vocab{Stacking} trains a meta-model on the base models' predictions. The meta-model must be trained
+on \emph{out-of-fold} predictions (each base model predicts only rows it was not trained on);
+otherwise it learns to trust whichever base model overfits most. Blending uses a single hold-out set
+instead of folds.
+\begin{center}
+	\small
+	\begin{tabular}{lc}
+		\toprule
+		model & test accuracy \\ \midrule
+		\gv{c10_boosting/stack_rows}
+		\bottomrule
+	\end{tabular}
+\end{center}
+Here the stack does not beat its best member: stacking helps when base models are good \emph{and}
+make different errors, and costs complexity always.
+
+\subsection{Bagging versus boosting, with caveats}
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+		\toprule
+		& bagging / random forest & boosting (AdaBoost, GBM, XGBoost) \\ \midrule
+		training & parallel, independent & sequential, each fixes the previous \\
+		base learner & strong, low bias, high variance (deep trees) & weak, high bias (stumps, shallow trees) \\
+		main effect & reduces variance & reduces bias (and variance, via shrinkage) \\
+		overfitting & robust; more trees never hurt & can overfit with too many rounds; needs early stopping \\
+		noise & robust & AdaBoost sensitive to label noise; GBM less so with robust losses \\
+		weights & equal votes & learner weights $\alpha_m$ or shrinkage $\nu$ \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+Caveats an interviewer may push on: boosting also reduces variance when it averages many shrunk
+trees; a random forest's bias is slightly above a single tree's; and the boosted-stumps row in the
+bias--variance table above shows boosting cutting both terms when the target is additive (stumps can
+represent sums of one-feature functions exactly).
+
+\begin{moral}
+	Average decorrelated low-bias models to kill variance (forests); add up shrunk corrections along the
+	loss gradient to kill bias (boosting); XGBoost is that with a second-order step, $\lambda$ on leaf
+	values and $\gamma$ on leaves.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Bootstrap probabilities]
+	\onechili
+	A dataset has $n=4$ rows. (a) What is the probability that row 1 is absent from a bootstrap sample?
+	(b) That all four rows appear? (c) The expected number of distinct rows?
+	\begin{hint}
+		(b) counts arrangements of 4 distinct rows among $4^4$ equally likely samples.
+	\end{hint}
+	\begin{sol}
+		(a) $(3/4)^4=\gv{c10_problems/p10a_a}$. (b) $4!/4^4=\gv{c10_problems/p10a_b}$. (c) by linearity,
+		$4(1-(3/4)^4)=\gv{c10_problems/p10a_c}$ (simulation agrees).
+	\end{sol}
+\end{problem}
+
+\begin{problem}[An AdaBoost round]
+	\twochili
+	Five points have equal weights; the first stump misclassifies exactly one point. Compute
+	$\eps_1$, $\alpha_1$ and the normalised weights after the update.
+	\begin{hint}
+		After normalising, the mistakes carry total weight $\frac12$.
+	\end{hint}
+	\begin{sol}
+		$\eps_1=0.2$, $\alpha_1=\frac12\ln4=\gv{c10_problems/p10b_alpha}$. The misclassified point gets
+		weight $\frac12$, each of the four others $\frac18$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[XGBoost leaf]
+	\twochili
+	A leaf receives four examples with squared-error gradients $g=(-2,-1,0.5,-1.5)$ and $h=1$ each.
+	With $\lambda=2$, what is its weight? What would it be with $\lambda=0$, and what does $\lambda$ do?
+	\begin{hint}
+		$w=-G/(H+\lambda)$.
+	\end{hint}
+	\begin{sol}
+		$G=-4$, $H=4$: $w=4/6=\gv{c10_problems/p10c_w}$; with $\lambda=0$, $w=1$ (the mean residual).
+		$\lambda$ shrinks leaf values towards zero, more strongly for leaves with few examples (small $H$).
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Split gain]
+	\twochili
+	Log-loss, all current probabilities $0.5$, $\lambda=1$, $\gamma=0$. A candidate split sends labels
+	$(1,1,1,0)$ left and $(0,0)$ right. Compute the XGBoost gain (with the $\frac12$).
+	\begin{hint}
+		$g=0.5-y$, $h=0.25$.
+	\end{hint}
+	\begin{sol}
+		Left: $G_L=-1$, $H_L=1$; right: $G_R=1$, $H_R=0.5$; parent $G=0$. Gain
+		$=\frac12[\frac1{2}+\frac1{1.5}-0]=\gv{c10_problems/p10d_gain}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Which are true?]
+	\onechili
+	(a) Random forests reduce bias compared with a single deep tree. (b) Boosting trains its learners
+	sequentially. (c) Increasing the number of trees in a random forest causes overfitting. (d) XGBoost
+	uses second-order derivatives of the loss. (e) OOB error requires a separate validation set. (f) MDI
+	importance is biased towards high-cardinality features.
+	\begin{hint}
+		Three of the six are false.
+	\end{hint}
+	\begin{sol}
+		True: (b), (d), (f). False: (a) --- forests reduce variance; (c) --- more trees only stabilise;
+		(e) --- OOB uses each tree's left-out rows.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Variance of a forest]
+	\threechili
+	Each tree has prediction variance $4$ and pairwise correlation $0.25$. What is the variance of the
+	average of 10 trees? Of infinitely many? What correlation would bring the limit down to $0.5$?
+	\begin{hint}
+		$\rho\sigma^2+(1-\rho)\sigma^2/B$.
+	\end{hint}
+	\begin{sol}
+		$0.25\cdot4+0.75\cdot4/10=\gv{c10_problems/p10f_10}$; limit $\rho\sigma^2=\gv{c10_problems/p10f_inf}$. A limit of $0.5$
+		needs $\rho=0.5/4=\gv{c10_problems/p10f_rho}$: once $B$ is large, only decorrelating the trees
+		(fewer features per split, more randomness) lowers the variance further.
+	\end{sol}
+\end{problem}

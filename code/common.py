@@ -61,6 +61,12 @@ def fmt(x, nd=4):
     return s
 
 
+def sci(x: float, nd: int = 1) -> str:
+    """3.0e-05 -> 3.0\\times 10^{-5} (for math mode)."""
+    m, e = f"{x:.{nd}e}".split("e")
+    return f"{m}\\times 10^{{{int(e)}}}"
+
+
 def thousands(n: int) -> str:
     """12345678 -> 12{,}345{,}678 for math mode."""
     s = f"{int(n):,}"

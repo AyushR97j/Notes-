@@ -1,20 +1,395 @@
 \chapter{Support Vector Machines}
 \label{ch:svm}
+SVMs are where interviewers test whether you understand optimisation rather than recite it: why
+maximise the margin, where the dual comes from, why only some points matter, what the kernel trick
+actually saves, and what $C$ and $\gamma$ do. OA papers ask the conceptual layer (``which loss is
+convex'', ``what are support vectors'', ``effect of $C$''); interviews ask the derivation.
+
 \section{Margins}
-\stub{Margins}
+\prototype{Three negatives near the origin, three positives near $(2,2)$: of all separating lines,
+	pick the one farthest from both groups.}
+
+For a linear classifier $f(\x)=\w\T\x+b$ with labels $y\in\{-1,+1\}$, the signed distance of
+$\x_i$ from the hyperplane $\{\w\T\x+b=0\}$ is $y_i(\w\T\x_i+b)/\norm{\w}$, its \vocab{geometric
+	margin}. Many hyperplanes separate separable data; the perceptron returns whichever it hits
+first. The SVM picks the one maximising the smallest margin, on the argument that a boundary far
+from all training points is robust to small perturbations of them --- the street analogy: build the
+widest road that keeps the two neighbourhoods on opposite sides.
+
+Because $(\w,b)$ and $(c\w,cb)$ define the same hyperplane, fix the scale by requiring
+$y_i(\w\T\x_i+b)\ge1$ with equality for the closest points. The margin is then $1/\norm{\w}$ on
+each side and the street has width $2/\norm{\w}$. Maximising width is minimising $\norm{\w}$.
 
 \section{Hard and soft margin}
-\stub{Hard and soft margin}
+\prototype{Hard margin: solve the six-point example by hand. Soft margin: let $C$ decide how many
+	points may sit inside the street.}
+
+\begin{definition}[Hard-margin SVM]
+	\[ \min_{\w,b}\ \tfrac12\norm{\w}^2\quad\text{s.t.}\quad y_i(\w\T\x_i+b)\ge1\ \ \forall i. \]
+\end{definition}
+A convex quadratic programme with linear constraints: one global optimum, no local-minimum worries.
+
+\begin{example}[Six points by hand]
+	Negatives $(0,0),(1,0),(0,1)$; positives $(2,2),(3,3),(2,3)$. By symmetry $\w=(a,a)$. The closest
+	negatives are $(1,0)$ and $(0,1)$, the closest positive is $(2,2)$, so
+	$a+b=-1$ and $4a+b=1$, giving $a=2/3$, $b=-5/3$. Check the rest: $(0,0)$ gives $-5/3\le-1$,
+	$(2,3)$ gives $5/3\ge1$. Street width $2/\norm{\w}=3/\sqrt2=\gv{c08_svm/margin}$. Support
+	vectors: $\gv{c08_svm/svs}$. \texttt{SVC(kernel="linear", C=1e8)} returns the same $\w$, $b$ and
+	support vectors.
+\end{example}
+
+\subsection{Soft margin and the hinge loss}
+Real data overlap. Introduce slacks $\xi_i\ge0$ that let point $i$ violate the margin:
+\begin{definition}[Soft-margin SVM]
+	\[ \min_{\w,b,\bm\xi}\ \tfrac12\norm{\w}^2+C\sum_i\xi_i\quad\text{s.t.}\quad
+		y_i(\w\T\x_i+b)\ge1-\xi_i,\ \ \xi_i\ge0. \]
+\end{definition}
+At the optimum $\xi_i=\max(0,1-y_if(\x_i))$, the \vocab{hinge loss}, so the problem is the
+unconstrained, convex
+\[ \min_{\w,b}\ \sum_i\max\bigl(0,\,1-y_i(\w\T\x_i+b)\bigr)+\frac{1}{2C}\norm{\w}^2: \]
+hinge loss plus $\ell_2$ regularisation with $\lambda=1/(2C)$ --- structurally ridge-penalised
+logistic regression with the logistic loss replaced by the hinge. $\xi_i=0$: outside the street;
+$0<\xi_i\le1$: inside the street but correctly classified; $\xi_i>1$: misclassified. Solving this
+primal QP directly on 80 overlapping points reproduces \texttt{SVC(kernel="linear", C=1)} to
+$2\times10^{-3}$, and the optimal slacks equal the hinge losses; $\gv{c08_svm/n_margin_viol}$ points
+violate the margin and $\gv{c08_svm/n_misclass}$ are misclassified.
+
+\begin{example}[What $C$ does]
+	Same 80 points, linear kernel; test set of 2000:
+	\begin{center}
+		\small
+		\begin{tabular}{rcccc}
+			\toprule
+			$C$ & street width $2/\norm{\w}$ & \#support vectors & train acc & test acc \\ \midrule
+			\gv{c08_svm/C_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	Small $C$: violations are cheap, the street is wide, many points are support vectors, the model
+	is heavily regularised (high bias). Large $C$: violations are expensive, the street narrows to
+	fit the training data (high variance); as $C\to\infty$ we approach the hard margin.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{groupplot}[group style={group size=2 by 1, horizontal sep=0.9cm},
+				width=0.5\linewidth, height=0.45\linewidth, xmin=-3, xmax=5, ymin=-3, ymax=5,
+				axis lines=left, ticklabel style={font=\scriptsize}, title style={font=\small}]
+			\nextgroupplot[title={$C=0.01$: wide street}]
+			\addplot[only marks, mark=o, mark size=1.2pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c08_svm-blob_n.dat};
+			\addplot[only marks, mark=+, mark size=1.5pt, red!80!black] table[x=x,y=y] {gen/ml/data/c08_svm-blob_p.dat};
+			\addplot[only marks, mark=square, mark size=2.4pt, gray] table[x=x,y=y] {gen/ml/data/c08_svm-softsv_lo.dat};
+			\addplot[black, thick] table[x=x,y=mid] {gen/ml/data/c08_svm-soft_lo.dat};
+			\addplot[black, dashed] table[x=x,y=up] {gen/ml/data/c08_svm-soft_lo.dat};
+			\addplot[black, dashed] table[x=x,y=dn] {gen/ml/data/c08_svm-soft_lo.dat};
+			\nextgroupplot[title={$C=100$: narrow street}]
+			\addplot[only marks, mark=o, mark size=1.2pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c08_svm-blob_n.dat};
+			\addplot[only marks, mark=+, mark size=1.5pt, red!80!black] table[x=x,y=y] {gen/ml/data/c08_svm-blob_p.dat};
+			\addplot[only marks, mark=square, mark size=2.4pt, gray] table[x=x,y=y] {gen/ml/data/c08_svm-softsv_hi.dat};
+			\addplot[black, thick] table[x=x,y=mid] {gen/ml/data/c08_svm-soft_hi.dat};
+			\addplot[black, dashed] table[x=x,y=up] {gen/ml/data/c08_svm-soft_hi.dat};
+			\addplot[black, dashed] table[x=x,y=dn] {gen/ml/data/c08_svm-soft_hi.dat};
+		\end{groupplot}
+	\end{tikzpicture}
+	\caption{Soft-margin linear SVMs; squares mark support vectors, dashed lines are
+		$f(\x)=\pm1$.}
+	\label{fig:svm-C}
+\end{figure}
+
+\begin{remark}
+	\trap $C$ is the \emph{inverse} of regularisation strength (as in scikit-learn's logistic
+	regression). ``Increasing $C$ increases regularisation'' is the wrong option. Also, support
+	vectors are not just the points on the margin: in the soft-margin SVM every point with
+	$y_if(\x_i)\le1$ --- on the margin, inside it, or misclassified --- is a support vector.
+\end{remark}
 
 \section{Duality}
-\stub{Duality}
+\prototype{The six-point example has dual weights $\alpha=(2/9,2/9,4/9)$ on its three support vectors
+	and $0$ everywhere else.}
+
+\subsection{Deriving the dual}
+Lagrangian of the soft-margin problem, with $\alpha_i\ge0$ for the margin constraints and
+$\mu_i\ge0$ for $\xi_i\ge0$:
+\[ \Loss=\tfrac12\norm{\w}^2+C\sum\xi_i-\sum\alpha_i\bigl[y_i(\w\T\x_i+b)-1+\xi_i\bigr]-\sum\mu_i\xi_i. \]
+Stationarity:
+\[ \pd{\Loss}{\w}=0\Rightarrow\w=\sum_i\alpha_iy_i\x_i,\qquad
+	\pd{\Loss}{b}=0\Rightarrow\sum_i\alpha_iy_i=0,\qquad
+	\pd{\Loss}{\xi_i}=0\Rightarrow\alpha_i=C-\mu_i\le C. \]
+Substituting back eliminates $\w$, $b$ and $\bm\xi$:
+\begin{theorem}[SVM dual]
+	\[ \max_{\balpha}\ \sum_i\alpha_i-\frac12\sum_{i,j}\alpha_i\alpha_jy_iy_j\,\x_i\T\x_j
+		\quad\text{s.t.}\quad 0\le\alpha_i\le C,\ \ \sum_i\alpha_iy_i=0, \]
+	and the classifier is $f(\x)=\sum_i\alpha_iy_i\,\x_i\T\x+b$.
+\end{theorem}
+Strong duality holds (convex objective, affine constraints), so solving the dual solves the primal.
+
+\subsection{Complementary slackness explains support vectors}
+KKT says $\alpha_i[y_if(\x_i)-1+\xi_i]=0$ and $\mu_i\xi_i=(C-\alpha_i)\xi_i=0$. Hence:
+\begin{itemize}
+	\ii $\alpha_i=0$: $y_if(\x_i)\ge1$, the point is outside the street and does not affect the
+	solution at all. Delete it and retrain: same classifier.
+	\ii $0<\alpha_i<C$: $\xi_i=0$ and $y_if(\x_i)=1$, exactly on the margin. Use these to compute $b$.
+	\ii $\alpha_i=C$: inside the street or misclassified ($\xi_i\ge0$).
+\end{itemize}
+For the six points, $\w=\sum\alpha_iy_i\x_i$ with $\alpha=2/9$ on $(1,0)$ and $(0,1)$ and $4/9$ on
+$(2,2)$ gives $\frac49(2,2)-\frac29(1,0)-\frac29(0,1)=(\frac23,\frac23)$. A generic QP solver on the
+dual (below) returns these $\alpha$'s, matching \texttt{SVC.dual\_coef\_}.
+\codefile[code/ml/c08\_svm.py: the dual as a QP]{gen/ml/snip/c08_svm-dual.py}
+
+\begin{remark}
+	Why bother with the dual? (i) The data enter only through inner products $\x_i\T\x_j$, which is
+	what makes kernels possible. (ii) The solution is sparse in $\alpha$. (iii) It has one variable
+	per \emph{example} instead of per feature, which helps when $d\gg n$. For large $n$ with linear
+	kernels, primal solvers (\texttt{LinearSVC}, SGD on the hinge loss) are faster.
+\end{remark}
 
 \section{Kernels}
-\stub{Kernels}
+\prototype{Points inside a circle versus outside: no line separates them in $\RR^2$, but adding
+	$x_1^2+x_2^2$ as a third coordinate makes them linearly separable.}
+
+\subsection{The trick}
+Map inputs through a feature map $\phi$ and run the linear SVM on $\phi(\x)$. The dual needs only
+$\phi(\x_i)\T\phi(\x_j)$; if a function $K(\x,\z)=\phi(\x)\T\phi(\z)$ computes that inner product
+directly, we never form $\phi$. The prediction is
+$f(\x)=\sum_{i\in\text{SV}}\alpha_iy_iK(\x_i,\x)+b$.
+
+\begin{example}[The quadratic kernel unpacked]
+	For $\x,\z\in\RR^2$, $K(\x,\z)=(\x\T\z+1)^2$ equals $\phi(\x)\T\phi(\z)$ with
+	$\phi(\x)=(1,\sqrt2x_1,\sqrt2x_2,x_1^2,x_2^2,\sqrt2x_1x_2)$. For $\x=(1,2)$, $\z=(3,1)$:
+	$\x\T\z=\gv{c08_svm/poly_dot}$ and $K=(5+1)^2=\gv{c08_svm/poly_k}$; explicitly
+	$\phi(\x)=(\gv{c08_svm/phi_x})$ and the 6-dimensional dot product is also $36$. One
+	2-dimensional dot product replaced a 6-dimensional one; for $d=100$ and degree 3 the explicit map
+	has $\binom{103}{3}=\gv{c08_svm/poly_dim_100_3}$ coordinates, while the kernel still costs one
+	100-dimensional dot product.
+\end{example}
+
+Common kernels:
+\begin{center}
+	\small
+	\begin{tabular}{lll}
+		\toprule
+		kernel & $K(\x,\z)$ & feature space \\ \midrule
+		linear & $\x\T\z$ & $\RR^d$ \\
+		polynomial & $(\gamma\,\x\T\z+r)^p$ & all monomials up to degree $p$ \\
+		RBF (Gaussian) & $\exp(-\gamma\norm{\x-\z}^2)$ & infinite-dimensional \\
+		sigmoid & $\tanh(\gamma\,\x\T\z+r)$ & not always a valid kernel \\
+		\bottomrule
+	\end{tabular}
+\end{center}
+For the RBF kernel with $\gamma=0.5$ and the same $\x,\z$: $\norm{\x-\z}^2=\gv{c08_svm/rbf_sq}$ and
+$K=e^{-2.5}=\gv{c08_svm/rbf}$. The RBF kernel is a similarity: $1$ for identical points, decaying
+with distance at a rate set by $\gamma$ (so it needs scaled features).
+
+\begin{theorem}[Mercer, informally]
+	$K$ is a valid kernel (an inner product in some feature space) iff every Gram matrix
+	$[K(\x_i,\x_j)]_{ij}$ it produces is symmetric positive semi-definite.
+\end{theorem}
+Numerically: the RBF Gram matrix of 30 random points has smallest eigenvalue
+$\gv{c08_svm/ev_rbf_sci}\ge0$, while the ``negative distance'' $-\norm{\x-\z}$ yields a smallest
+eigenvalue of $\gv{c08_svm/ev_bad}$ --- not a kernel, and the dual stops being convex.
+
+\subsection{\texorpdfstring{$\gamma$}{gamma} and \texorpdfstring{$C$}{C} for the RBF kernel}
+$\gamma$ is an inverse length scale: large $\gamma$ makes each support vector's influence very
+local, so the boundary can wrap around individual points (low bias, high variance); small $\gamma$
+gives smooth, almost linear boundaries.
+\begin{example}[Two moons, $C=1$]
+	\begin{center}
+		\small
+		\begin{tabular}{rccc}
+			\toprule
+			$\gamma$ & \#support vectors & train acc & test acc \\ \midrule
+			\gv{c08_svm/gamma_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	At $\gamma=100$ nearly every training point is a support vector and training accuracy is near
+	perfect while test accuracy drops: memorisation. On concentric circles a linear SVM scores
+	$\gv{c08_svm/circ_lin}$ (chance), the RBF SVM $\gv{c08_svm/circ_rbf}$, and a \emph{linear} SVM on
+	the lifted features $(x_1,x_2,x_1^2+x_2^2)$ also $\gv{c08_svm/circ_lift}$ --- the kernel trick
+	made explicit.
+\end{example}
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.7\linewidth, height=0.46\linewidth, xmin=-1.6, xmax=2.6,
+				ymin=-1.2, ymax=1.7, legend pos=south east, legend style={font=\scriptsize}, grid=none,
+				unbounded coords=jump]
+			\addplot[only marks, mark=o, mark size=1.2pt, blue!70!black] table[x=x,y=y] {gen/ml/data/c08_svm-moon0.dat};
+			\addplot[only marks, mark=+, mark size=1.5pt, red!80!black] table[x=x,y=y] {gen/ml/data/c08_svm-moon1.dat};
+			\addplot[black, very thick] table[x=x,y=y] {gen/ml/data/c08_svm-rbf_g1.dat};
+			\addplot[ForestGreen, thick, densely dashed] table[x=x,y=y] {gen/ml/data/c08_svm-rbf_g100.dat};
+			\legend{class 0, class 1, $\gamma=1$, $\gamma=100$}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{RBF-SVM decision boundaries on two moons: $\gamma=1$ is smooth; $\gamma=100$ draws
+		islands around individual points.}
+	\label{fig:svm-gamma}
+\end{figure}
+
+\begin{remark}
+	\trap ``Kernels map data to a higher-dimensional space, so kernel SVMs are slow because of the
+	dimension.'' The dimension never appears; the cost is in $n$: the Gram matrix is $n\times n$
+	and training is roughly between $O(n^2)$ and $O(n^3)$, which is why kernel SVMs are rarely used
+	beyond a few hundred thousand points. Prediction costs one kernel evaluation per support vector.
+\end{remark}
 
 \section{SVR and SMO}
-\stub{SVR and SMO}
+\prototype{Fit $\sin x$ with a tube of half-width $\varepsilon$ in which errors are free.}
+
+\subsection{Support vector regression}
+Replace the hinge by the \vocab{$\varepsilon$-insensitive loss} $\max(0,\abs{y-f(\x)}-\varepsilon)$:
+errors smaller than $\varepsilon$ cost nothing, larger ones cost linearly. Points strictly inside
+the tube have $\alpha_i=0$; only points on or outside it are support vectors.
+\begin{example}[Width of the tube]
+	RBF SVR ($C=10$, $\gamma=1$) on 60 noisy samples of $\sin x$:
+	\begin{center}
+		\small
+		\begin{tabular}{rcc}
+			\toprule
+			$\varepsilon$ & \#support vectors & training MSE \\ \midrule
+			\gv{c08_svm/svr_rows}
+			\bottomrule
+		\end{tabular}
+	\end{center}
+	A wider tube means a sparser, smoother model and a larger training error.
+\end{example}
+\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[napkinplot, width=0.62\linewidth, height=0.36\linewidth, xlabel=$x$, ylabel=$y$,
+				legend pos=south west, legend style={font=\scriptsize}]
+			\addplot[name path=up, gray, thin] table[x=x,y=up] {gen/ml/data/c08_svm-svr.dat};
+			\addplot[name path=dn, gray, thin] table[x=x,y=dn] {gen/ml/data/c08_svm-svr.dat};
+			\addplot[blue!15] fill between[of=up and dn];
+			\addplot[blue!80!black, thick] table[x=x,y=f] {gen/ml/data/c08_svm-svr.dat};
+			\addplot[only marks, mark=*, mark size=1pt] table[x=x,y=y] {gen/ml/data/c08_svm-svr_pts.dat};
+			\addplot[only marks, mark=square, mark size=2.4pt, red!80!black] table[x=x,y=y] {gen/ml/data/c08_svm-svr_sv.dat};
+			\legend{,,$\varepsilon$-tube, $f(x)$, data, support vectors}
+		\end{axis}
+	\end{tikzpicture}
+\end{center}
+
+\subsection{SMO in one paragraph}
+The dual has a box constraint per variable and one equality $\sum\alpha_iy_i=0$, so you cannot
+change a single $\alpha_i$ without breaking the equality. \vocab{Sequential minimal optimisation}
+(Platt) repeatedly picks a \emph{pair} $(\alpha_i,\alpha_j)$ violating KKT, solves the
+two-variable sub-problem in closed form (a one-dimensional quadratic along the line
+$\alpha_iy_i+\alpha_jy_j=\text{const}$, then clipped to the box $[0,C]$ --- the KKT clipping of
+\Cref{ch:maths}), updates $b$ and the cached errors, and repeats until all points satisfy KKT within
+a tolerance. LIBSVM, behind scikit-learn's \texttt{SVC}, is an SMO-type solver with clever pair
+selection and kernel caching.
+
+\subsection{Probabilities}
+SVMs output scores $f(\x)$, not probabilities. \vocab{Platt scaling} fits a one-dimensional
+logistic regression $\sigma(Af(\x)+B)$ on held-out scores (scikit-learn's \texttt{probability=True}
+does this with internal cross-validation, which is slow and can disagree with \texttt{predict}).
 
 \section{Convex surrogate losses}
-\stub{Convex surrogate losses}
+\prototype{OA: ``Which of these losses is convex in the model output?''}
+With margin $m=yf(\x)$ (\Cref{fig:surrogates}):
+\begin{center}
+	\small
+	\begin{tabularx}{\linewidth}{l l l >{\raggedright\arraybackslash}X}
+		\toprule
+		loss & formula & convex? & used by \\ \midrule
+		0-1 & $\ind{m\le0}$ & no & the true objective, never optimised directly \\
+		hinge & $\max(0,1-m)$ & yes (kink at 1) & SVM \\
+		squared hinge & $\max(0,1-m)^2$ & yes, smooth & \texttt{LinearSVC} default \\
+		logistic & $\log(1+e^{-m})$ & yes, smooth & logistic regression \\
+		exponential & $e^{-m}$ & yes & AdaBoost \\
+		perceptron & $\max(0,-m)$ & yes & perceptron \\
+		$\varepsilon$-insensitive & $\max(0,\abs{y-f}-\varepsilon)$ & yes & SVR \\
+		ramp / truncated hinge & $\min(1,\max(0,1-m))$ & no & robust SVM variants \\
+		\bottomrule
+	\end{tabularx}
+\end{center}
+Convex in the \emph{output} $f$; with a linear $f$ also convex in $(\w,b)$. Hinge and logistic loss
+behave alike for misclassified points (linear growth); hinge is exactly zero once $m\ge1$, which is
+what produces sparsity in support vectors, while logistic loss keeps pushing all points and yields
+probabilities.
 
+\begin{remark}
+	\trap ``The hinge loss is not convex because it is not differentiable.'' Convexity does not need
+	differentiability: $\abs x$ and $\max(0,1-m)$ are convex. Use subgradients.
+\end{remark}
+
+\begin{moral}
+	SVM $=$ hinge loss $+$ $\ell_2$ penalty; the dual depends on data only through inner products,
+	so kernels give non-linear boundaries, and complementary slackness makes the solution depend only
+	on support vectors.
+\end{moral}
+
+\section\problemhead
+
+\begin{problem}[Margin from weights]
+	\onechili
+	A trained linear SVM has $\w=(3,4)$, $b=-2$. What is the width of its street? On which side, and
+	how far from the hyperplane, is $\x=(1,1)$?
+	\begin{hint}
+		Width $2/\norm{\w}$; distance $\abs{\w\T\x+b}/\norm{\w}$.
+	\end{hint}
+	\begin{sol}
+		$\norm{\w}=5$, width $\gv{c08_problems/p8a_w}$. $\w\T\x+b=\gv{c08_problems/p8a_f}$, positive side,
+		distance $\gv{c08_problems/p8a_d}$; since $f(\x)=5\ge1$ it is outside the street and has
+		$\alpha=0$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Kernel value]
+	\onechili
+	Compute $K(\x,\z)$ for $\x=(1,0,2)$, $\z=(2,1,1)$ under (a) the linear kernel, (b) $(\x\T\z+1)^3$,
+	(c) the RBF kernel with $\gamma=0.1$.
+	\begin{hint}
+		$\x\T\z=4$ and $\norm{\x-\z}^2=3$.
+	\end{hint}
+	\begin{sol}
+		(a) $\gv{c08_problems/p8b_lin}$. (b) $5^3=\gv{c08_problems/p8b_poly}$. (c)
+		$e^{-0.3}=\gv{c08_problems/p8b_rbf}$.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Support vectors and deletion]
+	\onechili
+	After training a soft-margin SVM, you delete all training points with $\alpha_i=0$ and retrain
+	with the same $C$. What happens? What if you delete a point with $\alpha_i=C$?
+	\begin{hint}
+		Complementary slackness.
+	\end{hint}
+	\begin{sol}
+		Deleting $\alpha_i=0$ points leaves the solution unchanged: they do not appear in
+		$\w=\sum\alpha_iy_i\x_i$ and still satisfy their constraints. Deleting an $\alpha_i=C$ point
+		(a margin violator) generally changes $\w$ and $b$; the remaining problem is different.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Which are true?]
+	\twochili
+	(a) The SVM objective is convex in $(\w,b)$. (b) Increasing $C$ widens the margin. (c) An RBF SVM
+	with very large $\gamma$ behaves like 1-nearest-neighbour on the support vectors. (d) The number
+	of support vectors is an upper bound on leave-one-out errors. (e) SVMs need feature scaling.
+	\begin{hint}
+		For (d): leaving out a non-support vector does not change the classifier.
+	\end{hint}
+	\begin{sol}
+		(a) true. (b) false (it narrows it). (c) essentially true: each kernel bump becomes a spike,
+		so $f(\x)$ is dominated by the closest training points. (d) true: only support vectors can
+		be misclassified when left out, so LOO error $\le\#\text{SV}/n$. (e) true for RBF and
+		polynomial kernels and for the penalty $\norm{\w}^2$ in general.
+	\end{sol}
+\end{problem}
+
+\begin{problem}[Hinge-loss subgradient step]
+	\twochili
+	Primal objective $\frac{\lambda}{2}\norm{\w}^2+\frac1n\sum\max(0,1-y_i\w\T\x_i)$ (no bias), $\lambda=0.1$,
+	$\w=(0.5,-0.5)$. One example $\x=(1,2)$, $y=+1$. Compute the stochastic subgradient and the
+	update with step size $0.1$ (Pegasos-style, $n=1$).
+	\begin{hint}
+		$y\w\T\x=-0.5<1$, so the hinge is active.
+	\end{hint}
+	\begin{sol}
+		Subgradient $\lambda\w-y\x=(0.05,-0.05)-(1,2)=(\gv{c08_problems/p8e_g0},\gv{c08_problems/p8e_g1})$.
+		Update $\w\leftarrow\w-0.1\,g=(\gv{c08_problems/p8e_w0},\gv{c08_problems/p8e_w1})$. If the
+		margin had been $\ge1$, only the shrinkage term $\lambda\w$ would act.
+	\end{sol}
+\end{problem}
