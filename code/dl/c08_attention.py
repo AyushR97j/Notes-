@@ -42,7 +42,7 @@ S = Q @ Kx.T / math.sqrt(2)
 fm = lambda M, nd: " \\\\ ".join(" & ".join(f"{v:.{nd}f}" for v in row) for row in M)
 out.tex("S", fm(S, 3)); out.tex("A", fm(A, 3)); out.tex("O", fm(O, 3))
 out.tex("QKt", fm(Q @ Kx.T, 0))
-out.val("o1_0", O[0, 0], 3); out.val("a1_0", A[0, 0], 3)
+out.val("o1_0", O[0, 0], 3); out.val("a1_0", A[0, 0], 3); out.val("o1_1", O[0, 1], 3)
 out.dat("heat3", {"x": np.repeat(np.arange(3), 3), "y": np.tile(np.arange(3), 3), "a": A.T.ravel()})
 # causal mask
 cm = np.triu(np.ones((3, 3), bool), 1)

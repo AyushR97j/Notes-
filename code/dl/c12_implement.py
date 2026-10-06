@@ -265,7 +265,8 @@ for _ in range(80):
     p = np.exp(logits - logits.max()); p /= p.sum()
     seq.append(int(gs.choice(V, p=p)))
 sample = "".join(chars[i] for i in seq)
-out.text("sample", sample)
+import textwrap
+out.text("sample", textwrap.fill(sample, 64))
 
 # problem values
 from common import thousands

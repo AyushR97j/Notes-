@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-14 done; next = preface (00-preface.tex, versions via \gv{a00_versions/...}), then read-through (pdftotext grep, overfull, figures), final build, DONE.
+RESUME HERE: DONE. Deep Learning.pdf: 153 pages, 14 chapters + preface, 138 problems with hints and solutions (73 in ch 14 + 65 chapter-end), 98 rapid-fire items, 318 library cross-checks passing; clean build from a fresh clone verified.
 
 # Deep Learning — progress log
 
@@ -10,8 +10,8 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
   existed uncommitted in the main checkout. Copied byte-identical into this branch so that
   `./build.sh dl` works from a fresh clone. No ML files copied or touched.
 - `dl.tex` mirrors `ml.tex`; DL-only macros and TikZ styles in `latex/dl-macros.tex`.
-- Drafting hook: `dl.tex` inputs a git-ignored `draft-include.tex` if it exists (holds an
-  `\includeonly`). It is deleted before every committed build, so the committed PDF is a full build.
+- Drafting: the coordinator's `draft.sh` (command-line `\includeonly`); `dl.tex` itself has no draft hook,
+  and every committed PDF is a full `./build.sh dl` build.
 - Bibliography `latex/refs-dl.bib`: only entries whose authors/title/venue/year I am sure of; page
   numbers omitted rather than guessed.
 - Scripts: `code/dl/cNN_topic.py`, one or more per chapter, each seconds on CPU, torch imported
@@ -43,7 +43,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - Ch11: training-memory arithmetic (params + grads + Adam states); each silent bug demonstrated by code.
 
 ## Chapter checklist
-- [ ] 00 Preface
+- [x] 00 Preface
 - [x] 01 Perceptron and MLP ★
 - [x] 02 Activations, losses, output layers ★
 - [x] 03 Backpropagation ★
@@ -58,7 +58,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 12 Implement it
 - [x] 13 Rapid-fire (98 items)
 - [x] 14 Problems (73 in ch 14)
-- [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
+- [x] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
 
 ## Log
 - Session 1: infrastructure copied into the worktree; DL skeleton compiles (47 pp).
@@ -68,3 +68,21 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - `.dat` files with tiny values are written with `nd=16` (common's fixed-point format would print 0).
 - dl.tex: `\sloppy` before `\printbibliography` (a 3pt overfull in one bib entry).
 - Ch1-5 done (87 pp total so far), 139 library cross-checks.
+- `latex/dl-macros.tex`: `\RedeclareSectionCommand[...tocpagenumberwidth=2.6em]{part}` (part entries with
+  3-digit page numbers were 2.8pt overfull in the ToC). No preamble edits by the DL writer.
+- Ch 8 capstone: pre-LN encoder-decoder Transformer in PyTorch (trained 600 steps on digit reversal, 100% exact
+  match) and a NumPy port reproducing its logits to 1e-9 and its greedy decodes exactly; our layers also asserted
+  against nn.MultiheadAttention / nn.TransformerEncoderLayer / nn.TransformerDecoderLayer.
+- Ch 12: NumPy framework trained side by side with PyTorch (identical 50- and 300-step Adam trajectories).
+- No torchvision / nltk / tokenizers available: NMS checked against an independent vectorised implementation,
+  IoU against pixel counting, BLEU against a geometric-mean formulation, BPE by round trip.
+- Training-based demos that turned out fragile were replaced by deterministic measurements (e.g. ch 7 long-range
+  memory: gradient influence of x_1 at initialisation instead of a training race between RNN and LSTM).
+- Final: 153 pages; 138 problems (73 in ch 14); 98 rapid-fire items; 318 cross-checks; 0 overfull > 2pt;
+  0 undefined references/values; fresh-clone build reproduces every generated file byte-identically
+  (only the PDF timestamp and the order of lines in checks.log differ).
+
+## Known limitations
+- Full build takes about 4-5 minutes on 4 CPUs (the capstone script alone ~25 s; LaTeX ~2 min).
+- Some chapter-end solutions contain trivial arithmetic typed in the text (e.g. 0.8^k, 10^80); every worked
+  example, table and figure value comes from code.
