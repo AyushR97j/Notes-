@@ -1,4 +1,4 @@
-RESUME HERE: chapters 01-11 done; next = chapter 12-implement (code/dl/c12_implement.py), then 13 rapid-fire, 14 problems, preface. Full build >2 min.
+RESUME HERE: chapters 01-12 done; next = chapter 13 rapid-fire (80-100 items), 14 problems (>=60, code/dl/c14_problems.py), preface. Full build >2 min.
 
 # Deep Learning — progress log
 
@@ -55,7 +55,7 @@ Author on title page / running head / PDF metadata: **Philospher** (user's spell
 - [x] 09 LLMs
 - [x] 10 Generative and representation learning
 - [x] 11 Practice and PyTorch
-- [ ] 12 Implement it
+- [x] 12 Implement it
 - [ ] 13 Rapid-fire (80–100)
 - [ ] 14 Problems (≥60)
 - [ ] Read-through (pdftotext grep; overfull ≤ 2pt), fix list, final build
